@@ -1,0 +1,22 @@
+__pycache__
+.claude
+.cursor
+.pytest_cache
+.ruff_cache
+.serena
+.venv
+agent_workspace
+.env
+/logs/
+server.log
+/server.*.log
+debug-*.log
+.coverage
+llama_cache
+.smoke-results
+.vscode
+# npm dev dependency for scripts/fetch_provider_logos.py
+node_modules/
+
+# macOS
+.DS_Store
