@@ -37,6 +37,7 @@ from claudey.config.model_refs import parse_provider_type
 from claudey.config.paths import messaging_state_dir_path
 from claudey.config.server_urls import local_admin_url, local_proxy_root_url
 from claudey.config.settings import Settings, get_settings
+from claudey.core.version import package_version
 from claudey.messaging.platforms import factory as messaging_platform_factory
 from claudey.messaging.platforms.factory import MessagingPlatformOptions
 from claudey.messaging.platforms.ports import (
@@ -226,6 +227,7 @@ class ApplicationRuntime:
         settings = self.settings
         return {
             "status": "running",
+            "version": package_version(),
             "host": settings.host,
             "port": settings.port,
             "model": settings.model,

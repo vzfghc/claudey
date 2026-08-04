@@ -33,6 +33,66 @@ const VIEW_GROUPS = [
   },
 ];
 
+const ONBOARDING_DISMISS_KEY = "claudey.onboarding.dismissed";
+const ONBOARDING_COMMAND = "hans-claude";
+
+const LOCAL_FIELD_KEYS = {
+  lmstudio: "LM_STUDIO_BASE_URL",
+  llamacpp: "LLAMACPP_BASE_URL",
+  ollama: "OLLAMA_BASE_URL",
+};
+
+const ROLE_CARDS = [
+  {
+    id: "fallback",
+    label: "Fallback",
+    modelKey: "MODEL",
+    reasoningKey: "REASONING_POLICY",
+    description: "Default used by Claude Code's /model picker. Roles without an override inherit this.",
+    modelLabel: "Model",
+  },
+  {
+    id: "fable",
+    label: "Fable",
+    modelKey: "MODEL_FABLE",
+    reasoningKey: "REASONING_FABLE",
+    description: "Override for Fable-tier requests. Empty means use the fallback model.",
+    modelLabel: "Model override",
+  },
+  {
+    id: "opus",
+    label: "Opus",
+    modelKey: "MODEL_OPUS",
+    reasoningKey: "REASONING_OPUS",
+    description: "Override for Opus-tier requests. Empty means use the fallback model.",
+    modelLabel: "Model override",
+  },
+  {
+    id: "sonnet",
+    label: "Sonnet",
+    modelKey: "MODEL_SONNET",
+    reasoningKey: "REASONING_SONNET",
+    description: "Override for Sonnet-tier requests. Empty means use the fallback model.",
+    modelLabel: "Model override",
+  },
+  {
+    id: "haiku",
+    label: "Haiku",
+    modelKey: "MODEL_HAIKU",
+    reasoningKey: "REASONING_HAIKU",
+    description: "Override for Haiku-tier requests. Empty means use the fallback model.",
+    modelLabel: "Model override",
+  },
+];
+
+const ICON_CHECK = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8.5 12.5l2.5 2.5 4.5-5.5"/></svg>`;
+const ICON_ALERT = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 4L2.5 20h19L12 4z"/><path d="M12 10.5v4" stroke-linecap="round"/><path d="M12 17v.01" stroke-linecap="round"/></svg>`;
+const ICON_INFO = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5" stroke-linecap="round"/><path d="M12 8v.01" stroke-linecap="round"/></svg>`;
+const ICON_STEP_CHECK = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 13l4 4L19 7"/></svg>`;
+const ICON_STEP_KEY = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="7.5" cy="15.5" r="4.5"/><path d="M10.7 12.3L20 3"/><path d="M15.5 7.5l2.5 2.5"/><path d="M18 5l1.5 1.5"/></svg>`;
+const ICON_STEP_TERMINAL = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9l3 3-3 3"/><path d="M12 15h5"/></svg>`;
+const ICON_CLOSE = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>`;
+
 const byId = (id) => document.getElementById(id);
 
 function sourceLabel(source) {
@@ -104,7 +164,9 @@ async function load() {
   state.fields = new Map(config.fields.map((field) => [field.key, field]));
   renderNav();
   renderProviders(config.provider_status);
+  renderOnboarding(config.provider_status);
   renderSections(config.sections, config.fields);
+  renderServerStatus();
   byId("configPath").textContent = config.paths.managed;
   await refreshConnectedAccounts();
   await hydrateModelOptions();
@@ -188,8 +250,9 @@ function renderProviders(providerStatus) {
     nameGroup.append(providerLogo(provider.provider_id), name);
 
     const pill = document.createElement("span");
-    pill.className = `status-pill ${statusClass(provider.status)}`;
-    pill.textContent = provider.label;
+    const pillState = pillForStatus(provider.status);
+    pill.className = `status-pill ${pillState.className}`;
+    pill.textContent = pillState.label;
     title.append(nameGroup, pill);
 
     const meta = document.createElement("div");
@@ -199,15 +262,68 @@ function renderProviders(providerStatus) {
         ? provider.base_url || "No local URL configured"
         : provider.configuration;
 
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "test-button";
-    button.textContent = provider.kind === "local" ? "Test" : "Refresh models";
-    button.addEventListener("click", () => testProvider(provider.provider_id, button));
+    const actions = document.createElement("div");
+    actions.className = "provider-actions";
 
-    card.append(title, meta, button);
+    const configure = document.createElement("button");
+    configure.type = "button";
+    configure.className = "secondary-button";
+    configure.textContent = "Configure";
+    configure.addEventListener("click", () =>
+      scrollToField(providerPrimaryFieldKey(provider)),
+    );
+    actions.appendChild(configure);
+
+    const test = document.createElement("button");
+    test.type = "button";
+    test.className = "test-button";
+    test.textContent = provider.kind === "local" ? "Test" : "Refresh models";
+    test.addEventListener("click", () => testProvider(provider.provider_id, test));
+    actions.appendChild(test);
+
+    card.append(title, meta, actions);
     grid.appendChild(card);
   });
+}
+
+function providerPrimaryFieldKey(provider) {
+  if (LOCAL_FIELD_KEYS[provider.provider_id]) {
+    return LOCAL_FIELD_KEYS[provider.provider_id];
+  }
+  if (provider.configuration) {
+    const primary = provider.configuration.split(" + ")[0].trim();
+    if (primary) return primary;
+  }
+  return null;
+}
+
+function pillForStatus(status) {
+  if (["configured", "reachable"].includes(status)) {
+    return { className: "ok", label: "Configured" };
+  }
+  if (["offline", "error"].includes(status)) {
+    return { className: "error", label: "Error" };
+  }
+  return { className: "neutral", label: "Not configured" };
+}
+
+function scrollToField(fieldKey) {
+  if (!fieldKey) return;
+  const input = byId(`field-${fieldKey}`);
+  if (!input) return;
+  const wrapper = input.closest(".field");
+  const section = wrapper?.closest(".settings-section");
+  if (
+    section &&
+    !section.classList.contains("show-advanced") &&
+    wrapper?.classList.contains("advanced-field")
+  ) {
+    section.querySelector(".advanced-toggle")?.click();
+  }
+  input.scrollIntoView({ behavior: "smooth", block: "center" });
+  input.focus({ preventScroll: true });
+  wrapper?.classList.add("field-highlight");
+  window.setTimeout(() => wrapper?.classList.remove("field-highlight"), 2200);
 }
 
 function renderConnectedAccountCard(provider, status = provider) {
@@ -437,12 +553,17 @@ async function copyDeviceCode(code) {
   }
 }
 
-function updateProviderCard(providerId, status, label, metaText) {
+function setCardPill(card, status, label, pulsing = false) {
+  const pill = card.querySelector(".status-pill");
+  pill.className = `status-pill ${statusClass(status)}${pulsing ? " pulsing" : ""}`;
+  pill.textContent = label;
+}
+
+function updateProviderCard(providerId, status, label, metaText, pulsing = false) {
   const card = document.querySelector(`[data-provider="${providerId}"]`);
   if (!card) return;
-  const pill = card.querySelector(".status-pill");
-  pill.className = `status-pill ${statusClass(status)}`;
-  pill.textContent = label;
+  const pillState = pillForStatus(status);
+  setCardPill(card, status, pulsing ? label : pillState.label, pulsing);
   if (metaText) {
     card.querySelector(".provider-meta").textContent = metaText;
   }
@@ -484,14 +605,22 @@ function renderSections(sections, fields) {
         refreshButton.addEventListener("click", () => refreshModelOptions(refreshButton));
         heading.appendChild(refreshButton);
       }
+      if (section.id === "voice") {
+        heading.querySelector("h3").textContent = "Voice notes";
+        heading.classList.add("subheading");
+      }
       sectionEl.appendChild(heading);
 
-      const grid = document.createElement("div");
-      grid.className = "field-grid";
-      sectionFields.forEach((field) => {
-        grid.appendChild(renderField(field));
-      });
-      sectionEl.appendChild(grid);
+      if (section.id === "models") {
+        sectionEl.appendChild(renderModelRoleCards(sectionFields, bySection));
+      } else {
+        const grid = document.createElement("div");
+        grid.className = "field-grid";
+        sectionFields.forEach((field) => {
+          grid.appendChild(renderField(field));
+        });
+        sectionEl.appendChild(grid);
+      }
 
       if (sectionFields.some((field) => field.advanced)) {
         const toggle = document.createElement("button");
@@ -510,7 +639,48 @@ function renderSections(sections, fields) {
   });
 }
 
-function renderField(field) {
+function renderModelRoleCards(modelFields, bySection) {
+  const modelByKey = new Map(modelFields.map((field) => [field.key, field]));
+  const reasoningByKey = new Map(
+    (bySection.get("reasoning") || []).map((field) => [field.key, field]),
+  );
+  const wrapper = document.createElement("div");
+  wrapper.className = "role-card-grid";
+  ROLE_CARDS.forEach((role) => {
+    const card = document.createElement("article");
+    card.className = "role-card";
+    card.id = `role-card-${role.id}`;
+
+    const header = document.createElement("header");
+    header.className = "role-card-header";
+    const title = document.createElement("h4");
+    title.textContent = role.label;
+    const description = document.createElement("p");
+    description.textContent = role.description;
+    header.append(title, description);
+    card.appendChild(header);
+
+    const body = document.createElement("div");
+    body.className = "role-card-body";
+    const modelField = modelByKey.get(role.modelKey);
+    if (modelField) {
+      body.appendChild(
+        renderField({ ...modelField, label: role.modelLabel }, { showReset: true }),
+      );
+    }
+    const reasoningField = reasoningByKey.get(role.reasoningKey);
+    if (reasoningField) {
+      body.appendChild(
+        renderField({ ...reasoningField, label: "Reasoning policy" }),
+      );
+    }
+    card.appendChild(body);
+    wrapper.appendChild(card);
+  });
+  return wrapper;
+}
+
+function renderField(field, options = {}) {
   const wrapper = document.createElement("div");
   wrapper.className = `field${field.advanced ? " advanced-field" : ""}`;
   wrapper.dataset.key = field.key;
@@ -548,11 +718,32 @@ function renderField(field) {
     });
   }
 
-  const control =
-    field.type === "model" || field.type === "optional_model"
+  const control = platformSegments(field, input, options) ||
+    (field.type === "model" || field.type === "optional_model"
       ? new ModelCombobox(input, field).element
-      : input;
-  wrapper.append(label, control);
+      : input);
+
+  if (options.showReset) {
+    const row = document.createElement("div");
+    row.className = "field-label-row";
+    row.append(label, fieldResetButton(field, input));
+    wrapper.append(row, control);
+  } else {
+    wrapper.append(label, control);
+  }
+  if (field.type === "optional_model") {
+    const hint = document.createElement("div");
+    hint.className = "field-default-hint";
+    hint.textContent = "Uses provider default";
+    const updateHint = () => {
+      const empty =
+        !input.value.trim() || input.value.trim().toLowerCase() === "none";
+      hint.hidden = !empty;
+    };
+    input.addEventListener("input", updateHint);
+    updateHint();
+    wrapper.appendChild(hint);
+  }
   if (field.description) {
     const description = document.createElement("div");
     description.className = "field-description";
@@ -560,6 +751,138 @@ function renderField(field) {
     wrapper.appendChild(description);
   }
   return wrapper;
+}
+
+function platformSegments(field, input, options) {
+  if (field.key !== "MESSAGING_PLATFORM" || options?.segments === false) return null;
+  const wrapper = document.createElement("div");
+  wrapper.className = "segment-field";
+
+  const group = document.createElement("div");
+  group.className = "segmented-control";
+  group.setAttribute("role", "radiogroup");
+  group.setAttribute("aria-label", field.label);
+
+  const order = { discord: 0, telegram: 1, none: 2 };
+  const optionsList = [...(field.options || [])].sort(
+    (left, right) => (order[left.value] ?? 9) - (order[right.value] ?? 9),
+  );
+  const selectedValue = field.value || optionsList[0]?.value || "";
+  const segments = [];
+  optionsList.forEach((item, index) => {
+    const segment = document.createElement("button");
+    segment.type = "button";
+    segment.setAttribute("role", "radio");
+    segment.setAttribute("aria-checked", String(item.value === selectedValue));
+    segment.tabIndex = item.value === selectedValue ? 0 : -1;
+    segment.className = "segment";
+    segment.dataset.value = item.value;
+    segment.disabled = field.locked;
+    segment.append(platformLetterIcon(item.value));
+    const label = document.createElement("span");
+    label.textContent = item.label.charAt(0).toUpperCase() + item.label.slice(1);
+    segment.appendChild(label);
+
+    const select = (focus) => {
+      input.value = segment.dataset.value;
+      input.dispatchEvent(new Event("change", { bubbles: true }));
+      updateDirtyState();
+      segments.forEach((candidate) => {
+        const selected = candidate === segment;
+        candidate.setAttribute("aria-checked", String(selected));
+        candidate.tabIndex = selected ? 0 : -1;
+      });
+      if (focus) segment.focus();
+    };
+
+    segment.addEventListener("click", () => {
+      if (!segment.disabled && segment.dataset.value !== input.value) select(false);
+    });
+    segment.addEventListener("keydown", (event) => {
+      let next = null;
+      if (event.key === "ArrowRight") next = (index + 1) % segments.length;
+      else if (event.key === "ArrowLeft") next = (index - 1 + segments.length) % segments.length;
+      else if (event.key === "Home") next = 0;
+      else if (event.key === "End") next = segments.length - 1;
+      else return;
+      event.preventDefault();
+      if (next !== index) {
+        segments[next].click();
+        segments[next].focus();
+      }
+    });
+    segments.push(segment);
+    group.appendChild(segment);
+  });
+
+  input.hidden = true;
+  wrapper.append(input, group);
+  return wrapper;
+}
+
+function platformLetterIcon(value) {
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("viewBox", "0 0 16 16");
+  svg.setAttribute("width", "14");
+  svg.setAttribute("height", "14");
+  svg.setAttribute("aria-hidden", "true");
+  if (value === "none") {
+    const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+    circle.setAttribute("cx", "8");
+    circle.setAttribute("cy", "8");
+    circle.setAttribute("r", "5.5");
+    circle.setAttribute("fill", "none");
+    circle.setAttribute("stroke", "currentColor");
+    circle.setAttribute("stroke-width", "1.5");
+    const slash = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    slash.setAttribute("d", "M5 5l6 6");
+    slash.setAttribute("stroke", "currentColor");
+    slash.setAttribute("stroke-width", "1.5");
+    svg.append(circle, slash);
+    return svg;
+  }
+  const bubble = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+  bubble.setAttribute("x", "1");
+  bubble.setAttribute("y", "2.5");
+  bubble.setAttribute("width", "14");
+  bubble.setAttribute("height", "9.5");
+  bubble.setAttribute("rx", "3");
+  bubble.setAttribute("fill", "currentColor");
+  const letter = document.createElementNS("http://www.w3.org/2000/svg", "text");
+  letter.setAttribute("x", "8");
+  letter.setAttribute("y", "10.1");
+  letter.setAttribute("text-anchor", "middle");
+  letter.setAttribute("font-size", "7.5");
+  letter.setAttribute("font-weight", "700");
+  letter.setAttribute("fill", "#ffffff");
+  letter.textContent = value === "discord" ? "D" : "T";
+  svg.append(bubble, letter);
+  return svg;
+}
+
+function fieldResetButton(field, input) {
+  const reset = document.createElement("button");
+  reset.type = "button";
+  reset.className = "field-reset";
+  reset.textContent = "Reset";
+  reset.setAttribute("aria-label", `Reset ${field.label}`);
+  reset.addEventListener("click", (event) => {
+    event.preventDefault();
+    if (field.type === "optional_model") {
+      input.value = "None";
+    } else if (field.type === "select") {
+      input.value = field.options[0]?.value || "";
+    } else if (input.type === "checkbox") {
+      input.checked = false;
+    } else {
+      input.value = "";
+    }
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+    updateDirtyState();
+    input.focus({ preventScroll: true });
+  });
+  return reset;
 }
 
 function inputForField(field) {
@@ -591,6 +914,10 @@ function inputForField(field) {
     input.type = "text";
     input.value = field.value || (field.type === "optional_model" ? "None" : "");
     input.autocomplete = "off";
+    input.placeholder =
+      field.type === "optional_model"
+        ? "Uses provider default"
+        : "Search or enter provider/model";
     return input;
   }
 
@@ -877,6 +1204,12 @@ async function apply() {
 }
 
 async function refreshLocalStatus() {
+  (state.config?.provider_status || [])
+    .filter((provider) => provider.kind === "local")
+    .forEach((provider) => {
+      const card = document.querySelector(`[data-provider="${provider.provider_id}"]`);
+      if (card) setCardPill(card, "unknown", "Validating…", true);
+    });
   const result = await api("/admin/api/providers/local-status");
   result.providers.forEach((provider) => {
     state.localStatus.set(provider.provider_id, provider);
@@ -891,6 +1224,8 @@ async function testProvider(providerId, button) {
   const original = button.textContent;
   button.disabled = true;
   button.textContent = "Testing";
+  const card = document.querySelector(`[data-provider="${providerId}"]`);
+  if (card) setCardPill(card, "unknown", "Validating…", true);
   try {
     const result = await api(`/admin/api/providers/${providerId}/test`, {
       method: "POST",
@@ -976,7 +1311,184 @@ function showMessage(message, kind = "") {
   const area = byId("messageArea");
   area.textContent = message;
   area.className = `message-area ${kind}`.trim();
+  if (message) showToast(message, kind);
 }
+
+function showToast(message, kind = "") {
+  const container = byId("toastContainer");
+  if (!container) return;
+  const toast = document.createElement("div");
+  toast.className = `toast${kind ? ` toast-${kind}` : ""}`;
+  toast.setAttribute("role", "status");
+  const icon = document.createElement("span");
+  icon.className = "toast-icon";
+  icon.innerHTML = kind === "ok" ? ICON_CHECK : kind === "error" ? ICON_ALERT : ICON_INFO;
+  const text = document.createElement("span");
+  text.className = "toast-text";
+  text.textContent = message;
+  toast.append(icon, text);
+  container.appendChild(toast);
+  const remove = () => {
+    toast.classList.add("toast-leaving");
+    window.setTimeout(() => toast.remove(), 200);
+  };
+  toast.addEventListener("click", remove);
+  window.setTimeout(remove, 4000);
+}
+
+function renderOnboarding(providerStatus) {
+  const container = byId("onboardingCard");
+  container.innerHTML = "";
+  const hasConfigured = providerStatus.some(
+    (provider) =>
+      provider.kind !== "connected_account" &&
+      ["configured", "reachable"].includes(provider.status),
+  );
+  if (hasConfigured) {
+    localStorage.removeItem(ONBOARDING_DISMISS_KEY);
+    container.hidden = true;
+    return;
+  }
+  if (localStorage.getItem(ONBOARDING_DISMISS_KEY)) {
+    container.hidden = true;
+    return;
+  }
+  container.hidden = false;
+
+  const header = document.createElement("header");
+  header.className = "onboarding-header";
+  const titleGroup = document.createElement("div");
+  const title = document.createElement("h3");
+  title.textContent = "Welcome to Claudey — get set up in a minute";
+  const subtitle = document.createElement("p");
+  subtitle.textContent =
+    "Connect any OpenAI-compatible provider, then start coding with hans-claude.";
+  titleGroup.append(title, subtitle);
+  const dismiss = document.createElement("button");
+  dismiss.type = "button";
+  dismiss.className = "ghost-button onboarding-dismiss";
+  dismiss.setAttribute("aria-label", "Dismiss onboarding guide");
+  dismiss.innerHTML = ICON_CLOSE;
+  dismiss.addEventListener("click", () => {
+    localStorage.setItem(ONBOARDING_DISMISS_KEY, "1");
+    container.hidden = true;
+  });
+  header.append(titleGroup, dismiss);
+
+  const steps = document.createElement("ol");
+  steps.className = "onboarding-steps";
+  const stepContent = [
+    {
+      icon: ICON_STEP_CHECK,
+      title: "Pick a provider",
+      body: "Choose one from the grid below — NVIDIA NIM, OpenRouter, DeepSeek and 30+ more.",
+    },
+    {
+      icon: ICON_STEP_KEY,
+      title: "Paste your API key and Apply",
+      body: "Keys are stored in your local .env file. Apply with the button below or Ctrl+Enter.",
+    },
+    {
+      icon: ICON_STEP_TERMINAL,
+      title: "Run hans-claude",
+      body: "Start a coding session with the same providers you just configured:",
+    },
+  ];
+  stepContent.forEach((step, index) => {
+    const item = document.createElement("li");
+    item.className = "onboarding-step";
+    const icon = document.createElement("span");
+    icon.className = "step-icon";
+    icon.innerHTML = step.icon;
+    const text = document.createElement("div");
+    const stepNum = document.createElement("span");
+    stepNum.className = "step-num";
+    stepNum.textContent = `Step ${index + 1}`;
+    const stepTitle = document.createElement("strong");
+    stepTitle.textContent = step.title;
+    const stepBody = document.createElement("p");
+    stepBody.textContent = step.body;
+    text.append(stepNum, stepTitle, stepBody);
+    if (index === 2) {
+      const command = document.createElement("div");
+      command.className = "command-pill";
+      const code = document.createElement("code");
+      code.textContent = ONBOARDING_COMMAND;
+      const copy = document.createElement("button");
+      copy.type = "button";
+      copy.className = "copy-command";
+      copy.textContent = "Copy";
+      copy.addEventListener("click", () => copyOnboardingCommand(copy));
+      command.append(code, copy);
+      stepBody.after(command);
+    }
+    item.append(icon, text);
+    steps.appendChild(item);
+  });
+
+  container.append(header, steps);
+}
+
+async function copyOnboardingCommand(button) {
+  const command = ONBOARDING_COMMAND;
+  try {
+    await navigator.clipboard.writeText(command);
+  } catch {
+    const textarea = document.createElement("textarea");
+    textarea.value = command;
+    textarea.style.position = "fixed";
+    textarea.style.opacity = "0";
+    document.body.appendChild(textarea);
+    textarea.select();
+    document.execCommand("copy");
+    textarea.remove();
+  }
+  button.textContent = "Copied!";
+  button.classList.add("copied");
+  showToast(`${command} copied to clipboard`, "ok");
+  window.setTimeout(() => {
+    button.textContent = "Copy";
+    button.classList.remove("copied");
+  }, 2000);
+}
+
+async function renderServerStatus() {
+  const pill = byId("serverStatusPill");
+  if (!pill) return;
+  pill.className = "server-status checking";
+  pill.innerHTML =
+    '<span class="status-dot"></span><span class="status-text">Checking…</span>';
+  try {
+    const status = await api("/admin/api/status");
+    if (status.status === "running") {
+      const version = status.version ? ` v${status.version}` : "";
+      pill.className = "server-status ok";
+      pill.innerHTML = `<span class="status-dot"></span><span class="status-text">Running on :${status.port ?? ""}${version}</span>`;
+    } else {
+      pill.className = "server-status stopped";
+      pill.innerHTML = '<span class="status-dot"></span><span class="status-text">Stopped</span>';
+    }
+  } catch {
+    pill.className = "server-status fallback";
+    pill.textContent = "Claudey Admin";
+  }
+}
+
+document.addEventListener("keydown", (event) => {
+  if (event.defaultPrevented || event.isComposing) return;
+  const modifier = event.metaKey || event.ctrlKey;
+  if (!modifier) return;
+  const key = event.key.toLowerCase();
+  if (key === "enter") {
+    const applyButton = byId("applyButton");
+    if (applyButton.disabled) return;
+    event.preventDefault();
+    apply();
+  } else if (key === "s") {
+    event.preventDefault();
+    validate(true);
+  }
+});
 
 byId("validateButton").addEventListener("click", () => validate(true));
 byId("applyButton").addEventListener("click", apply);

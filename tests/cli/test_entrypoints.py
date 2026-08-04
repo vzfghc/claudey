@@ -46,10 +46,10 @@ class _JsonResponse:
 
 
 def test_legacy_env_migration_supports_xdg_path(tmp_path: Path) -> None:
-    """Server startup preserves config from ~/.config/claudey/.env."""
+    """Server startup preserves config from ~/.config/free-claude-code/.env."""
     from claudey.cli.commands import _migrate_legacy_env_if_missing
 
-    legacy_env = tmp_path / ".config" / "claudey" / ".env"
+    legacy_env = tmp_path / ".config" / "free-claude-code" / ".env"
     legacy_env.parent.mkdir(parents=True)
     legacy_env.write_text("MODEL=open_router/free-model\n", encoding="utf-8")
 
@@ -70,7 +70,7 @@ def test_legacy_env_migration_does_not_overwrite_managed_env(
     managed_env = tmp_path / ".fcc" / ".env"
     managed_env.parent.mkdir(parents=True)
     managed_env.write_text("MODEL=nvidia_nim/current\n", encoding="utf-8")
-    legacy_env = tmp_path / "claudey" / ".env"
+    legacy_env = tmp_path / "free-claude-code" / ".env"
     legacy_env.parent.mkdir(parents=True)
     legacy_env.write_text("MODEL=deepseek/legacy\n", encoding="utf-8")
 
@@ -297,7 +297,7 @@ def test_serve_supervisor_refuses_restart_after_incomplete_shutdown() -> None:
 def test_serve_migrates_legacy_env_before_loading_settings(tmp_path: Path) -> None:
     from claudey.cli import commands
 
-    legacy_env = tmp_path / "claudey" / ".env"
+    legacy_env = tmp_path / "free-claude-code" / ".env"
     legacy_env.parent.mkdir(parents=True)
     legacy_env.write_text("MODEL=deepseek/deepseek-chat\n", encoding="utf-8")
     settings = _launcher_settings()

@@ -29,13 +29,20 @@
 
       <main class="main">
         <header class="topbar">
-          <div>
+          <div class="topbar-row">
             <h2 id="pageTitle">Providers</h2>
+            <div
+              id="serverStatusPill"
+              class="server-status checking"
+              role="status"
+              title="Claudey server health"
+            ></div>
           </div>
         </header>
 
         <div id="adminViews" class="admin-views">
           <section id="view-providers" class="admin-view active" data-view="providers">
+            <div id="onboardingCard" class="onboarding-card" hidden></div>
             <section
               id="connectedAccountsSection"
               class="provider-strip"
@@ -88,11 +95,32 @@
         </div>
         <div id="messageArea" class="message-area"></div>
         <div class="action-buttons">
-          <button id="validateButton" class="secondary-button" type="button">Validate</button>
-          <button id="applyButton" class="primary-button" type="button" disabled>Apply</button>
+          <button
+            id="validateButton"
+            class="secondary-button"
+            type="button"
+            aria-keyshortcuts="Control+S Meta+S"
+          >
+            Validate
+          </button>
+          <button
+            id="applyButton"
+            class="primary-button"
+            type="button"
+            aria-keyshortcuts="Control+Enter Meta+Enter"
+            disabled
+          >
+            Apply
+          </button>
         </div>
       </footer>
     </div>
+    <div
+      id="toastContainer"
+      class="toast-container"
+      aria-live="polite"
+      aria-label="Notifications"
+    ></div>
     <script src="/admin/assets/admin.js"></script>
   </body>
 </html>

@@ -4,7 +4,7 @@ from pathlib import Path
 
 HANS_CONFIG_DIRNAME = ".fcc"
 HANS_ENV_FILENAME = ".env"
-LEGACY_REPO_DIRNAME = "free_claude_code"
+LEGACY_REPO_DIRNAME = "free-claude-code"
 LEGACY_XDG_CONFIG_DIRNAME = ".config"
 MESSAGING_STATE_DIRNAME = "agent_workspace"
 HANS_LOGS_DIRNAME = "logs"

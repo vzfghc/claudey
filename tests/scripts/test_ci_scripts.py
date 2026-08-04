@@ -61,7 +61,7 @@ def test_ci_sh_runs_ci_checks_in_order() -> None:
     text = _script_text("ci.sh")
     legacy_future_import = "from __future__ import " + "annotations"
 
-    assert 'CHECK_ORDER="suppressions ruff-format ruff-check ty pytest"' in text
+    assert 'CHECK_ORDER="logos suppressions ruff-format ruff-check ty pytest"' in text
     assert "grep -rE" in text
     assert "Fix the underlying type/import issue instead" in text
     assert legacy_future_import in text
