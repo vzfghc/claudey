@@ -1378,6 +1378,22 @@ async function apply() {
   );
 }
 
+async function restartServer() {
+  const button = byId("restartButton");
+  button.disabled = true;
+  try {
+    const result = await api("/admin/api/restart", { method: "POST" });
+    showMessage("Restarting server...", "ok");
+    suppressBeforeUnload = true;
+    setTimeout(() => {
+      window.location.href = result.admin_url || "/admin";
+    }, 1600);
+  } catch (error) {
+    button.disabled = false;
+    showMessage(`Restart failed: ${error.message}`, "error");
+  }
+}
+
 async function refreshLocalStatus() {
   (state.config?.provider_status || [])
     .filter((provider) => provider.kind === "local")
@@ -1667,6 +1683,7 @@ document.addEventListener("keydown", (event) => {
 
 byId("validateButton").addEventListener("click", () => validate(true));
 byId("applyButton").addEventListener("click", apply);
+byId("restartButton").addEventListener("click", restartServer);
 
 const sidebarToggle = byId("sidebarToggle");
 const sectionNav = byId("sectionNav");

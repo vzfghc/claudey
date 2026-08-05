@@ -1205,6 +1205,34 @@ def test_admin_apply_restart_required_reports_manual_fallback(monkeypatch, tmp_p
     }
 
 
+def test_admin_restart_endpoint_triggers_restart(monkeypatch, tmp_path):
+    _set_home(monkeypatch, tmp_path)
+    _clear_process_config(monkeypatch)
+    callbacks: list[str] = []
+
+    async def restart_callback() -> None:
+        callbacks.append("restart")
+
+    app = create_test_app(restart_callback=restart_callback)
+
+    response = _local_client(app).post("/admin/api/restart")
+
+    assert response.status_code == 200
+    assert response.json() == {"restarting": True, "admin_url": "/admin"}
+    assert callbacks == ["restart"]
+
+
+def test_admin_restart_endpoint_is_loopback_only(monkeypatch, tmp_path):
+    _set_home(monkeypatch, tmp_path)
+    _clear_process_config(monkeypatch)
+    app = create_test_app()
+
+    remote_client = TestClient(app, client=("203.0.113.10", 50000))
+    response = remote_client.post("/admin/api/restart")
+
+    assert response.status_code == 403
+
+
 def test_admin_process_env_values_are_locked_and_not_written(monkeypatch, tmp_path):
     _set_home(monkeypatch, tmp_path)
     _clear_process_config(monkeypatch)

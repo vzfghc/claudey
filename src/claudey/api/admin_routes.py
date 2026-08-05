@@ -137,6 +137,17 @@ async def apply_admin_config(
     return result
 
 
+@router.post("/admin/api/restart")
+async def restart_server(
+    request: Request,
+    background_tasks: BackgroundTasks,
+    services: ApiServices = Depends(get_services),
+):
+    require_loopback_admin(request)
+    background_tasks.add_task(services.admin.request_restart)
+    return {"restarting": True, "admin_url": "/admin"}
+
+
 @router.get("/admin/api/status")
 async def admin_status(
     request: Request,
