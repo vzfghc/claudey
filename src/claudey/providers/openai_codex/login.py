@@ -24,7 +24,7 @@ OPENAI_DEVICE_USER_CODE_URL = f"{OPENAI_AUTH_ISSUER}/api/accounts/deviceauth/use
 OPENAI_DEVICE_TOKEN_URL = f"{OPENAI_AUTH_ISSUER}/api/accounts/deviceauth/token"
 OPENAI_DEVICE_VERIFICATION_URL = f"{OPENAI_AUTH_ISSUER}/codex/device"
 OPENAI_DEVICE_REDIRECT_URI = f"{OPENAI_AUTH_ISSUER}/deviceauth/callback"
-OPENAI_CALLBACK_HOST = "localhost"
+OPENAI_CALLBACK_HOST = "127.0.0.1"
 LOGIN_LIFETIME_SECONDS = 15 * 60
 
 
@@ -132,7 +132,7 @@ class BrowserAuthorization:
             break
         if runner is None:
             raise OpenAILoginError(
-                "OpenAI sign-in could not bind localhost ports 1455 or 1457."
+                "OpenAI sign-in could not bind loopback ports 1455 or 1457."
             )
 
         auth_url = f"{OPENAI_AUTH_ISSUER}/oauth/authorize?" + urlencode(

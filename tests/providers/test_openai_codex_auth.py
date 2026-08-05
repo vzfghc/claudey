@@ -277,8 +277,8 @@ async def test_browser_authorization_validates_state_and_returns_pkce_grant(
     assert grant.code == "authorization_code"
     assert grant.redirect_uri == redirect_uri
     assert grant.code_verifier
-    assert urlparse(redirect_uri).hostname == "localhost"
-    assert callback_hosts and set(callback_hosts) == {"localhost"}
+    assert urlparse(redirect_uri).hostname == "127.0.0.1"
+    assert callback_hosts and set(callback_hosts) == {"127.0.0.1"}
     assert query["code_challenge_method"] == ["S256"]
     assert query["originator"] == ["codex_cli_rs"]
     assert "window.close()" in response.text

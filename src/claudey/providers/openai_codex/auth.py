@@ -3,6 +3,7 @@
 import asyncio
 import base64
 import json
+import logging
 import os
 import time
 import uuid
@@ -35,6 +36,8 @@ from .login import (
 )
 
 REFRESH_EARLY_SECONDS = 5 * 60
+
+logger = logging.getLogger(__name__)
 
 
 class OpenAIReconnectRequired(RuntimeError):
@@ -380,11 +383,11 @@ class OpenAIAuthManager:
             await self._write_credentials(credentials)
         except asyncio.CancelledError:
             raise
-        except Exception:
+        except Exception as exc:
+            message = _login_failure_message(exc)
+            logger.error("OpenAI sign-in failed: %s", message, exc_info=True)
             async with self._state_lock:
-                self._last_error = (
-                    "OpenAI sign-in failed. Retry or use the device-code option."
-                )
+                self._last_error = message
         else:
             async with self._state_lock:
                 self._credentials = credentials
@@ -408,6 +411,12 @@ class OpenAIAuthManager:
                 "code_verifier": grant.code_verifier,
             },
         )
+        if not response.is_success:
+            logger.error(
+                "OpenAI token exchange failed: HTTP %s body=%s",
+                response.status_code,
+                response.text[:500],
+            )
         response.raise_for_status()
         payload = response.json()
         return _credentials_from_token_response(payload)
@@ -606,3 +615,24 @@ def _is_transient_refresh_error(error: httpx.HTTPError) -> bool:
     if isinstance(error, httpx.HTTPStatusError):
         return error.response.status_code == 429 or error.response.status_code >= 500
     return isinstance(error, httpx.TransportError)
+
+
+def _login_failure_message(exc: Exception) -> str:
+    """Return a user-safe message describing why an interactive login failed."""
+    from .login import OpenAILoginError  # noqa: PLC0415
+
+    if isinstance(exc, OpenAILoginError):
+        return f"OpenAI sign-in failed: {exc}"
+    if isinstance(exc, httpx.HTTPStatusError):
+        return (
+            f"OpenAI sign-in failed: token endpoint returned"
+            f" HTTP {exc.response.status_code}."
+        )
+    if isinstance(exc, httpx.TimeoutException):
+        return "OpenAI sign-in timed out while contacting OpenAI."
+    if isinstance(exc, httpx.TransportError):
+        return (
+            f"OpenAI sign-in could not reach OpenAI"
+            f" ({type(exc).__name__})."
+        )
+    return "OpenAI sign-in failed. Retry or use the device-code option."
