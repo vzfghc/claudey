@@ -1454,14 +1454,18 @@ def test_admin_static_buttons_flat_heat_only_on_configure():
     )
     styles = Path("src/claudey/api/admin_static/admin.css").read_text(encoding="utf-8")
 
-    # The lift-and-press treatment is gone: no layered rgba shadows,
+    # The lift-and-press treatment is gone from primary/secondary:
     # no sheen overlay, no 0.995 press, no per-button box-shadows.
-    assert "inset 0 -6px 12px rgba(" not in animations
+    # The only layered rgba shadow left is the Configure hover stack.
     assert "scale(0.995)" not in animations
     assert "linear-gradient(180deg, rgba(255, 255, 255, 0.9)" not in animations
     assert "primary-button::before" not in animations
     assert "secondary-button::before" not in animations
     assert "box-shadow: inset" not in styles
+    assert ".card-configure:hover:not(:disabled) {" in animations
+    assert animations.index(".card-configure:hover:not(:disabled) {") < animations.index(
+        "inset 0 -6px 12px rgba("
+    )
     # The 0.98 grouped press is restored for all three buttons.
     assert (
         ".primary-button:not(:disabled):active,\n"
@@ -1474,13 +1478,14 @@ def test_admin_static_buttons_flat_heat_only_on_configure():
         "}\n\n.test-button:not(:disabled):active {\n  transform: scale(0.98);\n}"
         not in styles
     )
-    # Configure turns heat on hover with the exact layered stack.
-    assert ".card-configure:hover:not(:disabled) {" in animations
-    assert "background: #ff4c00;" in animations
+    # Configure turns heat (#ec5b29) on hover with the exact layered stack.
+    assert "background: #ec5b29;" in animations
     assert (
-        "box-shadow: inset 0 -6px 12px #f003, 0 2px 4px #ff4d001f, 0 1px 1px #ff4d001f,"
+        "box-shadow: inset 0 -6px 12px rgba(236, 91, 41, 0.25), 0 2px 4px rgba(236, 91, 41, 0.12),"
     ) in animations
-    assert "0 0.5px 0.5px #ff4d0029, 0 0.25px 0.25px #ff4d0033;" in animations
+    assert (
+        "0 1px 1px rgba(236, 91, 41, 0.12), 0 0.5px 0.5px rgba(236, 91, 41, 0.16),"
+    ) in animations
     assert "transition: background-color 0.2s ease" in animations
     # The base heat hover stays in admin.css (surgical edit boundary).
     assert ".card-configure:hover:not(:disabled) {" in styles
