@@ -108,6 +108,7 @@ const ICON_STEP_CHECK = `<svg viewBox="0 0 24 24" fill="none" stroke="currentCol
 const ICON_STEP_KEY = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="7.5" cy="15.5" r="4.5"/><path d="M10.7 12.3L20 3"/><path d="M15.5 7.5l2.5 2.5"/><path d="M18 5l1.5 1.5"/></svg>`;
 const ICON_STEP_TERMINAL = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9l3 3-3 3"/><path d="M12 15h5"/></svg>`;
 const ICON_CLOSE = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>`;
+const ICON_SPINNER = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M12 3a9 9 0 1 0 9 9"/></svg>`;
 
 const byId = (id) => document.getElementById(id);
 
@@ -1360,7 +1361,7 @@ async function apply() {
   }
   const restart = result.restart || {};
   if (restart.required && restart.automatic) {
-    showMessage("Applied. Restarting server...", "ok");
+    showMessage("Applied. Restarting server...", "loading");
     byId("applyButton").disabled = true;
     suppressBeforeUnload = true;
     setTimeout(() => {
@@ -1383,7 +1384,7 @@ async function restartServer() {
   button.disabled = true;
   try {
     const result = await api("/admin/api/restart", { method: "POST" });
-    showMessage("Restarting server...", "ok");
+    showMessage("Restarting server...", "loading");
     suppressBeforeUnload = true;
     setTimeout(() => {
       window.location.href = result.admin_url || "/admin";
@@ -1462,6 +1463,7 @@ async function refreshModelOptions(button) {
   const original = button.textContent;
   button.disabled = true;
   button.textContent = "Refreshing";
+  showMessage("Refreshing models...", "loading");
   try {
     const result = await loadModelOptions(true);
     const failedProviders = result.failed_providers || [];
@@ -1508,12 +1510,15 @@ function showMessage(message, kind = "") {
 function showToast(message, kind = "") {
   const container = byId("toastContainer");
   if (!container) return;
+  // A pending loading toast is superseded, not stacked.
+  container.querySelector(".toast-loading")?.remove();
   const toast = document.createElement("div");
   toast.className = `toast${kind ? ` toast-${kind}` : ""}`;
   toast.setAttribute("role", "status");
   const icon = document.createElement("span");
   icon.className = "toast-icon";
-  icon.innerHTML = kind === "ok" ? ICON_CHECK : kind === "error" ? ICON_ALERT : ICON_INFO;
+  icon.innerHTML =
+    kind === "ok" ? ICON_CHECK : kind === "error" ? ICON_ALERT : kind === "loading" ? ICON_SPINNER : ICON_INFO;
   const text = document.createElement("span");
   text.className = "toast-text";
   text.textContent = message;
@@ -1524,7 +1529,9 @@ function showToast(message, kind = "") {
     window.setTimeout(() => toast.remove(), 200);
   };
   toast.addEventListener("click", remove);
-  window.setTimeout(remove, 4000);
+  if (kind !== "loading") {
+    window.setTimeout(remove, 4000);
+  }
 }
 
 function renderOnboarding(providerStatus) {
@@ -1699,6 +1706,10 @@ function applySidebarCollapsed(collapsed) {
 }
 
 sidebarToggle.addEventListener("click", () => {
+  if (window.__sidebarTweenToggle) {
+    window.__sidebarTweenToggle();
+    return;
+  }
   applySidebarCollapsed(!document.body.classList.contains("sidebar-collapsed"));
 });
 

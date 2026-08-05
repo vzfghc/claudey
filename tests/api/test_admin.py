@@ -75,6 +75,8 @@ def test_admin_page_is_loopback_only(monkeypatch, tmp_path):
         "/admin",
         "/admin/assets/admin.css",
         "/admin/assets/admin.js",
+        "/admin/assets/admin-animations.css",
+        "/admin/assets/admin-animations.js",
         "/admin/api/config",
     ),
 )
@@ -1310,3 +1312,253 @@ def test_admin_launch_url_uses_loopback_for_wildcard_host():
     settings = Settings.model_construct(host="0.0.0.0", port=8082)
 
     assert local_admin_url(settings) == "http://127.0.0.1:8082/admin"
+
+
+def test_admin_static_html_loads_animation_assets_in_order():
+    html = Path("src/claudey/api/admin_static/index.html").read_text(encoding="utf-8")
+
+    # The animations layer loads after the base admin styles.
+    assert html.index("admin-animations.css") > html.index("admin.css")
+    # The ES module loads after admin.js and is declared as a module.
+    assert html.index("admin-animations.js") > html.index("admin.js")
+    assert 'type="module"' in html
+    # The marquee is the first child of the providers view.
+    providers = html.index('id="view-providers"')
+    marquee = html.index('class="provider-marquee"')
+    onboarding = html.index('id="onboardingCard"')
+    assert providers < marquee < onboarding
+
+
+def test_admin_static_sidebar_tween_contract():
+    module = Path("src/claudey/api/admin_static/admin-animations.js").read_text(
+        encoding="utf-8"
+    )
+    styles = Path("src/claudey/api/admin_static/admin.css").read_text(encoding="utf-8")
+    animations = Path("src/claudey/api/admin_static/admin-animations.css").read_text(
+        encoding="utf-8"
+    )
+
+    # The toggle is exposed for admin.js and delegates state to it.
+    assert "window.__sidebarTweenToggle" in module
+    assert "window.applySidebarCollapsed" in module
+    # Per-frame inline writes, not a CSS transition.
+    assert "requestAnimationFrame" in module
+    assert "sidebar.style.width" in module
+    assert 'document.documentElement.style.setProperty("--sidebar-w"' in module
+    assert "easeOutQuint" in module
+    assert "1 - Math.pow(1 - t, 5)" in module
+    assert "cancelAnimationFrame" in module
+    assert "parseFloat(sidebar.style.width)" in module
+    assert "collapseMs: 350" in module
+    assert "expandMs: 220" in module
+    assert "collapsed: 64" in module
+    assert "expanded: 256" in module
+    # The rail class is added only once the tween completes.
+    assert 'document.body.classList.add("sidebar-rail")' in module
+    # CSS: the width transition is gone; the action bar follows the var.
+    assert "transition: width var(--transition-normal)" not in styles
+    assert "left: var(--sidebar-w, 256px)" in styles
+    assert ":root {\n  --sidebar-w: 256px;" in animations
+    # No-JS fallback keeps the collapsed width at 64px.
+    assert "body.sidebar-collapsed .sidebar {\n    width: 64px;" in styles
+
+
+def test_admin_static_sidebar_click_delegates_to_tween():
+    script = Path("src/claudey/api/admin_static/admin.js").read_text(encoding="utf-8")
+
+    assert "if (window.__sidebarTweenToggle) {" in script
+    assert "window.__sidebarTweenToggle();" in script
+    assert (
+        'applySidebarCollapsed(!document.body.classList.contains("sidebar-collapsed"));'
+    ) in script
+    # State and aria ownership stay with admin.js.
+    assert 'sidebarToggle.setAttribute("aria-expanded"' in script
+    assert "sectionNav.inert" in script
+
+
+def test_admin_static_nav_uses_shared_sliding_pills_on_desktop():
+    module = Path("src/claudey/api/admin_static/admin-animations.js").read_text(
+        encoding="utf-8"
+    )
+    animations = Path("src/claudey/api/admin_static/admin-animations.css").read_text(
+        encoding="utf-8"
+    )
+    styles = Path("src/claudey/api/admin_static/admin.css").read_text(encoding="utf-8")
+
+    assert "MutationObserver" in module
+    assert 'className = "nav-pill nav-pill-active"' in module
+    assert 'className = "nav-pill nav-pill-hover"' in module
+    assert 'setAttribute("aria-hidden", "true")' in module
+    assert "NAV_PITCH" in module
+    assert "nav-pills-ready" in module
+    assert "pointermove" in module
+    assert "DESKTOP.matches" in module
+    # Pill styles live at >=901px; per-item highlights are mobile-only.
+    assert "@media (min-width: 901px)" in animations
+    assert ".nav-pill-active" in animations
+    assert "transform 0.2s cubic-bezier(0.22, 1, 0.36, 1)" in animations
+    assert "pointer-events: none" in animations
+    assert ".nav-pill {\n    display: none;" in animations
+    assert "@media (max-width: 900px)" in animations
+    assert "body.sidebar-rail .nav-label {\n    visibility: hidden;" in animations
+    # The old desktop per-item highlight is gone from admin.css...
+    assert ".nav-link.active {\n  background: var(--accent-muted);" not in styles
+    # ...and lives inside the mobile block now.
+    mobile = styles.index("@media (max-width: 900px)")
+    assert styles.index(".nav-link.active", mobile) > mobile
+
+
+def test_admin_static_buttons_lift_and_press():
+    animations = Path("src/claudey/api/admin_static/admin-animations.css").read_text(
+        encoding="utf-8"
+    )
+    styles = Path("src/claudey/api/admin_static/admin.css").read_text(encoding="utf-8")
+
+    # Primary base: inner glow + ambient + contact shadows.
+    assert "inset 0 -6px 12px rgba(224, 77, 10, 0.25)" in animations
+    assert "0 2px 4px rgba(250, 93, 25, 0.12)" in animations
+    # Hover lift adds a larger drop plus a 1px ring.
+    assert "0 4px 8px rgba(250, 93, 25, 0.16)" in animations
+    assert "0 0 0 1px rgba(250, 93, 25, 0.12)" in animations
+    # Press contracts the glow and sinks the button.
+    assert "inset 0 -3px 6px rgba(224, 77, 10, 0.3)" in animations
+    assert "scale(0.995)" in animations
+    assert "transition-duration: 0.2s, 0.2s, 0.2s, 0.05s, 0.05s" in animations
+    # Sheen overlay: white-to-transparent gradient, 0.06/0.08/0.
+    assert (
+        "linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0))"
+    ) in animations
+    assert "opacity: 0.06" in animations
+    assert "opacity: 0.08" in animations
+    # Disabled: no elevation, no sheen.
+    assert (
+        ".primary-button:disabled,\n.secondary-button:disabled {\n  box-shadow: none;"
+    ) in animations
+    # The 0.98 grouped press now applies to the test button only.
+    assert (
+        ".test-button:not(:disabled):active {\n  transform: scale(0.98);\n}" in styles
+    )
+    assert ".secondary-button:not(:disabled):active,\n.test-button" not in styles
+
+
+def test_admin_static_toasts_sonner_style_with_swipe():
+    animations = Path("src/claudey/api/admin_static/admin-animations.css").read_text(
+        encoding="utf-8"
+    )
+    module = Path("src/claudey/api/admin_static/admin-animations.js").read_text(
+        encoding="utf-8"
+    )
+    script = Path("src/claudey/api/admin_static/admin.js").read_text(encoding="utf-8")
+
+    # Enter: scale 0.8 -> 1 with the sonner curve.
+    assert (
+        "animation: sonner-in 0.18s cubic-bezier(0.22, 1, 0.36, 1) backwards;"
+    ) in animations
+    assert "@keyframes sonner-in" in animations
+    assert "transform: scale(0.8)" in animations
+    # Exit: shrink + rise.
+    assert ".toast.toast-leaving" in animations
+    assert "transform: scale(0.9) translateY(-6px)" in animations
+    # Swipe: no transition while dragging, springy snap-back.
+    assert ".toast.swiping {\n  transition: none;" in animations
+    assert "cubic-bezier(0.34, 1.56, 0.64, 1)" in animations
+    assert "touch-action: pan-y" in animations
+    assert "SWIPE_DISMISS_AT" in module
+    assert "SWIPE_FADE_OVER" in module
+    assert "SWIPE_FLICK_VELOCITY" in module
+    assert "pointerdown" in module
+    assert 'closest(".toast")' in module
+    assert "snap-back" in module
+    assert "stopPropagation" in module
+    # Loading variant: spinner icon, spin keyframes, no auto-dismiss.
+    assert ".toast.toast-loading .toast-icon" in animations
+    assert "animation: toast-spin 0.8s linear infinite" in animations
+    assert "@keyframes toast-spin" in animations
+    assert "ICON_SPINNER" in script
+    assert 'kind === "loading" ? ICON_SPINNER : ICON_INFO' in script
+    assert 'container.querySelector(".toast-loading")?.remove();' in script
+    assert "M12 3a9 9 0 1 0 9 9" in script
+    assert 'showMessage("Restarting server...", "loading")' in script
+    assert 'showMessage("Applied. Restarting server...", "loading")' in script
+    assert 'showMessage("Refreshing models...", "loading")' in script
+    assert 'if (kind !== "loading") {' in script
+
+
+def test_admin_static_logo_marquee_matches_logos_dir():
+    module = Path("src/claudey/api/admin_static/admin-animations.js").read_text(
+        encoding="utf-8"
+    )
+    html = Path("src/claudey/api/admin_static/index.html").read_text(encoding="utf-8")
+    logos_dir = Path("src/claudey/api/admin_static/logos")
+    slugs = sorted(path.stem for path in logos_dir.glob("*.svg"))
+    assert len(slugs) == 32
+
+    # The module embeds the slug list and builds one src per slug.
+    start = module.index("MARQUEE_LOGO_SLUGS = [")
+    end = module.index("];", start)
+    body = module[start:end]
+    embedded = [
+        line.strip().strip(",").strip('"')
+        for line in body.splitlines()
+        if line.strip().startswith('"')
+    ]
+    assert set(embedded) == set(slugs)
+    assert len(embedded) == len(slugs)
+    assert "img.src = `/admin/assets/logos/${slug}.svg`;" in module
+    # The markup hosts the two mirrored tracks behind aria-hidden.
+    assert 'class="marquee-track marquee-track-a"' in html
+    assert 'class="marquee-track marquee-track-b"' in html
+    assert 'class="marquee-caption"' in html
+    assert 'aria-hidden="true"' in html
+    # The edge fade is a mask gradient, not an overlay image.
+    animations_css = Path(
+        "src/claudey/api/admin_static/admin-animations.css"
+    ).read_text(encoding="utf-8")
+    assert (
+        "mask-image: linear-gradient(90deg, transparent, #000 8%, "
+        "#000 92%, transparent)"
+    ) in animations_css
+
+
+def test_admin_static_reduced_motion_gates_all_loops():
+    module = Path("src/claudey/api/admin_static/admin-animations.js").read_text(
+        encoding="utf-8"
+    )
+    styles = Path("src/claudey/api/admin_static/admin.css").read_text(encoding="utf-8")
+
+    # JS never starts the tween or marquee loops under reduced motion.
+    assert 'window.matchMedia("(prefers-reduced-motion: reduce)")' in module
+    assert "REDUCED_MOTION" in module
+    assert "if (REDUCED_MOTION || !DESKTOP.matches) {" in module
+    assert "if (!REDUCED_MOTION) startMarquee();" in module
+    assert "stopMarquee" in module
+    # The CSS baseline zeroes every animation/transition duration.
+    assert "@media (prefers-reduced-motion: reduce)" in styles
+    assert "animation-duration: 0.01ms !important" in styles
+    assert "transition-duration: 0.01ms !important" in styles
+
+
+def test_admin_static_preserves_accessibility_attributes():
+    html = Path("src/claudey/api/admin_static/index.html").read_text(encoding="utf-8")
+    script = Path("src/claudey/api/admin_static/admin.js").read_text(encoding="utf-8")
+    module = Path("src/claudey/api/admin_static/admin-animations.js").read_text(
+        encoding="utf-8"
+    )
+    styles = Path("src/claudey/api/admin_static/admin.css").read_text(encoding="utf-8")
+
+    assert 'aria-expanded="true"' in html
+    assert 'aria-controls="sectionNav"' in html
+    assert 'aria-label="Collapse sidebar"' in html
+    assert 'aria-label="Admin views"' in html
+    assert 'aria-label="Notifications"' in html
+    assert 'role="status"' in html
+    assert 'aria-live="polite"' in html
+    assert 'aria-hidden="true"' in html
+    # Pills are decorative and invisible to assistive tech.
+    assert 'setAttribute("aria-hidden", "true")' in module
+    # The module never takes over the toggle's aria state.
+    assert 'setAttribute("aria-expanded"' not in module
+    # Focus-visible outlines and live regions stay untouched.
+    assert "focus-visible" in styles
+    assert 'sidebarToggle.setAttribute("aria-expanded"' in script
+    assert 'toast.setAttribute("role", "status")' in script

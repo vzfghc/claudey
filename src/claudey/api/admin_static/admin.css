@@ -156,10 +156,9 @@ textarea {
 .sidebar {
   position: sticky;
   top: 0;
-  width: 260px;
+  width: 256px;
   height: 100vh;
   border-right: 1px solid var(--line);
-  transition: width var(--transition-normal), padding var(--transition-normal);
   background: var(--bg);
   padding: 24px 20px;
   display: flex;
@@ -205,6 +204,7 @@ textarea {
 }
 
 .section-nav {
+  position: relative;
   display: grid;
   gap: 6px;
 }
@@ -230,33 +230,7 @@ textarea {
 }
 
 .nav-link:hover {
-  background: var(--panel-strong);
   color: var(--text-strong);
-}
-
-.nav-link.active {
-  background: var(--accent-muted);
-  border-color: var(--accent-border);
-  color: var(--accent);
-  box-shadow: var(--shadow-sm);
-}
-
-.nav-link::before {
-  content: "";
-  position: absolute;
-  top: 22%;
-  bottom: 22%;
-  left: 0;
-  width: 3px;
-  border-radius: var(--radius-full);
-  background: var(--accent);
-  transform: scaleY(0);
-  transform-origin: center;
-  transition: transform var(--transition-fast);
-}
-
-.nav-link.active::before {
-  transform: scaleY(1);
 }
 
 .nav-icon {
@@ -272,7 +246,6 @@ textarea {
 .nav-label {
   overflow: hidden;
   white-space: nowrap;
-  transition: opacity var(--transition-fast), width var(--transition-fast);
 }
 
 .sidebar-footer {
@@ -911,9 +884,8 @@ textarea:focus-visible,
   position: fixed;
   right: 0;
   bottom: 0;
-  left: 260px;
+  left: var(--sidebar-w, 256px);
   z-index: 100;
-  transition: left var(--transition-normal);
   display: grid;
   grid-template-columns: minmax(0, 1.2fr) minmax(200px, 1fr) auto;
   gap: 20px;
@@ -1013,6 +985,37 @@ textarea:focus-visible,
 
   .nav-label {
     display: none;
+  }
+
+  /* Per-item highlights are mobile-only; desktop uses the
+     shared sliding pills from admin-animations.js/css. */
+  .nav-link:hover {
+    background: var(--panel-strong);
+  }
+
+  .nav-link.active {
+    background: var(--accent-muted);
+    border-color: var(--accent-border);
+    color: var(--accent);
+    box-shadow: var(--shadow-sm);
+  }
+
+  .nav-link::before {
+    content: "";
+    position: absolute;
+    top: 22%;
+    bottom: 22%;
+    left: 0;
+    width: 3px;
+    border-radius: var(--radius-full);
+    background: var(--accent);
+    transform: scaleY(0);
+    transform-origin: center;
+    transition: transform var(--transition-fast);
+  }
+
+  .nav-link.active::before {
+    transform: scaleY(1);
   }
 
   .main {
@@ -1616,31 +1619,31 @@ textarea:focus-visible,
    ============================================ */
 
 @media (min-width: 901px) {
+  /* No-JS fallback: the module tweens the width frame by frame
+     and adds body.sidebar-rail when the tween completes. The
+     sidebar-collapsed width here only matters when JS never ran. */
   body.sidebar-collapsed .sidebar {
-    width: 76px;
+    width: 64px;
     padding: 24px 12px;
   }
-  body.sidebar-collapsed .brand {
+  body.sidebar-rail .brand {
     justify-content: center;
     gap: 0;
   }
-  body.sidebar-collapsed .brand-text {
+  body.sidebar-rail .brand-text {
     display: none;
   }
-  body.sidebar-collapsed .nav-link {
+  body.sidebar-rail .nav-link {
     justify-content: center;
     gap: 0;
     padding: 10px 0;
   }
-  body.sidebar-collapsed .nav-label {
+  body.sidebar-rail .nav-label {
     width: 0;
     opacity: 0;
   }
-  body.sidebar-collapsed .sidebar-footer {
+  body.sidebar-rail .sidebar-footer {
     justify-content: center;
-  }
-  body.sidebar-collapsed .action-bar {
-    left: 76px;
   }
 }
 
@@ -1668,8 +1671,6 @@ textarea:focus-visible,
   animation: rise-in 0.35s ease backwards;
 }
 
-.primary-button:not(:disabled):active,
-.secondary-button:not(:disabled):active,
 .test-button:not(:disabled):active {
   transform: scale(0.98);
 }

@@ -1,0 +1,312 @@
+/* ============================================
+   admin-animations.css — firecrawl-style motion layer
+   Loaded after admin.css. The sidebar width tween and the
+   marquee loop are driven per-frame from admin-animations.js;
+   this file supplies the rest states, pills, buttons, and
+   toast choreography. The reduced-motion block in admin.css
+   zeroes every animation/transition duration, so all of this
+   collapses to static styling for users who ask for less motion.
+   ============================================ */
+
+/* The JS tween writes the live sidebar width into --sidebar-w
+   on <html>; the action bar follows it. 256px is the resting
+   default used before the module runs (and without JS). */
+:root {
+  --sidebar-w: 256px;
+}
+
+/* ============================================
+   1. Section nav — shared sliding pills (desktop)
+   Exactly one active pill and one hover pill, both created
+   by admin-animations.js. Per-item highlights are mobile-only
+   (kept in the <=900px block of admin.css).
+   ============================================ */
+
+@media (min-width: 901px) {
+  .section-nav {
+    position: relative;
+  }
+
+  .nav-pill {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    height: 40px;
+    pointer-events: none;
+    z-index: 0;
+    transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.15s ease;
+  }
+
+  .nav-pill-active {
+    background: var(--accent-muted);
+    border: 1px solid var(--accent-border);
+    box-shadow: var(--shadow-sm);
+  }
+
+  .nav-pill-hover {
+    background: rgba(28, 25, 23, 0.04);
+    opacity: 0;
+  }
+
+  #sectionNav:hover .nav-pill-hover {
+    opacity: 1;
+  }
+
+  /* Pills are positioned before this class lands (the module
+     adds it after two rAFs) so the first paint never glides. */
+  .section-nav:not(.nav-pills-ready) .nav-pill {
+    transition: none;
+  }
+
+  .nav-link {
+    position: relative;
+    z-index: 1;
+    background: transparent;
+    border-color: transparent;
+  }
+
+  .nav-link:hover {
+    background: transparent;
+  }
+
+  .nav-link.active {
+    background: transparent;
+    border-color: transparent;
+    color: var(--accent);
+  }
+
+  .nav-link::before {
+    display: none;
+  }
+
+  /* The JS tween writes per-frame inline opacity on the
+     labels; nothing else may interpolate them. */
+  .nav-label {
+    transition: none;
+  }
+
+  /* After the fade finishes, take the labels out of the
+     accessibility tree so no clipped text is announced. */
+  body.sidebar-rail .nav-label {
+    visibility: hidden;
+  }
+}
+
+@media (max-width: 900px) {
+  .nav-pill {
+    display: none;
+  }
+}
+
+/* The gray hover tint is drawn for the light theme; on dark
+   surfaces a white-alpha tint reads the same way. */
+@media (prefers-color-scheme: dark) and (min-width: 901px) {
+  .nav-pill-hover {
+    background: rgba(255, 255, 255, 0.06);
+  }
+}
+
+/* ============================================
+   2. Lift-and-press buttons
+   Layered shadows (inner bottom glow + ambient drop +
+   contact shadow), a hover lift with ring, a sheen
+   overlay that brightens on hover and vanishes on press,
+   and a snappier press via faster transitions + scale.
+   Exact values per the animation reference.
+   ============================================ */
+
+.primary-button,
+.secondary-button {
+  position: relative;
+  overflow: hidden;
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease,
+    transform 0.1s ease, box-shadow 0.1s ease;
+}
+
+.primary-button::before,
+.secondary-button::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0));
+  opacity: 0.06;
+  transition: opacity 0.2s ease;
+  pointer-events: none;
+}
+
+.primary-button:hover:not(:disabled)::before,
+.secondary-button:hover:not(:disabled)::before {
+  opacity: 0.08;
+}
+
+.primary-button:active:not(:disabled)::before,
+.secondary-button:active:not(:disabled)::before {
+  opacity: 0;
+  transition: opacity 0.05s ease;
+}
+
+/* Primary — heat layers */
+.primary-button:not(:disabled) {
+  box-shadow: inset 0 -6px 12px rgba(224, 77, 10, 0.25), 0 2px 4px rgba(250, 93, 25, 0.12),
+    0 1px 1px rgba(250, 93, 25, 0.12);
+}
+
+.primary-button:not(:disabled):hover {
+  box-shadow: inset 0 -6px 12px rgba(224, 77, 10, 0.25), 0 4px 8px rgba(250, 93, 25, 0.16),
+    0 1px 1px rgba(250, 93, 25, 0.12), 0 0 0 1px rgba(250, 93, 25, 0.12);
+}
+
+.primary-button:not(:disabled):active {
+  box-shadow: inset 0 -3px 6px rgba(224, 77, 10, 0.3), 0 1px 2px rgba(250, 93, 25, 0.08);
+  transform: scale(0.995);
+  transition-duration: 0.2s, 0.2s, 0.2s, 0.05s, 0.05s;
+}
+
+/* Secondary — neutral layers */
+.secondary-button:not(:disabled) {
+  box-shadow: inset 0 -6px 12px rgba(28, 25, 23, 0.05), 0 2px 4px rgba(28, 25, 23, 0.06),
+    0 1px 1px rgba(28, 25, 23, 0.05);
+}
+
+.secondary-button:not(:disabled):hover {
+  box-shadow: inset 0 -6px 12px rgba(28, 25, 23, 0.05), 0 4px 8px rgba(28, 25, 23, 0.09),
+    0 1px 1px rgba(28, 25, 23, 0.05), 0 0 0 1px rgba(28, 25, 23, 0.06);
+}
+
+.secondary-button:not(:disabled):active {
+  box-shadow: inset 0 -3px 6px rgba(28, 25, 23, 0.08), 0 1px 2px rgba(28, 25, 23, 0.05);
+  transform: scale(0.995);
+  transition-duration: 0.2s, 0.2s, 0.2s, 0.05s, 0.05s;
+}
+
+/* Disabled — flat, no elevation, no sheen */
+.primary-button:disabled,
+.secondary-button:disabled {
+  box-shadow: none;
+}
+
+.primary-button:disabled::before,
+.secondary-button:disabled::before {
+  opacity: 0;
+}
+
+/* ============================================
+   3. Sonner-style toasts
+   Scale-in enter, scale/rise exit, swipe-to-dismiss with a
+   springy snap-back. Loading toasts keep a spinning icon.
+   ============================================ */
+
+.toast {
+  animation: sonner-in 0.18s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+  touch-action: pan-y;
+}
+
+@keyframes sonner-in {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.toast.swiping {
+  transition: none;
+}
+
+.toast.snap-back {
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.15s ease;
+}
+
+/* Listed last so it wins over snap-back when a click dismisses
+   a toast that was still springing back. */
+.toast.toast-leaving {
+  opacity: 0;
+  transform: scale(0.9) translateY(-6px);
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+.toast.toast-loading {
+  border-left-color: var(--accent);
+}
+
+.toast.toast-loading .toast-icon {
+  color: var(--accent);
+  animation: toast-spin 0.8s linear infinite;
+}
+
+@keyframes toast-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ============================================
+   4. Logo marquee
+   Two mirrored tracks, built by admin-animations.js. The
+   edge fade is a mask gradient; hovering pauses the scroll.
+   ============================================ */
+
+.provider-marquee {
+  margin-bottom: 24px;
+}
+
+.marquee-caption {
+  margin: 0 0 8px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.marquee {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--panel);
+  mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+}
+
+.marquee-track {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  padding: 14px;
+  flex: none;
+  width: max-content;
+  will-change: transform;
+}
+
+.marquee-track img {
+  width: 32px;
+  height: 32px;
+  opacity: 0.85;
+  transition: opacity 0.2s ease;
+}
+
+.marquee:hover .marquee-track img {
+  opacity: 1;
+}
+
+/* ============================================
+   5. Sidebar toggle — aligned chevron + press feedback
+   ============================================ */
+
+.sidebar-toggle svg {
+  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.sidebar-toggle:active {
+  transform: scale(0.98);
+  transition-duration: 0.05s;
+}

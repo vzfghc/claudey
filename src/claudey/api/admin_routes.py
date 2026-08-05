@@ -95,7 +95,12 @@ async def admin_page(request: Request):
 @router.get("/admin/assets/{filename}", include_in_schema=False)
 async def admin_asset(filename: str, request: Request):
     require_loopback_admin(request)
-    if filename not in {"admin.css", "admin.js"}:
+    if filename not in {
+        "admin.css",
+        "admin.js",
+        "admin-animations.css",
+        "admin-animations.js",
+    }:
         raise HTTPException(status_code=404, detail="Admin asset not found")
     return _asset_response(filename)
 
