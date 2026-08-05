@@ -632,6 +632,7 @@ async function startConnectedAccountLogin(providerId, mode, button) {
     });
     const provider = connectedAccountDescriptor(providerId);
     updateConnectedAccountCard(provider, status);
+    pollConnectedAccount(provider);
     const target = status.authorization_url || status.verification_url;
     try {
       if (target && popup && !popup.closed) {
