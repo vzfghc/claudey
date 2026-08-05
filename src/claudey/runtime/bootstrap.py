@@ -63,7 +63,7 @@ def build_asgi_app(
     provider_manager = ProviderRuntimeManager(
         settings,
         runtime_factory=runtime_factory,
-        connected_provider_ids=_merge_connected_ids(
+        connected_provider_ids=lambda: _merge_connected_ids(
             openai_auth.connected_provider_ids(),
             anthropic_auth.connected_provider_ids(),
         ),

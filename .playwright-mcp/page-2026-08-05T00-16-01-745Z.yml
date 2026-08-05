@@ -1,0 +1,396 @@
+- generic [active] [ref=f3e1]:
+  - generic [ref=f3e2]:
+    - complementary [ref=f3e3]:
+      - generic [ref=f3e4]:
+        - generic "Claudey" [ref=f3e5]
+        - generic [ref=f3e8]:
+          - heading "Claudey" [level=1] [ref=f3e9]
+          - paragraph [ref=f3e10]: Server Control
+      - navigation "Admin views" [ref=f3e11]:
+        - button "Providers" [ref=f3e12] [cursor=pointer]
+        - button "Model Config" [ref=f3e20] [cursor=pointer]
+        - button "Messaging" [ref=f3e26] [cursor=pointer]
+      - button "Collapse sidebar" [expanded] [ref=f3e32] [cursor=pointer]
+    - main [ref=f3e36]:
+      - generic [ref=f3e37]:
+        - paragraph [ref=f3e38]: What are we building today, Hans?
+        - generic [ref=f3e39]:
+          - heading "Providers" [level=2] [ref=f3e40]
+          - status "Claudey server health" [ref=f3e41]:
+            - generic [ref=f3e43]: Running on :8082 v5.7.0
+      - generic [ref=f3e45]:
+        - region "Connected accounts" [ref=f3e46]:
+          - generic [ref=f3e48]:
+            - heading "Connected accounts" [level=3] [ref=f3e49]
+            - paragraph [ref=f3e50]: Use an existing subscription without storing credentials in .env.
+          - article [ref=f3e52]:
+            - generic [ref=f3e53]:
+              - strong [ref=f3e55]: OpenAI / ChatGPT
+              - generic [ref=f3e56]: Needs attention
+            - generic [ref=f3e57]: Something went wrong - OpenAI sign-in failed. Retry or use the device-code option.. Try disconnecting, then connect again.
+            - button "Connect" [ref=f3e59] [cursor=pointer]
+        - region "Provider status" [ref=f3e60]:
+          - generic [ref=f3e62]:
+            - heading "Providers" [level=3] [ref=f3e63]
+            - paragraph [ref=f3e64]: Configure endpoints, keys, and models for each provider.
+          - generic [ref=f3e65]:
+            - article [ref=f3e66]:
+              - strong [ref=f3e68]: NVIDIA NIM
+              - generic [ref=f3e69]:
+                - generic [ref=f3e70]: Configured
+                - button "Switch key" [ref=f3e74] [cursor=pointer]
+            - article [ref=f3e75]:
+              - strong [ref=f3e77]: Azure OpenAI
+              - generic [ref=f3e78]:
+                - button "Configure" [ref=f3e79] [cursor=pointer]
+                - button "About key API key for the Azure OpenAI resource." [ref=f3e80] [cursor=pointer]
+            - article [ref=f3e81]:
+              - strong [ref=f3e83]: OpenRouter
+              - generic [ref=f3e84]:
+                - button "Configure" [ref=f3e85] [cursor=pointer]
+                - button "About key No description available." [ref=f3e86] [cursor=pointer]
+            - article [ref=f3e87]:
+              - strong [ref=f3e89]: Gemini
+              - generic [ref=f3e90]:
+                - button "Configure" [ref=f3e91] [cursor=pointer]
+                - button "About key Google AI Studio Gemini API key (Google AI Studio / Gemini API [OpenAI-compatible](https://ai.google.dev/gemini-api/docs/openai)); free tier has per-model rate limits and data may be used for improvement outside the UK/CH/EEA/EU." [ref=f3e92] [cursor=pointer]
+            - article [ref=f3e93]:
+              - strong [ref=f3e95]: Google Vertex AI
+              - generic [ref=f3e96]:
+                - button "Configure" [ref=f3e97] [cursor=pointer]
+                - button "About key Google Cloud project used for Vertex AI. Authentication uses Application Default Credentials (ADC)." [ref=f3e98] [cursor=pointer]
+            - article [ref=f3e99]:
+              - strong [ref=f3e101]: DeepSeek
+              - generic [ref=f3e102]:
+                - button "Configure" [ref=f3e103] [cursor=pointer]
+                - button "About key No description available." [ref=f3e104] [cursor=pointer]
+            - article [ref=f3e105]:
+              - strong [ref=f3e107]: Mistral
+              - generic [ref=f3e108]:
+                - button "Configure" [ref=f3e109] [cursor=pointer]
+                - button "About key Mistral La Plateforme (api.mistral.ai); Experiment plan is free tier with rate limits." [ref=f3e110] [cursor=pointer]
+            - article [ref=f3e111]:
+              - strong [ref=f3e113]: Mistral Codestral
+              - generic [ref=f3e114]:
+                - button "Configure" [ref=f3e115] [cursor=pointer]
+                - 'button "About key Mistral Codestral endpoint (codestral.mistral.ai); distinct from Mistral La Plateforme ``MISTRAL_API_KEY``. See Mistral docs for coding/FIM domains." [ref=f3e116] [cursor=pointer]'
+            - article [ref=f3e117]:
+              - strong [ref=f3e119]: OpenCode Zen
+              - generic [ref=f3e120]:
+                - button "Configure" [ref=f3e121] [cursor=pointer]
+                - button "About key OpenCode Zen curated gateway (opencode.ai/zen/v1) and OpenCode Go subscription gateway (opencode.ai/zen/go/v1); single key from opencode.ai/auth." [ref=f3e122] [cursor=pointer]
+            - article [ref=f3e123]:
+              - strong [ref=f3e125]: OpenCode Go
+              - generic [ref=f3e126]:
+                - button "Configure" [ref=f3e127] [cursor=pointer]
+                - button "About key OpenCode Zen curated gateway (opencode.ai/zen/v1) and OpenCode Go subscription gateway (opencode.ai/zen/go/v1); single key from opencode.ai/auth." [ref=f3e128] [cursor=pointer]
+            - article [ref=f3e129]:
+              - strong [ref=f3e131]: Vercel AI Gateway
+              - generic [ref=f3e132]:
+                - button "Configure" [ref=f3e133] [cursor=pointer]
+                - button "About key Vercel AI Gateway API key for the OpenAI-compatible endpoint at ai-gateway.vercel.sh/v1." [ref=f3e134] [cursor=pointer]
+            - article [ref=f3e135]:
+              - strong [ref=f3e137]: Amazon Bedrock
+              - generic [ref=f3e138]:
+                - button "Configure" [ref=f3e139] [cursor=pointer]
+                - button "About key Amazon Bedrock bearer API key for the region-specific Mantle OpenAI-compatible endpoint." [ref=f3e140] [cursor=pointer]
+            - article [ref=f3e141]:
+              - strong [ref=f3e143]: Hugging Face
+              - generic [ref=f3e144]:
+                - button "Configure" [ref=f3e145] [cursor=pointer]
+                - button "About key Hugging Face token with Inference Providers permission; also used for local Whisper model downloads when voice notes need gated models." [ref=f3e146] [cursor=pointer]
+            - article [ref=f3e147]:
+              - strong [ref=f3e149]: Cohere
+              - generic [ref=f3e150]:
+                - button "Configure" [ref=f3e151] [cursor=pointer]
+                - button "About key Cohere API key for the OpenAI-compatible Compatibility API." [ref=f3e152] [cursor=pointer]
+            - article [ref=f3e153]:
+              - strong [ref=f3e155]: GitHub Models
+              - generic [ref=f3e156]:
+                - button "Configure" [ref=f3e157] [cursor=pointer]
+                - button "About key GitHub token with Models access for the OpenAI-compatible inference API at models.github.ai." [ref=f3e158] [cursor=pointer]
+            - article [ref=f3e159]:
+              - strong [ref=f3e161]: Wafer
+              - generic [ref=f3e162]:
+                - button "Configure" [ref=f3e163] [cursor=pointer]
+                - button "About key No description available." [ref=f3e164] [cursor=pointer]
+            - article [ref=f3e165]:
+              - strong [ref=f3e167]: Kimi
+              - generic [ref=f3e168]:
+                - button "Configure" [ref=f3e169] [cursor=pointer]
+                - button "About key No description available." [ref=f3e170] [cursor=pointer]
+            - article [ref=f3e171]:
+              - strong [ref=f3e173]: Kimi Code
+              - generic [ref=f3e174]:
+                - button "Configure" [ref=f3e175] [cursor=pointer]
+                - button "About key Personal Kimi Code subscription key from kimi.com/code/console; separate from KIMI_API_KEY credits on the Kimi API platform." [ref=f3e176] [cursor=pointer]
+            - article [ref=f3e177]:
+              - strong [ref=f3e179]: Kilo.ai
+              - generic [ref=f3e180]:
+                - button "Configure" [ref=f3e181] [cursor=pointer]
+                - button "About key No description available." [ref=f3e182] [cursor=pointer]
+            - article [ref=f3e183]:
+              - strong [ref=f3e185]: MiniMax
+              - generic [ref=f3e186]:
+                - button "Configure" [ref=f3e187] [cursor=pointer]
+                - button "About key MiniMax API key for the OpenAI-compatible Chat Completions API at claudey.api.minimax.io/v1." [ref=f3e188] [cursor=pointer]
+            - article [ref=f3e189]:
+              - strong [ref=f3e191]: Cerebras
+              - generic [ref=f3e192]:
+                - button "Configure" [ref=f3e193] [cursor=pointer]
+                - button "About key Cerebras Inference API key (create in [Cloud Console](https://cloud.cerebras.ai)); see [Quickstart](https://inference-docs.cerebras.ai/quickstart) and [OpenAI compatibility](https://inference-docs.cerebras.ai/resources/openai)." [ref=f3e194] [cursor=pointer]
+            - article [ref=f3e195]:
+              - strong [ref=f3e197]: Groq
+              - generic [ref=f3e198]:
+                - button "Configure" [ref=f3e199] [cursor=pointer]
+                - button "About key GroqCloud OpenAI-compatible API key ([console.groq.com/keys](https://console.groq.com/keys)); see Groq [OpenAI compatibility docs](https://console.groq.com/docs/openai)." [ref=f3e200] [cursor=pointer]
+            - article [ref=f3e201]:
+              - strong [ref=f3e203]: SambaNova
+              - generic [ref=f3e204]:
+                - button "Configure" [ref=f3e205] [cursor=pointer]
+                - button "About key SambaNova Cloud OpenAI-compatible API key (create at [cloud.sambanova.ai/apis](https://cloud.sambanova.ai/apis))." [ref=f3e206] [cursor=pointer]
+            - article [ref=f3e207]:
+              - strong [ref=f3e209]: Fireworks
+              - generic [ref=f3e210]:
+                - button "Configure" [ref=f3e211] [cursor=pointer]
+                - button "About key Fireworks AI inference API key." [ref=f3e212] [cursor=pointer]
+            - article [ref=f3e213]:
+              - strong [ref=f3e215]: Cloudflare
+              - generic [ref=f3e216]:
+                - button "Configure" [ref=f3e217] [cursor=pointer]
+                - button "About key Cloudflare API token for account-scoped AI REST requests. Use with CLOUDFLARE_ACCOUNT_ID." [ref=f3e218] [cursor=pointer]
+            - article [ref=f3e219]:
+              - strong [ref=f3e221]: Z.ai
+              - generic [ref=f3e222]:
+                - button "Configure" [ref=f3e223] [cursor=pointer]
+                - button "About key Z.ai Coding Plan API key." [ref=f3e224] [cursor=pointer]
+            - article [ref=f3e225]:
+              - strong [ref=f3e227]: Ollama Cloud
+              - generic [ref=f3e228]:
+                - button "Configure" [ref=f3e229] [cursor=pointer]
+                - button "About key Ollama API key for direct OpenAI-compatible Cloud access at ollama.com/v1." [ref=f3e230] [cursor=pointer]
+            - article [ref=f3e231]:
+              - strong [ref=f3e233]: LM Studio
+              - generic [ref=f3e234]:
+                - button "Configure" [ref=f3e235] [cursor=pointer]
+                - button "About key No description available." [ref=f3e236] [cursor=pointer]
+            - article [ref=f3e237]:
+              - strong [ref=f3e239]: llama.cpp
+              - generic [ref=f3e240]:
+                - button "Configure" [ref=f3e241] [cursor=pointer]
+                - button "About key No description available." [ref=f3e242] [cursor=pointer]
+            - article [ref=f3e243]:
+              - strong [ref=f3e245]: Ollama
+              - generic [ref=f3e246]:
+                - button "Configure" [ref=f3e247] [cursor=pointer]
+                - button "About key No description available." [ref=f3e248] [cursor=pointer]
+        - generic "Provider configuration" [ref=f3e249]:
+          - generic [ref=f3e250]:
+            - generic [ref=f3e252]:
+              - heading "Providers" [level=3] [ref=f3e253]
+              - paragraph [ref=f3e254]: Provider keys, local endpoints, and proxy settings.
+            - generic [ref=f3e255]:
+              - generic [ref=f3e256]:
+                - generic [ref=f3e257]: NVIDIA NIM API Key
+                - textbox "NVIDIA NIM API Key" [ref=f3e259]:
+                  - /placeholder: Configured - enter a new value to replace
+                - generic [ref=f3e260]: Used by NVIDIA NIM chat and optional NIM voice transcription.
+              - generic [ref=f3e261]:
+                - generic [ref=f3e262]: Azure OpenAI API Key
+                - textbox "Azure OpenAI API Key" [ref=f3e264]:
+                  - /placeholder: Not configured
+                - generic [ref=f3e265]: API key for the Azure OpenAI resource.
+              - generic [ref=f3e266]:
+                - generic [ref=f3e267]: OpenRouter API Key
+                - textbox "OpenRouter API Key" [ref=f3e269]:
+                  - /placeholder: Not configured
+              - generic [ref=f3e270]:
+                - generic [ref=f3e271]: Gemini API Key
+                - textbox "Gemini API Key" [ref=f3e273]:
+                  - /placeholder: Not configured
+                - generic [ref=f3e274]: Google AI Studio Gemini API key (Google AI Studio / Gemini API [OpenAI-compatible](https://ai.google.dev/gemini-api/docs/openai)); free tier has per-model rate limits and data may be used for improvement outside the UK/CH/EEA/EU.
+              - generic [ref=f3e275]:
+                - generic [ref=f3e276]: DeepSeek API Key
+                - textbox "DeepSeek API Key" [ref=f3e278]:
+                  - /placeholder: Not configured
+              - generic [ref=f3e279]:
+                - generic [ref=f3e280]: Mistral API Key
+                - textbox "Mistral API Key" [ref=f3e282]:
+                  - /placeholder: Not configured
+                - generic [ref=f3e283]: Mistral La Plateforme (api.mistral.ai); Experiment plan is free tier with rate limits.
+              - generic [ref=f3e284]:
+                - generic [ref=f3e285]: Codestral API Key
+                - textbox "Codestral API Key" [ref=f3e287]:
+                  - /placeholder: Not configured
+                - generic [ref=f3e288]: "Mistral Codestral endpoint (codestral.mistral.ai); distinct from Mistral La Plateforme ``MISTRAL_API_KEY``. See Mistral docs for coding/FIM domains."
+              - generic [ref=f3e289]:
+                - generic [ref=f3e290]: OpenCode API Key
+                - textbox "OpenCode API Key" [ref=f3e292]:
+                  - /placeholder: Not configured
+                - generic [ref=f3e293]: OpenCode Zen curated gateway (opencode.ai/zen/v1) and OpenCode Go subscription gateway (opencode.ai/zen/go/v1); single key from opencode.ai/auth.
+              - generic [ref=f3e294]:
+                - generic [ref=f3e295]: Vercel AI Gateway API Key
+                - textbox "Vercel AI Gateway API Key" [ref=f3e297]:
+                  - /placeholder: Not configured
+                - generic [ref=f3e298]: Vercel AI Gateway API key for the OpenAI-compatible endpoint at ai-gateway.vercel.sh/v1.
+              - generic [ref=f3e299]:
+                - generic [ref=f3e300]: Amazon Bedrock API Key
+                - textbox "Amazon Bedrock API Key" [ref=f3e302]:
+                  - /placeholder: Not configured
+                - generic [ref=f3e303]: Amazon Bedrock bearer API key for the region-specific Mantle OpenAI-compatible endpoint.
+              - generic [ref=f3e304]:
+                - generic [ref=f3e305]: Hugging Face API Key
+                - textbox "Hugging Face API Key" [ref=f3e307]:
+                  - /placeholder: Not configured
+                - generic [ref=f3e308]: Hugging Face token with Inference Providers permission; also used for local Whisper model downloads when voice notes need gated models.
+              - generic [ref=f3e309]:
+                - generic [ref=f3e310]: Cohere API Key
+                - textbox "Cohere API Key" [ref=f3e312]:
+                  - /placeholder: Not configured
+                - generic [ref=f3e313]: Cohere API key for the OpenAI-compatible Compatibility API.
+              - generic [ref=f3e314]:
+                - generic [ref=f3e315]: GitHub Models Token
+                - textbox "GitHub Models Token" [ref=f3e317]:
+                  - /placeholder: Not configured
+                - generic [ref=f3e318]: GitHub token with Models access for the OpenAI-compatible inference API at models.github.ai.
+              - generic [ref=f3e319]:
+                - generic [ref=f3e320]: Wafer API Key
+                - textbox "Wafer API Key" [ref=f3e322]:
+                  - /placeholder: Not configured
+              - generic [ref=f3e323]:
+                - generic [ref=f3e324]: Kimi API Key
+                - textbox "Kimi API Key" [ref=f3e326]:
+                  - /placeholder: Not configured
+              - generic [ref=f3e327]:
+                - generic [ref=f3e328]: Kimi Code API Key
+                - textbox "Kimi Code API Key" [ref=f3e330]:
+                  - /placeholder: Not configured
+                - generic [ref=f3e331]: Personal Kimi Code subscription key from kimi.com/code/console; separate from KIMI_API_KEY credits on the Kimi API platform.
+              - generic [ref=f3e332]:
+                - generic [ref=f3e333]: Kilo.ai API Key
+                - textbox "Kilo.ai API Key" [ref=f3e335]:
+                  - /placeholder: Not configured
+              - generic [ref=f3e336]:
+                - generic [ref=f3e337]: MiniMax API Key
+                - textbox "MiniMax API Key" [ref=f3e339]:
+                  - /placeholder: Not configured
+                - generic [ref=f3e340]: MiniMax API key for the OpenAI-compatible Chat Completions API at claudey.api.minimax.io/v1.
+              - generic [ref=f3e341]:
+                - generic [ref=f3e342]: Cerebras API Key
+                - textbox "Cerebras API Key" [ref=f3e344]:
+                  - /placeholder: Not configured
+                - generic [ref=f3e345]: Cerebras Inference API key (create in [Cloud Console](https://cloud.cerebras.ai)); see [Quickstart](https://inference-docs.cerebras.ai/quickstart) and [OpenAI compatibility](https://inference-docs.cerebras.ai/resources/openai).
+              - generic [ref=f3e346]:
+                - generic [ref=f3e347]: Groq API Key
+                - textbox "Groq API Key" [ref=f3e349]:
+                  - /placeholder: Not configured
+                - generic [ref=f3e350]: GroqCloud OpenAI-compatible API key ([console.groq.com/keys](https://console.groq.com/keys)); see Groq [OpenAI compatibility docs](https://console.groq.com/docs/openai).
+              - generic [ref=f3e351]:
+                - generic [ref=f3e352]: SambaNova API Key
+                - textbox "SambaNova API Key" [ref=f3e354]:
+                  - /placeholder: Not configured
+                - generic [ref=f3e355]: SambaNova Cloud OpenAI-compatible API key (create at [cloud.sambanova.ai/apis](https://cloud.sambanova.ai/apis)).
+              - generic [ref=f3e356]:
+                - generic [ref=f3e357]: Fireworks API Key
+                - textbox "Fireworks API Key" [ref=f3e359]:
+                  - /placeholder: Not configured
+                - generic [ref=f3e360]: Fireworks AI inference API key.
+              - generic [ref=f3e361]:
+                - generic [ref=f3e362]: Cloudflare API Token
+                - textbox "Cloudflare API Token" [ref=f3e364]:
+                  - /placeholder: Not configured
+                - generic [ref=f3e365]: Cloudflare API token for account-scoped AI REST requests. Use with CLOUDFLARE_ACCOUNT_ID.
+              - generic [ref=f3e366]:
+                - generic [ref=f3e367]: Z.ai API Key
+                - textbox "Z.ai API Key" [ref=f3e369]:
+                  - /placeholder: Not configured
+                - generic [ref=f3e370]: Z.ai Coding Plan API key.
+              - generic [ref=f3e371]:
+                - generic [ref=f3e372]: Ollama Cloud API Key
+                - textbox "Ollama Cloud API Key" [ref=f3e374]:
+                  - /placeholder: Not configured
+                - generic [ref=f3e375]: Ollama API key for direct OpenAI-compatible Cloud access at ollama.com/v1.
+              - generic [ref=f3e376]:
+                - generic [ref=f3e377]: Cloudflare Account ID
+                - textbox "Cloudflare Account ID" [ref=f3e379]
+                - generic [ref=f3e380]: "Cloudflare account ID used to build the /accounts/{id}/ai/v1 endpoint."
+              - generic [ref=f3e381]:
+                - generic [ref=f3e382]: Google Cloud Project ID
+                - textbox "Google Cloud Project ID" [ref=f3e384]
+                - generic [ref=f3e385]: Google Cloud project used for Vertex AI. Authentication uses Application Default Credentials (ADC).
+              - generic [ref=f3e386]:
+                - generic [ref=f3e387]: Vertex AI Location
+                - textbox "Vertex AI Location" [ref=f3e389]: global
+                - generic [ref=f3e390]: Use global for the global Vertex AI endpoint or a region such as us-central1.
+              - generic [ref=f3e391]:
+                - generic [ref=f3e392]: Azure OpenAI Base URL
+                - textbox "Azure OpenAI Base URL" [ref=f3e394]
+                - generic [ref=f3e395]: Resource-specific OpenAI v1 base URL, for example https://YOUR-RESOURCE-NAME.openai.azure.com/openai/v1/.
+              - generic [ref=f3e396]:
+                - generic [ref=f3e397]: Amazon Bedrock Base URL
+                - textbox "Amazon Bedrock Base URL" [ref=f3e399]: https://bedrock-mantle.us-east-1.api.aws/v1
+                - generic [ref=f3e400]: Amazon Bedrock Mantle OpenAI base URL for the same region as the API key and selected models.
+              - generic [ref=f3e401]:
+                - generic [ref=f3e402]: LM Studio Base URL
+                - textbox "LM Studio Base URL" [ref=f3e404]: http://localhost:1234/v1
+              - generic [ref=f3e405]:
+                - generic [ref=f3e406]: llama.cpp Base URL
+                - textbox "llama.cpp Base URL" [ref=f3e408]: http://localhost:8080/v1
+              - generic [ref=f3e409]:
+                - generic [ref=f3e410]: Ollama Base URL
+                - textbox "Ollama Base URL" [ref=f3e412]: http://localhost:11434
+            - button "Show advanced" [ref=f3e413] [cursor=pointer]
+          - generic [ref=f3e414]:
+            - generic [ref=f3e416]:
+              - heading "Runtime" [level=3] [ref=f3e417]
+              - paragraph [ref=f3e418]: Server API token, rate limits, timeouts, and process settings.
+            - generic [ref=f3e419]:
+              - generic [ref=f3e420]:
+                - generic [ref=f3e421]:
+                  - generic [ref=f3e422]: API/CLI Auth Token
+                  - generic [ref=f3e423]: process env locked
+                - textbox "API/CLI Auth Token process env locked" [disabled] [ref=f3e424]:
+                  - /placeholder: Configured - enter a new value to replace
+                - generic [ref=f3e425]: Bearer token protecting Claude/API access. It is not admin-page login.
+              - generic [ref=f3e426]:
+                - generic [ref=f3e427]: Provider Rate Limit
+                - spinbutton "Provider Rate Limit" [ref=f3e429]: "1"
+              - generic [ref=f3e430]:
+                - generic [ref=f3e431]: Provider Rate Window
+                - spinbutton "Provider Rate Window" [ref=f3e433]: "3"
+              - generic [ref=f3e434]:
+                - generic [ref=f3e435]: Provider Max Concurrency
+                - spinbutton "Provider Max Concurrency" [ref=f3e437]: "5"
+              - generic [ref=f3e438]:
+                - generic [ref=f3e439]: HTTP Read Timeout
+                - spinbutton "HTTP Read Timeout" [ref=f3e441]: "300"
+              - generic [ref=f3e442]:
+                - generic [ref=f3e443]: HTTP Write Timeout
+                - spinbutton "HTTP Write Timeout" [ref=f3e445]: "60"
+              - generic [ref=f3e446]:
+                - generic [ref=f3e447]: HTTP Connect Timeout
+                - spinbutton "HTTP Connect Timeout" [ref=f3e449]: "60"
+              - generic [ref=f3e450]:
+                - generic [ref=f3e451]: Server Host
+                - textbox "Server Host" [ref=f3e453]: 0.0.0.0
+              - generic [ref=f3e454]:
+                - generic [ref=f3e455]: Server Port
+                - spinbutton "Server Port" [ref=f3e457]: "8082"
+              - generic [ref=f3e458]:
+                - generic [ref=f3e459]:
+                  - generic [ref=f3e460]: Open Admin on Startup
+                  - generic [ref=f3e461]: template
+                - checkbox "Open Admin on Startup template" [checked] [ref=f3e462] [cursor=pointer]
+                - generic [ref=f3e463]: Open the Admin UI after the next hans-server launch becomes healthy.
+            - button "Show advanced" [ref=f3e464] [cursor=pointer]
+    - contentinfo [ref=f3e465]:
+      - generic [ref=f3e466]:
+        - strong [ref=f3e467]: No changes
+        - generic [ref=f3e468]: /Users/hanifrestian/.fcc/.env
+      - generic [ref=f3e469]: Loading admin config
+      - generic [ref=f3e470]:
+        - button "Validate" [ref=f3e471] [cursor=pointer]
+        - button "Apply" [disabled] [ref=f3e472]
+  - generic "Notifications" [ref=f3e473]:
+    - status [ref=f3e474] [cursor=pointer]:
+      - generic [ref=f3e478]: Loading admin config
