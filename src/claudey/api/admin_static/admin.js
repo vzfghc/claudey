@@ -559,6 +559,19 @@ function populateConnectedAccountActions(provider, status, actions) {
     return;
   }
   if (status.connected) {
+    if (providerId === "anthropic") {
+      const badge = document.createElement("span");
+      badge.className = "configured-badge";
+      const check = document.createElement("span");
+      check.className = "configured-check";
+      check.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>`;
+      badge.append(check, "Configured");
+      actions.appendChild(badge);
+      actions.appendChild(
+        authButton("Switch key", () => scrollToField("ANTHROPIC_AUTH_TOKEN"), "secondary-button"),
+      );
+      return;
+    }
     actions.appendChild(
       authButton(
         "Reconnect",
@@ -571,6 +584,13 @@ function populateConnectedAccountActions(provider, status, actions) {
         () => disconnectConnectedAccount(providerId),
         "secondary-button",
       ),
+    );
+    return;
+  }
+  // Anthropic has no OAuth flow — "Connect" scrolls to the API key field.
+  if (providerId === "anthropic") {
+    actions.appendChild(
+      authButton("Configure", (button) => scrollToField("ANTHROPIC_AUTH_TOKEN")),
     );
     return;
   }

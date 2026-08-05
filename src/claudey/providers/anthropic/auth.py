@@ -1,5 +1,7 @@
 """Anthropic Console connection status via the API key config."""
 
+import os
+
 from claudey.application.connected_accounts import (
     ConnectedAccountLoginMode,
     ConnectedAccountState,
@@ -19,36 +21,29 @@ class AnthropicAuthManager:
 
     def __init__(self) -> None:
         self._revision = 0
-        self._connected = False
-        self._email: str | None = None
+
+    def _token_is_set(self) -> bool:
+        return bool(os.getenv("ANTHROPIC_AUTH_TOKEN", "").strip())
 
     def is_connected(self) -> bool:
-        return self._connected
+        return self._token_is_set()
 
     def connected_provider_ids(self) -> tuple[str, ...]:
-        return (self.provider_id,) if self._connected else ()
+        return (self.provider_id,) if self.is_connected() else ()
 
     def status(self) -> ConnectedAccountStatus:
+        connected = self._token_is_set()
         state = (
             ConnectedAccountState.CONNECTED
-            if self._connected
+            if connected
             else ConnectedAccountState.DISCONNECTED
         )
         return ConnectedAccountStatus(
             provider_id=self.provider_id,
             state=state,
-            connected=self._connected,
+            connected=connected,
             revision=self._revision,
-            email=self._email,
         )
-
-    async def set_configured(
-        self, *, configured: bool, email: str | None = None
-    ) -> None:
-        """Update the reflected state from the outside (called by admin)."""
-        self._connected = configured
-        self._email = email
-        self._revision += 1
 
     async def start_login(
         self, mode: ConnectedAccountLoginMode
@@ -59,8 +54,6 @@ class AnthropicAuthManager:
         return self.status()
 
     async def disconnect(self) -> ConnectedAccountStatus:
-        self._connected = False
-        self._email = None
         self._revision += 1
         return self.status()
 
