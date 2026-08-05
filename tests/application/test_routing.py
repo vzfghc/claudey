@@ -270,3 +270,72 @@ def test_model_router_preserves_typed_error_for_unknown_mapped_provider(settings
     assert str(exc_info.value) == (
         f"Unknown provider_type: 'unknown'. Supported: '{supported}'"
     )
+
+
+@pytest.mark.parametrize("suffix", ["1m", "5m", "128k", "200k"])
+def test_model_router_strips_context_window_suffix_from_gateway_model(settings, suffix):
+    resolved = ModelRouter(settings).resolve(
+        f"anthropic/deepseek/deepseek-v4-flash[{suffix}]"
+    )
+
+    assert resolved.provider_model == "deepseek-v4-flash"
+    assert resolved.original_model == f"anthropic/deepseek/deepseek-v4-flash[{suffix}]"
+    assert resolved.provider_id == "deepseek"
+
+
+def test_model_router_strips_suffix_from_no_thinking_gateway_model(settings):
+    routed = ModelRouter(settings).resolve_messages_request(
+        MessagesRequest(
+            model="claude-3-claudey-no-thinking/deepseek/deepseek-v4-flash[1m]",
+            max_tokens=100,
+            messages=[Message(role="user", content="hello")],
+        )
+    )
+
+    assert routed.request.model == "deepseek-v4-flash"
+    assert routed.resolved.provider_model == "deepseek-v4-flash"
+    assert (
+        routed.resolved.original_model
+        == "claude-3-claudey-no-thinking/deepseek/deepseek-v4-flash[1m]"
+    )
+    assert routed.reasoning.control is ReasoningControl.OFF
+
+
+def test_model_router_strips_suffix_from_prefixed_provider_model(settings):
+    resolved = ModelRouter(settings).resolve("deepseek/deepseek-v4-flash[1m]")
+
+    assert resolved.provider_model == "deepseek-v4-flash"
+    assert resolved.original_model == "deepseek/deepseek-v4-flash[1m]"
+    assert resolved.provider_id == "deepseek"
+    assert resolved.provider_model_ref == "deepseek/deepseek-v4-flash[1m]"
+
+
+def test_model_router_strips_suffix_from_settings_model_ref(settings):
+    settings.model = "deepseek/deepseek-v4-flash[1m]"
+
+    resolved = ModelRouter(settings).resolve("claude-2.1")
+
+    assert resolved.provider_model == "deepseek-v4-flash"
+    assert resolved.original_model == "claude-2.1"
+    assert resolved.provider_id == "deepseek"
+    assert resolved.provider_model_ref == "deepseek/deepseek-v4-flash[1m]"
+
+
+def test_model_router_leaves_model_without_suffix_unchanged(settings):
+    resolved = ModelRouter(settings).resolve("anthropic/deepseek/deepseek-v4-flash")
+
+    assert resolved.provider_model == "deepseek-v4-flash"
+    assert resolved.original_model == "anthropic/deepseek/deepseek-v4-flash"
+    assert resolved.provider_id == "deepseek"
+
+
+def test_model_router_strips_suffix_for_token_count_request(settings):
+    request = TokenCountRequest(
+        model="anthropic/deepseek/deepseek-v4-flash[1m]",
+        messages=[Message(role="user", content="hello")],
+    )
+    routed = ModelRouter(settings).resolve_token_count_request(request)
+
+    assert routed.request.model == "deepseek-v4-flash"
+    assert routed.resolved.original_model == "anthropic/deepseek/deepseek-v4-flash[1m]"
+    assert request.model == "anthropic/deepseek/deepseek-v4-flash[1m]"

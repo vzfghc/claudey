@@ -157,7 +157,9 @@ _connected_account_ids = {
 
 _profiled_ids = set(OPENAI_CHAT_PROFILES)
 _special_ids = set(_SPECIAL_PROVIDER_FACTORIES)
-_construction_ids = _profiled_ids | _special_ids | _INJECTED_PROVIDER_IDS | _connected_account_ids
+_construction_ids = (
+    _profiled_ids | _special_ids | _INJECTED_PROVIDER_IDS | _connected_account_ids
+)
 if (
     _profiled_ids & _special_ids
     or _profiled_ids & _INJECTED_PROVIDER_IDS

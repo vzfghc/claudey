@@ -1,7 +1,6 @@
 """Implementations for installed Claudey commands."""
 
 import os
-import shutil
 import sys
 import threading
 import time
@@ -16,9 +15,6 @@ from claudey.cli.process_registry import kill_all_best_effort
 from claudey.config.env_migrations import (
     explicit_env_file_migration_warning,
     migrate_owned_env_files,
-)
-from claudey.config.paths import (
-    managed_env_path,
 )
 from claudey.config.server_urls import local_admin_url, local_proxy_root_url
 from claudey.config.settings import Settings, get_settings

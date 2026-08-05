@@ -13,7 +13,10 @@ from claudey.config.provider_catalog import (
 from claudey.config.reasoning import ReasoningPreference
 from claudey.config.settings import Settings
 from claudey.core.anthropic import MessagesRequest, TokenCountRequest
-from claudey.core.gateway_model_ids import decode_gateway_model_id
+from claudey.core.gateway_model_ids import (
+    decode_gateway_model_id,
+    strip_context_window_suffix,
+)
 from claudey.core.reasoning import ReasoningPolicy
 
 from .reasoning import resolve_reasoning_policy
@@ -76,7 +79,7 @@ class ModelRouter:
             return ResolvedModel(
                 original_model=claude_model_name,
                 provider_id=direct_provider_id,
-                provider_model=direct_provider_model,
+                provider_model=strip_context_window_suffix(direct_provider_model),
                 provider_model_ref=claude_model_name,
                 reasoning_preference=reasoning_preference,
             )
@@ -93,7 +96,7 @@ class ModelRouter:
         return ResolvedModel(
             original_model=claude_model_name,
             provider_id=provider_id,
-            provider_model=provider_model,
+            provider_model=strip_context_window_suffix(provider_model),
             provider_model_ref=provider_model_ref,
             reasoning_preference=reasoning_preference,
         )

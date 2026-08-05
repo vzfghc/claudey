@@ -6,9 +6,9 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from .env_files import explicit_env_path, repo_env_path
+from .paths import managed_env_path
 
 LEGACY_HUGGINGFACE_TOKEN_ENV = "HF_TOKEN"
-from .paths import managed_env_path
 
 HUGGINGFACE_API_KEY_ENV = "HUGGINGFACE_API_KEY"
 

@@ -108,6 +108,7 @@ PROVIDER_CATALOG: dict[str, ProviderDescriptor] = {
         display_name="Anthropic / Claude",
         auth_kind=ProviderAuthKind.CONNECTED_ACCOUNT,
         credential_attr="anthropic_auth_token",
+        default_base_url="https://api.anthropic.com",
         proxy_attr="anthropic_proxy",
     ),
     "azure_openai": ProviderDescriptor(

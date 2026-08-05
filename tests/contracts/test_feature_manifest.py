@@ -1,7 +1,10 @@
 import re
 from pathlib import Path
 
-from claudey.config.provider_catalog import PROVIDER_CATALOG
+from claudey.config.provider_catalog import (
+    PROVIDER_CATALOG,
+    ProviderAuthKind,
+)
 from claudey.messaging.platforms.factory import create_messaging_components
 from claudey.providers.base import BaseProvider
 from claudey.providers.cloudflare import CloudflareProvider
@@ -107,8 +110,15 @@ def test_provider_and_platform_registries_include_advertised_builtins() -> None:
         "vertex": VertexProvider,
     }
     assert set(OPENAI_CHAT_PROFILES).isdisjoint(specialized_provider_classes)
+    connected_account_ids = {
+        pid
+        for pid, descriptor in PROVIDER_CATALOG.items()
+        if descriptor.auth_kind == ProviderAuthKind.CONNECTED_ACCOUNT
+    }
     assert set(PROVIDER_CATALOG) == (
-        set(OPENAI_CHAT_PROFILES) | set(specialized_provider_classes)
+        set(OPENAI_CHAT_PROFILES)
+        | set(specialized_provider_classes)
+        | connected_account_ids
     )
     assert issubclass(OpenAIChatProvider, BaseProvider)
     for provider_class in specialized_provider_classes.values():

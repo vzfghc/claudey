@@ -461,6 +461,7 @@ def test_create_provider_instantiates_each_builtin():
     cases = {
         "nvidia_nim": NvidiaNimProvider,
         "openai": OpenAICodexProvider,
+        "anthropic": OpenAIChatProvider,
         "azure_openai": OpenAIChatProvider,
         "open_router": OpenRouterProvider,
         "mistral": MistralProvider,
@@ -498,7 +499,14 @@ def test_create_provider_instantiates_each_builtin():
             config,
             auth=auth,
             admission=admission,
-        )
+        ),
+        # Anthropic is a connected account constructed via injection; the
+        # profile only exercises construction, not transport behavior.
+        "anthropic": lambda config, _settings, admission: OpenAIChatProvider(
+            config,
+            profile=OPENAI_CHAT_PROFILES["ollama"],
+            admission=admission,
+        ),
     }
 
     with (

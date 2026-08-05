@@ -95,6 +95,48 @@ def test_models_list_uses_thinking_metadata_for_cached_models():
     assert "claude-3-claudey-no-thinking/open_router/plain-model" in ids
 
 
+def test_models_list_uses_cached_metadata_for_suffixed_configured_ref():
+    app = create_test_app(
+        _settings(
+            model="open_router/plain-model[1m]",
+            model_opus=None,
+            model_haiku=None,
+        )
+    )
+    provider_manager_for_app(app).cache_model_infos(
+        "open_router",
+        {ProviderModelInfo("plain-model", supports_thinking=False)},
+    )
+
+    response = TestClient(app).get("/v1/models")
+
+    ids = [item["id"] for item in response.json()["data"]]
+    assert "anthropic/open_router/plain-model[1m]" not in ids
+    assert ids[0] == "claude-3-claudey-no-thinking/open_router/plain-model[1m]"
+
+
+def test_models_list_advertises_suffixed_configured_ref_verbatim():
+    app = create_test_app(
+        _settings(
+            model="open_router/plain-model[1m]",
+            model_opus=None,
+            model_haiku=None,
+        )
+    )
+    provider_manager_for_app(app).cache_model_infos(
+        "open_router",
+        {ProviderModelInfo("plain-model", supports_thinking=True)},
+    )
+
+    response = TestClient(app).get("/v1/models")
+
+    ids = [item["id"] for item in response.json()["data"]]
+    assert ids[:2] == [
+        "anthropic/open_router/plain-model[1m]",
+        "claude-3-claudey-no-thinking/open_router/plain-model[1m]",
+    ]
+
+
 def test_models_list_uses_cached_metadata_for_configured_refs():
     app = create_test_app(
         _settings(

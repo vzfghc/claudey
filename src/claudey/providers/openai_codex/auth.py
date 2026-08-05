@@ -619,7 +619,7 @@ def _is_transient_refresh_error(error: httpx.HTTPError) -> bool:
 
 def _login_failure_message(exc: Exception) -> str:
     """Return a user-safe message describing why an interactive login failed."""
-    from .login import OpenAILoginError  # noqa: PLC0415
+    from .login import OpenAILoginError
 
     if isinstance(exc, OpenAILoginError):
         return f"OpenAI sign-in failed: {exc}"
@@ -631,8 +631,5 @@ def _login_failure_message(exc: Exception) -> str:
     if isinstance(exc, httpx.TimeoutException):
         return "OpenAI sign-in timed out while contacting OpenAI."
     if isinstance(exc, httpx.TransportError):
-        return (
-            f"OpenAI sign-in could not reach OpenAI"
-            f" ({type(exc).__name__})."
-        )
+        return f"OpenAI sign-in could not reach OpenAI ({type(exc).__name__})."
     return "OpenAI sign-in failed. Retry or use the device-code option."

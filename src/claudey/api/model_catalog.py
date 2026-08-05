@@ -10,6 +10,7 @@ from claudey.config.settings import Settings
 from claudey.core.gateway_model_ids import (
     gateway_model_id,
     no_thinking_gateway_model_id,
+    strip_context_window_suffix,
 )
 
 DISCOVERED_MODEL_CREATED_AT = "1970-01-01T00:00:00Z"
@@ -86,7 +87,7 @@ def build_models_list_response(
 
     for ref in configured_chat_model_refs(settings):
         supports_thinking = runtime.cached_model_supports_thinking(
-            ref.provider_id, ref.model_id
+            ref.provider_id, strip_context_window_suffix(ref.model_id)
         )
         _append_provider_model_variants(
             models,

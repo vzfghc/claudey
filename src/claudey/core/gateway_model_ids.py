@@ -1,5 +1,6 @@
 """Gateway-safe model ID encoding shared by API and CLI adapters."""
 
+import re
 from dataclasses import dataclass
 
 GATEWAY_MODEL_ID_PREFIX = "anthropic"
@@ -8,6 +9,8 @@ GATEWAY_MODEL_ID_PREFIX = "anthropic"
 # supporting thinking. This intentionally uses that client-side capability
 # heuristic while keeping the real provider/model ref reversible for routing.
 NO_THINKING_GATEWAY_MODEL_ID_PREFIX = "claude-3-claudey-no-thinking"
+
+_CONTEXT_WINDOW_SUFFIX_RE = re.compile(r"\[(\d+)(m|k)\]$")
 
 
 @dataclass(frozen=True, slots=True)
@@ -49,3 +52,8 @@ def decode_gateway_model_id(model_name: str) -> DecodedGatewayModelId | None:
         provider_model=provider_model,
         force_reasoning_off=force_reasoning_off,
     )
+
+
+def strip_context_window_suffix(model_name: str) -> str:
+    """Remove one trailing context-window suffix (e.g. ``[1m]``) from a model name."""
+    return _CONTEXT_WINDOW_SUFFIX_RE.sub("", model_name, count=1)

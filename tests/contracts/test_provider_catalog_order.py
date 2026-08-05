@@ -8,6 +8,7 @@ from claudey.config.provider_catalog import (
 _EXPECTED_PROVIDER_ORDER: tuple[str, ...] = (
     "nvidia_nim",
     "openai",
+    "anthropic",
     "azure_openai",
     "open_router",
     "gemini",

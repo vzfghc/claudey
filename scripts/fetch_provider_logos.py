@@ -30,6 +30,7 @@ ICONS_ROOT = PROJECT_ROOT / "node_modules" / "@lobehub" / "icons" / "es"
 PROVIDER_LOBEHUB_BRAND: dict[str, str | None] = {
     "nvidia_nim": "Nvidia",
     "openai": "OpenAI",
+    "anthropic": "Anthropic",
     "azure_openai": "AzureAI",
     "open_router": "OpenRouter",
     "gemini": "Gemini",

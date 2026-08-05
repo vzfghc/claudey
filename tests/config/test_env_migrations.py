@@ -7,8 +7,6 @@ from claudey.config.env_files import (
     explicit_env_path,
 )
 from claudey.config.env_migrations import (
-    ENV_MIGRATIONS,
-    HANS_SMOKE_TARGETS,
     HUGGINGFACE_API_KEY_ENV,
     HUGGINGFACE_TOKEN_MIGRATION,
     LEGACY_HUGGINGFACE_TOKEN_ENV,
@@ -18,9 +16,6 @@ from claudey.config.env_migrations import (
     migrate_env_key_in_file,
     migrate_env_key_in_text,
     migrate_owned_env_files,
-)
-from claudey.config.env_migrations import (
-    HANS_ENV_FILE as MIGRATED_HANS_ENV_FILE,
 )
 
 

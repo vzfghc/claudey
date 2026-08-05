@@ -25,7 +25,6 @@ def managed_env_path() -> Path:
     return config_dir_path() / HANS_ENV_FILENAME
 
 
-
 def messaging_state_dir_path() -> Path:
     """Return the managed messaging state directory."""
 
