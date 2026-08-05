@@ -39,6 +39,19 @@ const VIEW_GROUPS = [
 const ONBOARDING_DISMISS_KEY = "claudey.onboarding.dismissed";
 const ONBOARDING_COMMAND = "hans-claude";
 
+const WELCOME_GREETINGS = [
+  "What are we building today, Hans?",
+  "Ready to ship something great?",
+  "Good to see you. Let’s code.",
+  "Your AI command center awaits.",
+  "What will you create today?",
+  "Back for more? Let’s go.",
+  "Engineering mode: on.",
+  "The server is yours.",
+];
+
+const SIDEBAR_STATE_KEY = "claudey.sidebar.collapsed";
+
 const LOCAL_FIELD_KEYS = {
   lmstudio: "LM_STUDIO_BASE_URL",
   llamacpp: "LLAMACPP_BASE_URL",
@@ -889,12 +902,6 @@ function renderField(field, options = {}) {
     input.addEventListener("input", updateHint);
     updateHint();
     wrapper.appendChild(hint);
-  }
-  if (field.description) {
-    const description = document.createElement("div");
-    description.className = "field-description";
-    description.textContent = field.description;
-    wrapper.appendChild(description);
   }
   return wrapper;
 }

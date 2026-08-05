@@ -375,13 +375,29 @@ textarea:focus-visible,
   margin-bottom: 20px;
 }
 
-.strip-header h3,
+.strip-header h3 {
+  font-family: var(--font-rounded);
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--text-strong);
+  margin: 0;
+}
+
 .section-heading h3 {
   font-family: var(--font-rounded);
   font-size: 18px;
   font-weight: 600;
   color: var(--text-strong);
   margin: 0;
+}
+
+.strip-header p {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.4;
+  margin: 6px 0 0 0;
+  opacity: 0.75;
 }
 
 .section-heading p {
@@ -401,14 +417,12 @@ textarea:focus-visible,
 .provider-card {
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  gap: 16px;
-  min-height: 140px;
+  gap: 6px;
   border: 1px solid var(--line);
   border-radius: var(--radius-md);
-  padding: 16px;
+  padding: 14px;
   background: var(--card);
-  transition: all var(--transition-normal);
+  transition: border-color var(--transition-fast);
 }
 
 .provider-card:hover {
@@ -422,7 +436,6 @@ textarea:focus-visible,
 .provider-title {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 12px;
   min-width: 0;
 }
@@ -878,13 +891,6 @@ textarea:focus-visible,
   cursor: not-allowed;
 }
 
-.field-description {
-  color: var(--muted);
-  font-size: 12px;
-  line-height: 1.4;
-  margin-top: 2px;
-}
-
 /* Show/Hide Advanced fields */
 .field.advanced-field {
   display: none;
@@ -907,6 +913,7 @@ textarea:focus-visible,
   bottom: 0;
   left: 260px;
   z-index: 100;
+  transition: left var(--transition-normal);
   display: grid;
   grid-template-columns: minmax(0, 1.2fr) minmax(200px, 1fr) auto;
   gap: 20px;
