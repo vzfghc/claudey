@@ -246,6 +246,7 @@ textarea {
 .nav-label {
   overflow: hidden;
   white-space: nowrap;
+  font-weight: 400;
 }
 
 .sidebar-footer {
@@ -1671,6 +1672,8 @@ textarea:focus-visible,
   animation: rise-in 0.35s ease backwards;
 }
 
+.primary-button:not(:disabled):active,
+.secondary-button:not(:disabled):active,
 .test-button:not(:disabled):active {
   transform: scale(0.98);
 }

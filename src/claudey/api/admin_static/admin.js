@@ -1699,8 +1699,9 @@ const mobileQuery = window.matchMedia("(max-width: 900px)");
 function applySidebarCollapsed(collapsed) {
   document.body.classList.toggle("sidebar-collapsed", collapsed);
   sidebarToggle.setAttribute("aria-expanded", String(!collapsed));
-  sidebarToggle.setAttribute("aria-label", collapsed ? "Expand sidebar" : "Collapse sidebar");
-  sidebarToggle.title = collapsed ? "Expand sidebar" : "Collapse sidebar";
+  const pinLabel = collapsed ? "Pin sidebar open" : "Unpin sidebar";
+  sidebarToggle.setAttribute("aria-label", pinLabel);
+  sidebarToggle.title = pinLabel;
   sectionNav.inert = collapsed && mobileQuery.matches;
   localStorage.setItem(SIDEBAR_STATE_KEY, collapsed ? "collapsed" : "expanded");
 }

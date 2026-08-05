@@ -1,11 +1,13 @@
 /* ============================================
    admin-animations.js — firecrawl-style motion layer
    ES module loaded after admin.js. Owns only decorative
-   motion: the JS-tweened sidebar collapse, the sliding nav
-   pills, toast swipe-to-dismiss, and the logo marquee.
-   State, aria-expanded/aria-label, inert, and localStorage
-   stay owned by admin.js; this module never touches them.
-   All loops are gated behind prefers-reduced-motion.
+   motion: the JS-tweened sidebar collapse (hover-peek
+   expansion plus click pin/unpin), the sliding nav pills,
+   and toast swipe-to-dismiss. Persistent state, inert, and
+   localStorage stay owned by admin.js; this module only
+   mirrors the visually expanded state into aria-expanded
+   while the cursor hovers the sidebar. All loops are gated
+   behind prefers-reduced-motion.
    ============================================ */
 
 /* 0. Guards & constants */
@@ -24,41 +26,6 @@ const SIDEBAR_W = {
 const LABEL_FADE_END = 120; // px of sidebar width where labels reach opacity 0
 const NAV_ITEM_HEIGHT = 40; // px per nav item
 const NAV_PITCH = NAV_ITEM_HEIGHT + 6; // 40px item + 6px grid gap
-const MARQUEE_SPEED = 32; // px per second
-const MARQUEE_LOGO_SLUGS = [
-  "anthropic",
-  "azure_openai",
-  "bedrock",
-  "cerebras",
-  "cloudflare",
-  "cohere",
-  "deepseek",
-  "fireworks",
-  "gemini",
-  "github_models",
-  "groq",
-  "huggingface",
-  "kilo",
-  "kimi",
-  "kimi_code",
-  "llamacpp",
-  "lmstudio",
-  "minimax",
-  "mistral",
-  "mistral_codestral",
-  "nvidia_nim",
-  "ollama",
-  "ollama_cloud",
-  "open_router",
-  "openai",
-  "opencode",
-  "opencode_go",
-  "sambanova",
-  "vercel",
-  "vertex",
-  "wafer",
-  "zai",
-];
 const SWIPE_DISMISS_AT = 70; // px of horizontal drag that dismisses a toast
 const SWIPE_FADE_OVER = 220; // px of drag that fully fades a toast
 const SWIPE_CLICK_AT = 10; // px of drag that suppresses click-to-dismiss
@@ -70,6 +37,7 @@ const byId = (id) => document.getElementById(id);
 /* 1. Sidebar — JS-tweened width (per-frame inline styles,
       not a CSS transition) with an easeOutQuint curve. */
 let sidebarTweenId = null;
+let sidebarTweenTarget = null; // direction the running tween heads (null = idle)
 
 /**
  * Ease-out quintic: snappy start, gentle settle.
@@ -116,10 +84,16 @@ function snapSidebar(collapsed) {
 
 /** Tween the sidebar width/padding frame by frame. */
 function tweenSidebar(targetCollapsed) {
+  // Already heading toward this state — don't restart (hover
+  // enter/leave and pin clicks can otherwise fight each other).
+  if (sidebarTweenTarget === targetCollapsed && sidebarTweenId !== null) {
+    return;
+  }
   if (sidebarTweenId !== null) {
     cancelAnimationFrame(sidebarTweenId);
     sidebarTweenId = null;
   }
+  sidebarTweenTarget = targetCollapsed;
   const sidebar = document.querySelector(".sidebar");
   if (!sidebar) return;
   const duration = targetCollapsed ? SIDEBAR_W.collapseMs : SIDEBAR_W.expandMs;
@@ -145,6 +119,7 @@ function tweenSidebar(targetCollapsed) {
       sidebarTweenId = requestAnimationFrame(frame);
     } else {
       sidebarTweenId = null;
+      sidebarTweenTarget = null;
       if (targetCollapsed) {
         document.body.classList.add("sidebar-rail");
       } else {
@@ -177,6 +152,44 @@ function onSidebarToggleClick() {
   tweenSidebar(next);
 }
 window.__sidebarTweenToggle = onSidebarToggleClick;
+
+/* 1b. Sidebar hover-peek — the collapsed rail expands on
+      cursor enter and collapses on leave, both with the tween.
+      Transient and purely visual: body.sidebar-collapsed,
+      localStorage, and inert stay owned by admin.js (the
+      toggle click is the pin/unpin override). aria-expanded
+      mirrors the visually expanded state while peeking. */
+const sidebarEl = document.querySelector(".sidebar");
+const sidebarToggleEl = byId("sidebarToggle");
+
+function isSidebarCollapsed() {
+  return document.body.classList.contains("sidebar-collapsed");
+}
+
+/** Expand/collapse for a peek; instant snap when motion is
+    reduced, tween otherwise. */
+function peekSidebar(expanded) {
+  if (sidebarToggleEl) {
+    sidebarToggleEl.setAttribute("aria-expanded", String(expanded));
+  }
+  if (REDUCED_MOTION || !DESKTOP.matches) {
+    snapSidebar(!expanded);
+    return;
+  }
+  tweenSidebar(!expanded);
+}
+
+if (sidebarEl) {
+  sidebarEl.addEventListener("mouseenter", () => {
+    if (!DESKTOP.matches || !isSidebarCollapsed()) return;
+    peekSidebar(true);
+  });
+  sidebarEl.addEventListener("mouseleave", () => {
+    if (!DESKTOP.matches || !isSidebarCollapsed()) return;
+    // Pinned (class removed) → hover-out must not collapse.
+    peekSidebar(false);
+  });
+}
 
 /* 2. Section nav — one shared active pill + one shared hover
       pill, both absolute and sliding between items. */
@@ -349,109 +362,40 @@ if (toastContainer) {
   window.addEventListener("pointercancel", () => cancelToastDrag());
 }
 
-/* 4. Logo marquee — two mirrored tracks scrolling at 32px/s. */
-let marqueeRafId = null;
-let marqueePaused = false;
-
-/** Fill a track with two passes of every logo. */
-function buildTrack(track) {
-  for (let pass = 0; pass < 2; pass += 1) {
-    for (const slug of MARQUEE_LOGO_SLUGS) {
-      const img = document.createElement("img");
-      img.src = `/admin/assets/logos/${slug}.svg`;
-      img.alt = "";
-      img.width = 32;
-      img.height = 32;
-      img.loading = "lazy";
-      img.addEventListener("error", () => {
-        img.style.display = "none";
-      });
-      track.appendChild(img);
-    }
-  }
+/* 4. Media-query changes — keep tweens and pills consistent,
+      and clear any active hover-peek so aria-expanded matches
+      the persistent state again. */
+function restoreSidebarAria() {
+  if (!sidebarToggleEl) return;
+  const collapsed = document.body.classList.contains("sidebar-collapsed");
+  sidebarToggleEl.setAttribute("aria-expanded", String(!collapsed));
 }
 
-function startMarquee() {
-  if (REDUCED_MOTION || marqueeRafId !== null) return;
-  const trackA = document.querySelector(".marquee-track-a");
-  const trackB = document.querySelector(".marquee-track-b");
-  if (!trackA || !trackB) return;
-  requestAnimationFrame(() => {
-    const half = Math.max(trackA.scrollWidth, trackB.scrollWidth) / 2;
-    if (!(half > 0)) return;
-    let xA = 0; // track A: 0 -> -half (leftward)
-    let xB = -half; // track B: -half -> 0 (mirrored)
-    let last = performance.now();
-    const frame = (now) => {
-      if (!marqueePaused) {
-        const dt = Math.min((now - last) / 1000, 0.05);
-        const step = dt * MARQUEE_SPEED;
-        xA -= step;
-        if (xA <= -half) xA += half;
-        xB += step;
-        if (xB >= 0) xB -= half;
-        trackA.style.transform = `translateX(${xA}px)`;
-        trackB.style.transform = `translateX(${xB}px)`;
-      }
-      last = now;
-      marqueeRafId = requestAnimationFrame(frame);
-    };
-    marqueeRafId = requestAnimationFrame(frame);
-  });
-}
-
-function stopMarquee() {
-  if (marqueeRafId !== null) {
-    cancelAnimationFrame(marqueeRafId);
-    marqueeRafId = null;
-  }
-}
-
-const marquee = document.querySelector(".marquee");
-if (marquee) {
-  marquee.addEventListener("mouseenter", () => {
-    marqueePaused = true;
-  });
-  marquee.addEventListener("mouseleave", () => {
-    marqueePaused = false;
-  });
-}
-
-const marqueeTrackA = document.querySelector(".marquee-track-a");
-const marqueeTrackB = document.querySelector(".marquee-track-b");
-if (marqueeTrackA && marqueeTrackB) {
-  buildTrack(marqueeTrackA);
-  buildTrack(marqueeTrackB);
-  if (!REDUCED_MOTION) startMarquee();
-}
-
-/* 5. Media-query changes — keep tweens and pills consistent. */
-motionQuery.addEventListener("change", (event) => {
+function cancelSidebarTween() {
   if (sidebarTweenId !== null) {
     cancelAnimationFrame(sidebarTweenId);
     sidebarTweenId = null;
   }
+  sidebarTweenTarget = null;
+}
+
+motionQuery.addEventListener("change", () => {
+  cancelSidebarTween();
   if (DESKTOP.matches) {
     snapSidebar(document.body.classList.contains("sidebar-collapsed"));
-  }
-  if (event.matches) {
-    stopMarquee();
-  } else {
-    startMarquee();
+    restoreSidebarAria();
   }
 });
 
 DESKTOP.addEventListener("change", () => {
-  if (sidebarTweenId !== null) {
-    cancelAnimationFrame(sidebarTweenId);
-    sidebarTweenId = null;
-  }
+  cancelSidebarTween();
   const collapsed = document.body.classList.contains("sidebar-collapsed");
   snapSidebar(DESKTOP.matches && collapsed);
+  restoreSidebarAria();
   syncPills();
 });
 
-/* 6. Init — align with the state admin.js restored, then build
+/* 5. Init — align with the state admin.js restored, then build
       pills for whatever the nav already contains. */
 if (DESKTOP.matches && document.body.classList.contains("sidebar-collapsed")) {
   snapSidebar(true);

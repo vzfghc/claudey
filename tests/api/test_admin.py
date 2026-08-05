@@ -1322,11 +1322,11 @@ def test_admin_static_html_loads_animation_assets_in_order():
     # The ES module loads after admin.js and is declared as a module.
     assert html.index("admin-animations.js") > html.index("admin.js")
     assert 'type="module"' in html
-    # The marquee is the first child of the providers view.
+    # The provider flow diagram is the first child of the providers view.
     providers = html.index('id="view-providers"')
-    marquee = html.index('class="provider-marquee"')
+    flow = html.index('class="provider-flow"')
     onboarding = html.index('id="onboardingCard"')
-    assert providers < marquee < onboarding
+    assert providers < flow < onboarding
 
 
 def test_admin_static_sidebar_tween_contract():
@@ -1376,6 +1376,40 @@ def test_admin_static_sidebar_click_delegates_to_tween():
     assert "sectionNav.inert" in script
 
 
+def test_admin_static_sidebar_hover_peek():
+    module = Path("src/claudey/api/admin_static/admin-animations.js").read_text(
+        encoding="utf-8"
+    )
+
+    # Hover drives the peek: expand on enter, collapse on leave.
+    assert 'sidebarEl.addEventListener("mouseenter"' in module
+    assert 'sidebarEl.addEventListener("mouseleave"' in module
+    assert "peekSidebar(true)" in module
+    assert "peekSidebar(false)" in module
+    # Desktop-only and only while the sidebar is unpinned (collapsed).
+    assert "if (!DESKTOP.matches || !isSidebarCollapsed()) return;" in module
+    # The peek is purely visual: tween or snap, never the pin state.
+    assert "snapSidebar(!expanded)" in module
+    assert "tweenSidebar(!expanded)" in module
+    assert "Pinned (class removed)" in module
+    # admin.js owns applySidebarCollapsed/localStorage; the hover-peek
+    # section calls neither (the peek is purely visual).
+    peek_section = module[
+        module.index("1b. Sidebar hover-peek") : module.index("/* 2. Section nav")
+    ]
+    assert "applySidebarCollapsed(" not in peek_section
+    assert "localStorage.setItem" not in peek_section
+    # Mid-tween reversals stay supported; a same-target tween is not
+    # restarted so hover and clicks cannot fight each other.
+    assert "sidebarTweenTarget" in module
+    assert "sidebarTweenTarget === targetCollapsed && sidebarTweenId !== null" in module
+    assert "sidebarTweenTarget = null" in module
+    assert "parseFloat(sidebar.style.width)" in module
+    # Reduced motion and viewport changes cancel the peek and reset aria.
+    assert "restoreSidebarAria" in module
+    assert "cancelSidebarTween" in module
+
+
 def test_admin_static_nav_uses_shared_sliding_pills_on_desktop():
     module = Path("src/claudey/api/admin_static/admin-animations.js").read_text(
         encoding="utf-8"
@@ -1408,37 +1442,45 @@ def test_admin_static_nav_uses_shared_sliding_pills_on_desktop():
     assert styles.index(".nav-link.active", mobile) > mobile
 
 
-def test_admin_static_buttons_lift_and_press():
+def test_admin_static_buttons_flat_heat_only_on_configure():
     animations = Path("src/claudey/api/admin_static/admin-animations.css").read_text(
         encoding="utf-8"
     )
     styles = Path("src/claudey/api/admin_static/admin.css").read_text(encoding="utf-8")
 
-    # Primary base: inner glow + ambient + contact shadows.
-    assert "inset 0 -6px 12px rgba(224, 77, 10, 0.25)" in animations
-    assert "0 2px 4px rgba(250, 93, 25, 0.12)" in animations
-    # Hover lift adds a larger drop plus a 1px ring.
-    assert "0 4px 8px rgba(250, 93, 25, 0.16)" in animations
-    assert "0 0 0 1px rgba(250, 93, 25, 0.12)" in animations
-    # Press contracts the glow and sinks the button.
-    assert "inset 0 -3px 6px rgba(224, 77, 10, 0.3)" in animations
-    assert "scale(0.995)" in animations
-    assert "transition-duration: 0.2s, 0.2s, 0.2s, 0.05s, 0.05s" in animations
-    # Sheen overlay: white-to-transparent gradient, 0.06/0.08/0.
+    # The lift-and-press treatment is gone: no layered rgba shadows,
+    # no sheen overlay, no 0.995 press, no per-button box-shadows.
+    assert "inset 0 -6px 12px rgba(" not in animations
+    assert "scale(0.995)" not in animations
+    assert "linear-gradient(180deg, rgba(255, 255, 255, 0.9)" not in animations
+    assert "primary-button::before" not in animations
+    assert "secondary-button::before" not in animations
+    assert "box-shadow: inset" not in styles
+    # The 0.98 grouped press is restored for all three buttons.
     assert (
-        "linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0))"
-    ) in animations
-    assert "opacity: 0.06" in animations
-    assert "opacity: 0.08" in animations
-    # Disabled: no elevation, no sheen.
-    assert (
-        ".primary-button:disabled,\n.secondary-button:disabled {\n  box-shadow: none;"
-    ) in animations
-    # The 0.98 grouped press now applies to the test button only.
-    assert (
+        ".primary-button:not(:disabled):active,\n"
+        ".secondary-button:not(:disabled):active,\n"
         ".test-button:not(:disabled):active {\n  transform: scale(0.98);\n}" in styles
     )
-    assert ".secondary-button:not(:disabled):active,\n.test-button" not in styles
+    # The lone test-button rule is gone; the press lives in the
+    # grouped rule only (there .test-button is preceded by a comma).
+    assert (
+        "}\n\n.test-button:not(:disabled):active {\n  transform: scale(0.98);\n}"
+        not in styles
+    )
+    # Configure turns heat on hover with the exact layered stack.
+    assert ".card-configure:hover:not(:disabled) {" in animations
+    assert "background: #ff4c00;" in animations
+    assert (
+        "box-shadow: inset 0 -6px 12px #f003, 0 2px 4px #ff4d001f, 0 1px 1px #ff4d001f,"
+    ) in animations
+    assert "0 0.5px 0.5px #ff4d0029, 0 0.25px 0.25px #ff4d0033;" in animations
+    assert "transition: background-color 0.2s ease" in animations
+    # The base heat hover stays in admin.css (surgical edit boundary).
+    assert ".card-configure:hover:not(:disabled) {" in styles
+    assert styles.index(".card-configure:hover:not(:disabled) {") > styles.index(
+        ".ghost-button:hover:not(:disabled) {"
+    )
 
 
 def test_admin_static_toasts_sonner_style_with_swipe():
@@ -1484,7 +1526,7 @@ def test_admin_static_toasts_sonner_style_with_swipe():
     assert 'if (kind !== "loading") {' in script
 
 
-def test_admin_static_logo_marquee_matches_logos_dir():
+def test_admin_static_flow_diagram_replaces_logo_marquee():
     module = Path("src/claudey/api/admin_static/admin-animations.js").read_text(
         encoding="utf-8"
     )
@@ -1493,45 +1535,64 @@ def test_admin_static_logo_marquee_matches_logos_dir():
     slugs = sorted(path.stem for path in logos_dir.glob("*.svg"))
     assert len(slugs) == 32
 
-    # The module embeds the slug list and builds one src per slug.
-    start = module.index("MARQUEE_LOGO_SLUGS = [")
-    end = module.index("];", start)
-    body = module[start:end]
-    embedded = [
-        line.strip().strip(",").strip('"')
-        for line in body.splitlines()
-        if line.strip().startswith('"')
-    ]
-    assert set(embedded) == set(slugs)
-    assert len(embedded) == len(slugs)
-    assert "img.src = `/admin/assets/logos/${slug}.svg`;" in module
-    # The markup hosts the two mirrored tracks behind aria-hidden.
-    assert 'class="marquee-track marquee-track-a"' in html
-    assert 'class="marquee-track marquee-track-b"' in html
-    assert 'class="marquee-caption"' in html
+    # The marquee markup, CSS, and JS are all gone; logos stay untouched.
+    assert "provider-marquee" not in html
+    assert "marquee-track" not in html
+    assert "marquee-caption" not in html
+    assert "MARQUEE_LOGO_SLUGS" not in module
+    assert "startMarquee" not in module
+    assert "stopMarquee" not in module
+    # The flow diagram hosts three node cards joined by two connectors.
+    assert 'class="provider-flow"' in html
+    assert html.count('class="flow-card"') == 3
+    assert html.count('class="flow-connector"') == 2
+    assert html.count('class="flow-arc"') == 3
+    assert html.count('stroke="#FA5D19"') == 7
+    # Diagram is decorative; the caption is the only accessible text.
     assert 'aria-hidden="true"' in html
-    # The edge fade is a mask gradient, not an overlay image.
+    assert "Data flows through your Claudey server to your providers" in html
+    # Node cards: 96px surface, corner dots, grid cross, inset border.
     animations_css = Path(
         "src/claudey/api/admin_static/admin-animations.css"
     ).read_text(encoding="utf-8")
+    assert ".flow-card {\n" in animations_css
+    assert "border-radius: 16px" in animations_css
+    assert ".flow-card::before" in animations_css
     assert (
-        "mask-image: linear-gradient(90deg, transparent, #000 8%, "
-        "#000 92%, transparent)"
+        "box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02), 0 8px 24px rgba(0, 0, 0, 0.03);"
+        in animations_css
+    )
+    assert "width: 96px;\n  height: 96px;" in animations_css
+    assert (
+        "radial-gradient(circle, var(--line-strong) 1.4px, transparent 1.5px)"
     ) in animations_css
+    assert ".flow-grid-cross" in animations_css
+    # Connectors: spinning rings plus an arrow between cards.
+    assert ".flow-rings" in animations_css
+    assert ".flow-arrow" in animations_css
+    assert "animation: flow-spin 1s linear infinite" in animations_css
+    assert "animation: flow-spin 0.9s linear infinite reverse" in animations_css
+    assert "@media (max-width: 600px)" in animations_css
 
 
 def test_admin_static_reduced_motion_gates_all_loops():
     module = Path("src/claudey/api/admin_static/admin-animations.js").read_text(
         encoding="utf-8"
     )
+    animations = Path("src/claudey/api/admin_static/admin-animations.css").read_text(
+        encoding="utf-8"
+    )
     styles = Path("src/claudey/api/admin_static/admin.css").read_text(encoding="utf-8")
 
-    # JS never starts the tween or marquee loops under reduced motion.
+    # The JS marquee is gone; the tween paths never run under reduced motion.
     assert 'window.matchMedia("(prefers-reduced-motion: reduce)")' in module
     assert "REDUCED_MOTION" in module
     assert "if (REDUCED_MOTION || !DESKTOP.matches) {" in module
-    assert "if (!REDUCED_MOTION) startMarquee();" in module
-    assert "stopMarquee" in module
+    assert "startMarquee" not in module
+    assert "stopMarquee" not in module
+    # CSS loops (arcs, rings) run only when motion is allowed.
+    assert "@media (prefers-reduced-motion: no-preference)" in animations
+    assert "flow-spin" in animations
     # The CSS baseline zeroes every animation/transition duration.
     assert "@media (prefers-reduced-motion: reduce)" in styles
     assert "animation-duration: 0.01ms !important" in styles
@@ -1548,7 +1609,7 @@ def test_admin_static_preserves_accessibility_attributes():
 
     assert 'aria-expanded="true"' in html
     assert 'aria-controls="sectionNav"' in html
-    assert 'aria-label="Collapse sidebar"' in html
+    assert 'aria-label="Unpin sidebar"' in html
     assert 'aria-label="Admin views"' in html
     assert 'aria-label="Notifications"' in html
     assert 'role="status"' in html
@@ -1556,8 +1617,10 @@ def test_admin_static_preserves_accessibility_attributes():
     assert 'aria-hidden="true"' in html
     # Pills are decorative and invisible to assistive tech.
     assert 'setAttribute("aria-hidden", "true")' in module
-    # The module never takes over the toggle's aria state.
-    assert 'setAttribute("aria-expanded"' not in module
+    # The module mirrors the visually expanded state into
+    # aria-expanded during hover-peek only (admin.js owns the rest).
+    assert 'sidebarToggleEl.setAttribute("aria-expanded", String(expanded))' in module
+    assert "restoreSidebarAria" in module
     # Focus-visible outlines and live regions stay untouched.
     assert "focus-visible" in styles
     assert 'sidebarToggle.setAttribute("aria-expanded"' in script
