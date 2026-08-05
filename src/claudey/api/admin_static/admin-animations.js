@@ -73,11 +73,15 @@ function snapSidebar(collapsed) {
     setLabelOpacity("0");
     document.body.classList.add("sidebar-rail");
   } else {
-    sidebar.style.width = "";
-    sidebar.style.paddingLeft = "";
-    sidebar.style.paddingRight = "";
-    document.documentElement.style.removeProperty("--sidebar-w");
-    setLabelOpacity("");
+    // Keep the final inline width. A hover-peek leaves
+    // body.sidebar-collapsed in place (the peek is transient),
+    // and that class's CSS width would snap the sidebar back to
+    // 64px if the inline width were cleared here.
+    sidebar.style.width = `${SIDEBAR_W.expanded}px`;
+    sidebar.style.paddingLeft = `${SIDEBAR_W.padExpanded}px`;
+    sidebar.style.paddingRight = `${SIDEBAR_W.padExpanded}px`;
+    document.documentElement.style.setProperty("--sidebar-w", `${SIDEBAR_W.expanded}px`);
+    setLabelOpacity("1");
     document.body.classList.remove("sidebar-rail");
   }
 }
@@ -123,11 +127,15 @@ function tweenSidebar(targetCollapsed) {
       if (targetCollapsed) {
         document.body.classList.add("sidebar-rail");
       } else {
-        sidebar.style.width = "";
-        sidebar.style.paddingLeft = "";
-        sidebar.style.paddingRight = "";
-        document.documentElement.style.removeProperty("--sidebar-w");
-        setLabelOpacity("");
+        // Keep the final inline width. A hover-peek leaves
+        // body.sidebar-collapsed in place (the peek is transient),
+        // and that class's CSS width would snap the sidebar back to
+        // 64px if the inline width were cleared here.
+        sidebar.style.width = `${SIDEBAR_W.expanded}px`;
+        sidebar.style.paddingLeft = `${SIDEBAR_W.padExpanded}px`;
+        sidebar.style.paddingRight = `${SIDEBAR_W.padExpanded}px`;
+        document.documentElement.style.setProperty("--sidebar-w", `${SIDEBAR_W.expanded}px`);
+        setLabelOpacity("1");
       }
     }
   };

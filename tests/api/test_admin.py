@@ -1408,6 +1408,12 @@ def test_admin_static_sidebar_hover_peek():
     # Reduced motion and viewport changes cancel the peek and reset aria.
     assert "restoreSidebarAria" in module
     assert "cancelSidebarTween" in module
+    # Regression: an expand tween/snap must keep the final inline
+    # width — the transient peek leaves body.sidebar-collapsed in
+    # place, and its CSS width would snap the sidebar back to 64px
+    # if the inline width were cleared at tween completion.
+    assert "would snap the sidebar back to" in module
+    assert module.count("sidebar.style.width = `${SIDEBAR_W.expanded}px`") >= 2
 
 
 def test_admin_static_nav_uses_shared_sliding_pills_on_desktop():
