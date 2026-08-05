@@ -104,8 +104,8 @@ def test_dispatcher_doctor_prints_diagnostic_report(monkeypatch, capsys) -> None
     out = capsys.readouterr().out
     assert "Claudey v5.2.0" in out
     assert "  Module path:" in out
-    assert "Config dir:  ~/.fcc" in out
-    assert "Env file:    ~/.fcc/.env" in out
+    assert "Config dir:  ~/.claudey" in out
+    assert "Env file:    ~/.claudey/.env" in out
     assert "Admin URL:   http://127.0.0.1:8082/admin" in out
     assert "Server port: 8082" in out
     assert "Providers with keys: nvidia_nim" in out

@@ -123,7 +123,7 @@ def posix_uninstall_harness(tmp_path: Path) -> PosixUninstallHarness:
     home = tmp_path / "home"
     bin_dir = home / ".local" / "bin"
     tool_bin = tmp_path / "tool-bin"
-    hans_home = home / ".fcc"
+    hans_home = home / ".claudey"
     log = tmp_path / "calls.log"
     for path in (bin_dir, tool_bin, hans_home):
         path.mkdir(parents=True)
@@ -180,7 +180,7 @@ exit 43
         bin_dir / "rm",
         """#!/bin/sh
 echo "rm:$*" >> "$CALL_LOG"
-if [ "$FAIL_STEP" = "purge" ] && [ "$*" = "-rf $HOME/.fcc" ]; then
+if [ "$FAIL_STEP" = "purge" ] && [ "$*" = "-rf $HOME/.claudey" ]; then
     echo "simulated purge failure" >&2
     exit 44
 fi
@@ -474,7 +474,7 @@ def powershell_uninstall_harness(
     home = tmp_path / "home"
     bin_dir = home / ".local" / "bin"
     tool_bin = tmp_path / "tool-bin"
-    hans_home = home / ".fcc"
+    hans_home = home / ".claudey"
     app_data = tmp_path / "app-data"
     log = tmp_path / "calls.log"
     for path in (bin_dir, tool_bin, hans_home, app_data):
@@ -523,7 +523,7 @@ function Remove-Item {
     Add-Content -LiteralPath $env:CALL_LOG -Value "remove:$LiteralPath"
     if (
         $env:FAIL_STEP -eq "purge" -and
-        $LiteralPath -eq (Join-Path $env:USERPROFILE ".fcc")
+        $LiteralPath -eq (Join-Path $env:USERPROFILE ".claudey")
     ) {
         throw "simulated purge failure"
     }

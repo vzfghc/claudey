@@ -2,10 +2,8 @@
 
 from pathlib import Path
 
-HANS_CONFIG_DIRNAME = ".fcc"
+HANS_CONFIG_DIRNAME = ".claudey"
 HANS_ENV_FILENAME = ".env"
-LEGACY_REPO_DIRNAME = "free-claude-code"
-LEGACY_XDG_CONFIG_DIRNAME = ".config"
 MESSAGING_STATE_DIRNAME = "agent_workspace"
 HANS_LOGS_DIRNAME = "logs"
 SERVER_LOG_FILENAME = "server.log"
@@ -26,15 +24,6 @@ def managed_env_path() -> Path:
 
     return config_dir_path() / HANS_ENV_FILENAME
 
-
-def legacy_env_paths() -> tuple[Path, ...]:
-    """Return legacy user env paths that can be migrated to ~/.fcc/.env."""
-
-    home = Path.home()
-    return (
-        home / LEGACY_REPO_DIRNAME / HANS_ENV_FILENAME,
-        home / LEGACY_XDG_CONFIG_DIRNAME / LEGACY_REPO_DIRNAME / HANS_ENV_FILENAME,
-    )
 
 
 def messaging_state_dir_path() -> Path:

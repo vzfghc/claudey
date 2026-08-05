@@ -2,7 +2,7 @@
 set -eu
 
 PACKAGE_NAME="claudey"
-HANS_HOME_DIRNAME=".fcc"
+HANS_HOME_DIRNAME=".claudey"
 HANS_MACOS_BUNDLE_ID="io.github.vzfghc.claudey"
 HANS_MACOS_OWNER_FILE=".claudey-owner"
 # Include retired entry points so older installations are fully stopped and removed.
@@ -17,7 +17,7 @@ show_usage() {
     cat <<'USAGE'
 Usage: uninstall.sh [options]
 
-Removes the Claudey uv tool and deletes ~/.fcc/ after removal is verified.
+Removes the Claudey uv tool and deletes ~/.claudey/ after removal is verified.
 Also removes the legacy fcc-* deprecation shims installed by --legacy-fcc.
 Does not remove uv, Claude Code, Codex, Pi, the uv-managed Python runtime, or shared PATH entries.
 
@@ -149,7 +149,7 @@ initialize_uv_context() {
     fi
 
     if ! command -v uv >/dev/null 2>&1; then
-        fail "uv is required to remove the Claudey tool. Install uv, then rerun this uninstaller; ~/.fcc was not deleted."
+        fail "uv is required to remove the Claudey tool. Install uv, then rerun this uninstaller; ~/.claudey was not deleted."
     fi
 
     print_command uv tool dir --bin
@@ -157,9 +157,9 @@ initialize_uv_context() {
         :
     else
         status=$?
-        fail "Could not determine the uv tool bin directory (exit code $status); ~/.fcc was not deleted."
+        fail "Could not determine the uv tool bin directory (exit code $status); ~/.claudey was not deleted."
     fi
-    [ -n "$uv_tool_bin" ] || fail "uv returned an empty tool bin directory; ~/.fcc was not deleted."
+    [ -n "$uv_tool_bin" ] || fail "uv returned an empty tool bin directory; ~/.claudey was not deleted."
 }
 
 uninstall_claudey() {
@@ -184,7 +184,7 @@ uninstall_claudey() {
     if [ -n "$output" ]; then
         printf '%s\n' "$output" >&2
     fi
-    fail "uv tool uninstall $PACKAGE_NAME failed with exit code $status; ~/.fcc was not deleted."
+    fail "uv tool uninstall $PACKAGE_NAME failed with exit code $status; ~/.claudey was not deleted."
 }
 
 verify_hans_commands_removed() {
@@ -201,7 +201,7 @@ verify_hans_commands_removed() {
         fi
     done
     if [ -n "$remaining" ]; then
-        fail "Claudey entry points remain after uv uninstall:${remaining}; ~/.fcc was not deleted."
+        fail "Claudey entry points remain after uv uninstall:${remaining}; ~/.claudey was not deleted."
     fi
 }
 
@@ -311,7 +311,7 @@ remove_legacy_fcc_shims
 step "Removing the Claudey desktop launcher"
 remove_macos_desktop_app
 
-step "Purging Claudey config and data from ~/.fcc"
+step "Purging Claudey config and data from ~/.claudey"
 purge_hans_home
 
 if [ "$dry_run" -eq 1 ]; then

@@ -18,7 +18,6 @@ from claudey.config.env_migrations import (
     migrate_owned_env_files,
 )
 from claudey.config.paths import (
-    legacy_env_paths,
     managed_env_path,
 )
 from claudey.config.server_urls import local_admin_url, local_proxy_root_url
@@ -191,7 +190,6 @@ class ServerSupervisor:
 def load_server_settings() -> Settings:
     """Apply owned config migrations before returning the cached settings."""
 
-    _migrate_legacy_env_if_missing()
     _migrate_config_env_keys()
     return get_settings()
 
@@ -218,24 +216,6 @@ def schedule_open_admin_browser(settings: Settings) -> None:
         name="hans-open-admin-browser",
         daemon=True,
     ).start()
-
-
-def _migrate_legacy_env_if_missing() -> Path | None:
-    """Copy a legacy user env into the managed config path when absent."""
-
-    env_file = managed_env_path()
-    if env_file.exists():
-        return None
-
-    # TODO: Remove after the ~/.fcc/.env migration has had a release cycle.
-    for legacy_env in legacy_env_paths():
-        if not legacy_env.is_file():
-            continue
-        env_file.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copyfile(legacy_env, env_file)
-        return legacy_env
-
-    return None
 
 
 def _migrate_config_env_keys() -> tuple[Path, ...]:

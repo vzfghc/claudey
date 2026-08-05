@@ -4,7 +4,6 @@ import pytest
 
 from claudey.config.env_files import (
     HANS_ENV_FILE,
-    LEGACY_FCC_ENV_FILE,
     explicit_env_path,
 )
 from claudey.config.env_migrations import (
@@ -71,7 +70,7 @@ def test_migrate_owned_env_files_rewrites_repo_and_managed_env(
 ) -> None:
     repo = tmp_path / "repo"
     repo.mkdir()
-    managed = tmp_path / ".fcc" / ".env"
+    managed = tmp_path / ".claudey" / ".env"
     managed.parent.mkdir()
     (repo / ".env").write_text("HF_TOKEN=repo-token\n", encoding="utf-8")
     managed.write_text("HF_TOKEN=managed-token\n", encoding="utf-8")
@@ -149,37 +148,11 @@ def test_reasoning_migration_accepts_every_legacy_boolean_spelling(
     assert migrated == f"REASONING_POLICY={expected}\n"
 
 
-def test_fcc_env_file_migration_renames_to_hans_env_file() -> None:
-    text = "FCC_ENV_FILE=custom.env\nFCC_SMOKE_TARGETS=api,cli\n"
-
-    for migration in ENV_MIGRATIONS:
-        text, _ = migrate_env_key_in_text(text, migration)
-
-    assert text == "HANS_ENV_FILE=custom.env\nHANS_SMOKE_TARGETS=api,cli\n"
-
-
-def test_hans_and_legacy_env_file_spellings_resolve_identically(
-    monkeypatch, tmp_path: Path
-) -> None:
+def test_hans_env_file_resolves_correctly(monkeypatch, tmp_path: Path) -> None:
     explicit = tmp_path / "custom.env"
     explicit.touch()
 
-    assert HANS_ENV_FILE == MIGRATED_HANS_ENV_FILE
-    assert LEGACY_FCC_ENV_FILE == "FCC_ENV_FILE"
-
     monkeypatch.setenv(HANS_ENV_FILE, str(explicit))
-    canonical = explicit_env_path()
-    monkeypatch.delenv(HANS_ENV_FILE)
-    monkeypatch.setenv(LEGACY_FCC_ENV_FILE, str(explicit))
-    legacy = explicit_env_path()
+    result = explicit_env_path()
 
-    assert canonical == legacy == explicit
-
-
-def test_fcc_smoke_targets_migration_is_present_in_env_migrations() -> None:
-    assert HANS_SMOKE_TARGETS == "HANS_SMOKE_TARGETS"
-    assert any(
-        migration.old_key == "FCC_SMOKE_TARGETS"
-        and migration.new_key == HANS_SMOKE_TARGETS
-        for migration in ENV_MIGRATIONS
-    )
+    assert result == explicit

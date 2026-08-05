@@ -27,6 +27,15 @@ from .codex_catalog import CodexModelCatalogPublisher
 from .provider_manager import ProviderRuntimeManager
 
 
+def _merge_connected_ids(
+    *providers: tuple[str, ...],
+) -> tuple[str, ...]:
+    merged: list[str] = []
+    for ids in providers:
+        merged.extend(ids)
+    return tuple(merged)
+
+
 def build_asgi_app(
     settings: Settings,
     restart_callback: RestartCallback | None = None,
@@ -38,7 +47,10 @@ def build_asgi_app(
         level=settings.log_level,
         verbose_third_party=settings.log_raw_api_payloads,
     )
+    from claudey.providers.anthropic.auth import AnthropicAuthManager
+
     openai_auth = OpenAIAuthManager(proxy=settings.openai_proxy)
+    anthropic_auth = AnthropicAuthManager()
     openai_factory = partial(_create_openai_provider, auth=openai_auth)
     provider_constructor = partial(
         create_provider,
@@ -51,14 +63,20 @@ def build_asgi_app(
     provider_manager = ProviderRuntimeManager(
         settings,
         runtime_factory=runtime_factory,
-        connected_provider_ids=openai_auth.connected_provider_ids,
+        connected_provider_ids=_merge_connected_ids(
+            openai_auth.connected_provider_ids,
+            anthropic_auth.connected_provider_ids,
+        ),
         model_catalog_publisher=CodexModelCatalogPublisher(),
     )
     runtime = ApplicationRuntime(
         provider_manager,
         transcriber=_create_transcriber(settings),
         restart_callback=restart_callback,
-        connected_accounts={"openai": openai_auth},
+        connected_accounts={
+            "openai": openai_auth,
+            "anthropic": anthropic_auth,
+        },
     )
     services = ApiServices(
         requests=provider_manager,

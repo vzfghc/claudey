@@ -938,7 +938,7 @@ def test_install_ps1_gui_icon_export_completes_before_returning(
     installed_desktop_command = Path(sys.executable).with_name("hans-desktop.exe")
     desktop_command = tmp_path / "icon-exporter.exe"
     shutil.copy2(installed_desktop_command, desktop_command)
-    destination = tmp_path / "profile with spaces" / ".fcc" / "app-icon.ico"
+    destination = tmp_path / "profile with spaces" / ".claudey" / "app-icon.ico"
     env = os.environ | {
         "HANS_TEST_DESKTOP_COMMAND": str(desktop_command),
         "HANS_TEST_ICON_PATH": str(destination),
@@ -1328,7 +1328,7 @@ def test_install_ps1_fresh_install_is_verified(
     ]
     home = Path(powershell_harness.env["USERPROFILE"])
     app_data = Path(powershell_harness.env["APPDATA"])
-    icon = home / ".fcc" / "app-icon.ico"
+    icon = home / ".claudey" / "app-icon.ico"
     assert icon.read_text(encoding="utf-8").strip() == "fake icon"
     assert calls[-1] == f'hans-desktop:--export-icon "{icon}"'
     desktop_shortcut = home / "Desktop" / "Claudey.lnk"

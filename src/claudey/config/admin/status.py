@@ -18,13 +18,14 @@ def provider_config_status(
     statuses: list[dict[str, Any]] = []
     for provider_id, descriptor in PROVIDER_CATALOG.items():
         if descriptor.auth_kind is ProviderAuthKind.CONNECTED_ACCOUNT:
+            configured = _connected_account_configured(provider_id, descriptor, state)
             statuses.append(
                 {
                     "provider_id": provider_id,
                     "display_name": descriptor.display_name,
                     "kind": "connected_account",
-                    "status": "disconnected",
-                    "label": "Not connected",
+                    "status": "configured" if configured else "disconnected",
+                    "label": "Configured" if configured else "Not connected",
                 }
             )
             continue
@@ -78,6 +79,18 @@ def provider_config_status(
             }
         )
     return statuses
+
+
+def _connected_account_configured(
+    provider_id: str,
+    descriptor: Any,
+    state: Mapping[str, Mapping[str, Any]],
+) -> bool:
+    """Check whether a connected account has its credential set in config."""
+    if descriptor.credential_attr is None:
+        return False
+    value = _value_for_settings_attr(state, descriptor.credential_attr)
+    return bool(value.strip())
 
 
 def _value_for_settings_attr(

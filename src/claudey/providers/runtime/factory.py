@@ -6,7 +6,7 @@ from claudey.application.errors import (
     ApplicationUnavailableError,
     UnknownProviderError,
 )
-from claudey.config.provider_catalog import PROVIDER_CATALOG
+from claudey.config.provider_catalog import PROVIDER_CATALOG, ProviderAuthKind
 from claudey.config.settings import Settings
 from claudey.providers.admission import ProviderAdmissionController
 from claudey.providers.base import BaseProvider, ProviderConfig
@@ -149,9 +149,15 @@ _SPECIAL_PROVIDER_FACTORIES: dict[str, ProviderFactory] = {
 }
 _INJECTED_PROVIDER_IDS = {"openai"}
 
+_connected_account_ids = {
+    pid
+    for pid, desc in PROVIDER_CATALOG.items()
+    if desc.auth_kind == ProviderAuthKind.CONNECTED_ACCOUNT
+}
+
 _profiled_ids = set(OPENAI_CHAT_PROFILES)
 _special_ids = set(_SPECIAL_PROVIDER_FACTORIES)
-_construction_ids = _profiled_ids | _special_ids | _INJECTED_PROVIDER_IDS
+_construction_ids = _profiled_ids | _special_ids | _INJECTED_PROVIDER_IDS | _connected_account_ids
 if (
     _profiled_ids & _special_ids
     or _profiled_ids & _INJECTED_PROVIDER_IDS

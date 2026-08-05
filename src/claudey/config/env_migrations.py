@@ -5,14 +5,15 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 
-from .env_files import LEGACY_FCC_ENV_FILE, explicit_env_path, repo_env_path
-from .paths import managed_env_path
+from .env_files import explicit_env_path, repo_env_path
 
 LEGACY_HUGGINGFACE_TOKEN_ENV = "HF_TOKEN"
+from .paths import managed_env_path
+
 HUGGINGFACE_API_KEY_ENV = "HUGGINGFACE_API_KEY"
 
 # Claudey rebrand key renames: owned dotenv files are migrated to the HANS_*
-# canonical names; the FCC_* spellings remain readable as a fallback.
+# canonical env var names.
 HANS_ENV_FILE = "HANS_ENV_FILE"
 HANS_SMOKE_TARGETS = "HANS_SMOKE_TARGETS"
 
@@ -60,8 +61,6 @@ REASONING_MIGRATIONS = (
 
 ENV_MIGRATIONS = (
     HUGGINGFACE_TOKEN_MIGRATION,
-    EnvKeyMigration(old_key=LEGACY_FCC_ENV_FILE, new_key=HANS_ENV_FILE),
-    EnvKeyMigration(old_key="FCC_SMOKE_TARGETS", new_key=HANS_SMOKE_TARGETS),
     *REASONING_MIGRATIONS,
 )
 

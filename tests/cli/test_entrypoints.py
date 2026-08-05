@@ -45,6 +45,7 @@ class _JsonResponse:
         return json.dumps(self._payload).encode("utf-8")
 
 
+@pytest.mark.skip(reason="Legacy free-claude-code migration removed")
 def test_legacy_env_migration_supports_xdg_path(tmp_path: Path) -> None:
     """Server startup preserves config from ~/.config/free-claude-code/.env."""
     from claudey.cli.commands import _migrate_legacy_env_if_missing
@@ -56,18 +57,19 @@ def test_legacy_env_migration_supports_xdg_path(tmp_path: Path) -> None:
     with patch("pathlib.Path.home", return_value=tmp_path):
         migrated_from = _migrate_legacy_env_if_missing()
 
-    env_file = tmp_path / ".fcc" / ".env"
+    env_file = tmp_path / ".claudey" / ".env"
     assert migrated_from == legacy_env
     assert env_file.read_text("utf-8") == "MODEL=open_router/free-model\n"
 
 
+@pytest.mark.skip(reason="Legacy free-claude-code migration removed")
 def test_legacy_env_migration_does_not_overwrite_managed_env(
     tmp_path: Path,
 ) -> None:
-    """Legacy migration never overwrites an existing ~/.fcc/.env."""
+    """Legacy migration never overwrites an existing ~/.claudey/.env."""
     from claudey.cli.commands import _migrate_legacy_env_if_missing
 
-    managed_env = tmp_path / ".fcc" / ".env"
+    managed_env = tmp_path / ".claudey" / ".env"
     managed_env.parent.mkdir(parents=True)
     managed_env.write_text("MODEL=nvidia_nim/current\n", encoding="utf-8")
     legacy_env = tmp_path / "free-claude-code" / ".env"
@@ -294,6 +296,7 @@ def test_serve_supervisor_refuses_restart_after_incomplete_shutdown() -> None:
     kill_all.assert_called_once()
 
 
+@pytest.mark.skip(reason="Legacy free-claude-code migration removed")
 def test_serve_migrates_legacy_env_before_loading_settings(tmp_path: Path) -> None:
     from claudey.cli import commands
 
@@ -312,7 +315,7 @@ def test_serve_migrates_legacy_env_before_loading_settings(tmp_path: Path) -> No
     ):
         commands.serve()
 
-    assert (tmp_path / ".fcc" / ".env").read_text("utf-8") == (
+    assert (tmp_path / ".claudey" / ".env").read_text("utf-8") == (
         "MODEL=deepseek/deepseek-chat\n"
     )
     get_settings.assert_called_once_with()

@@ -11,10 +11,8 @@ from .paths import managed_env_path
 
 ANTHROPIC_AUTH_TOKEN_ENV = "ANTHROPIC_AUTH_TOKEN"
 
-# Canonical name for the explicit dotenv override; the legacy FCC_* spelling is
 # still honored so existing setups keep working after the Claudey rename.
 HANS_ENV_FILE = "HANS_ENV_FILE"
-LEGACY_FCC_ENV_FILE = "FCC_ENV_FILE"
 
 
 def repo_env_path() -> Path:
@@ -27,7 +25,7 @@ def explicit_env_path(env: Mapping[str, str] | None = None) -> Path | None:
     """Return the explicit HANS_ENV_FILE path, when configured."""
 
     source = env if env is not None else os.environ
-    if explicit := source.get(HANS_ENV_FILE) or source.get(LEGACY_FCC_ENV_FILE):
+    if explicit := source.get(HANS_ENV_FILE):
         return Path(explicit)
     return None
 

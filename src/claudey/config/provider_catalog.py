@@ -103,6 +103,13 @@ PROVIDER_CATALOG: dict[str, ProviderDescriptor] = {
         default_base_url=OPENAI_CODEX_DEFAULT_BASE,
         proxy_attr="openai_proxy",
     ),
+    "anthropic": ProviderDescriptor(
+        provider_id="anthropic",
+        display_name="Anthropic / Claude",
+        auth_kind=ProviderAuthKind.CONNECTED_ACCOUNT,
+        credential_attr="anthropic_auth_token",
+        proxy_attr="anthropic_proxy",
+    ),
     "azure_openai": ProviderDescriptor(
         provider_id="azure_openai",
         display_name="Azure OpenAI",

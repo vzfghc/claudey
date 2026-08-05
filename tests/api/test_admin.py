@@ -600,7 +600,7 @@ def test_admin_model_refresh_reports_partial_provider_failures():
 def test_admin_config_preserves_managed_env_source_contract(monkeypatch, tmp_path):
     _set_home(monkeypatch, tmp_path)
     _clear_process_config(monkeypatch)
-    env_file = tmp_path / ".fcc" / ".env"
+    env_file = tmp_path / ".claudey" / ".env"
     env_file.parent.mkdir(parents=True)
     env_file.write_text("MODEL=open_router/managed-model\n", encoding="utf-8")
     app = create_test_app()
@@ -634,7 +634,7 @@ def test_admin_apply_persists_open_browser_for_next_launch(monkeypatch, tmp_path
         "admin_url": None,
         "fields": [],
     }
-    managed_env = tmp_path / ".fcc" / ".env"
+    managed_env = tmp_path / ".claudey" / ".env"
     assert "HANS_OPEN_BROWSER=false" in managed_env.read_text(encoding="utf-8")
 
 
@@ -654,7 +654,7 @@ def test_admin_apply_masks_telegram_proxy_credentials(monkeypatch, tmp_path):
     assert body["applied"] is True
     assert "TELEGRAM_PROXY_URL=********" in body["env_preview"]
     assert proxy_url not in body["env_preview"]
-    env_file = tmp_path / ".fcc" / ".env"
+    env_file = tmp_path / ".claudey" / ".env"
     text = env_file.read_text(encoding="utf-8")
     assert f"TELEGRAM_PROXY_URL={proxy_url}" in text
 
@@ -696,7 +696,7 @@ def test_admin_apply_writes_complete_managed_env_and_masks_preview(
     body = response.json()
     assert body["applied"] is True
     assert "OPENROUTER_API_KEY=********" in body["env_preview"]
-    env_file = tmp_path / ".fcc" / ".env"
+    env_file = tmp_path / ".claudey" / ".env"
     text = env_file.read_text("utf-8")
     assert "MODEL=open_router/test-model" in text
     assert "OPENROUTER_API_KEY=router-secret" in text
@@ -728,7 +728,7 @@ def test_admin_apply_writes_fireworks_key_and_masks_preview(monkeypatch, tmp_pat
     body = response.json()
     assert body["applied"] is True
     assert "FIREWORKS_API_KEY=********" in body["env_preview"]
-    env_file = tmp_path / ".fcc" / ".env"
+    env_file = tmp_path / ".claudey" / ".env"
     text = env_file.read_text(encoding="utf-8")
     assert "MODEL=fireworks/test-model" in text
     assert "FIREWORKS_API_KEY=fw-secret" in text
@@ -753,7 +753,7 @@ def test_admin_apply_writes_gemini_key_and_masks_preview(monkeypatch, tmp_path):
     body = response.json()
     assert body["applied"] is True
     assert "GEMINI_API_KEY=********" in body["env_preview"]
-    env_file = tmp_path / ".fcc" / ".env"
+    env_file = tmp_path / ".claudey" / ".env"
     text = env_file.read_text(encoding="utf-8")
     assert "MODEL=gemini/models/gemini-3.1-flash-lite" in text
     assert "GEMINI_API_KEY=gm-secret" in text
@@ -778,7 +778,7 @@ def test_admin_apply_writes_groq_key_and_masks_preview(monkeypatch, tmp_path):
     body = response.json()
     assert body["applied"] is True
     assert "GROQ_API_KEY=********" in body["env_preview"]
-    env_file = tmp_path / ".fcc" / ".env"
+    env_file = tmp_path / ".claudey" / ".env"
     text = env_file.read_text(encoding="utf-8")
     assert "MODEL=groq/llama-3.3-70b-versatile" in text
     assert "GROQ_API_KEY=gq-secret" in text
@@ -803,7 +803,7 @@ def test_admin_apply_writes_sambanova_key_and_masks_preview(monkeypatch, tmp_pat
     body = response.json()
     assert body["applied"] is True
     assert "SAMBANOVA_API_KEY=********" in body["env_preview"]
-    env_file = tmp_path / ".fcc" / ".env"
+    env_file = tmp_path / ".claudey" / ".env"
     text = env_file.read_text(encoding="utf-8")
     assert "MODEL=sambanova/Meta-Llama-3.3-70B-Instruct" in text
     assert "SAMBANOVA_API_KEY=sn-secret" in text
@@ -828,7 +828,7 @@ def test_admin_apply_writes_cerebras_key_and_masks_preview(monkeypatch, tmp_path
     body = response.json()
     assert body["applied"] is True
     assert "CEREBRAS_API_KEY=********" in body["env_preview"]
-    env_file = tmp_path / ".fcc" / ".env"
+    env_file = tmp_path / ".claudey" / ".env"
     text = env_file.read_text(encoding="utf-8")
     assert "MODEL=cerebras/llama3.1-8b" in text
     assert "CEREBRAS_API_KEY=cb-secret" in text
@@ -854,7 +854,7 @@ def test_admin_apply_writes_bedrock_region_config_and_masks_key(monkeypatch, tmp
     body = response.json()
     assert body["applied"] is True
     assert "AWS_BEARER_TOKEN_BEDROCK=********" in body["env_preview"]
-    env_file = tmp_path / ".fcc" / ".env"
+    env_file = tmp_path / ".claudey" / ".env"
     text = env_file.read_text(encoding="utf-8")
     assert "MODEL=bedrock/openai.gpt-oss-120b" in text
     assert "AWS_BEARER_TOKEN_BEDROCK=bedrock-secret" in text
@@ -882,7 +882,7 @@ def test_admin_apply_writes_cloudflare_fields_and_masks_preview(monkeypatch, tmp
     assert body["applied"] is True
     assert "CLOUDFLARE_API_TOKEN=********" in body["env_preview"]
     assert "CLOUDFLARE_ACCOUNT_ID=cf-account" in body["env_preview"]
-    env_file = tmp_path / ".fcc" / ".env"
+    env_file = tmp_path / ".claudey" / ".env"
     text = env_file.read_text(encoding="utf-8")
     assert "MODEL=cloudflare/@cf/moonshotai/kimi-k2.6" in text
     assert "CLOUDFLARE_API_TOKEN=cf-secret" in text
@@ -909,7 +909,7 @@ def test_admin_apply_writes_huggingface_key_and_masks_preview(monkeypatch, tmp_p
     assert body["applied"] is True
     assert body["pending_fields"] == []
     assert "HUGGINGFACE_API_KEY=********" in body["env_preview"]
-    env_file = tmp_path / ".fcc" / ".env"
+    env_file = tmp_path / ".claudey" / ".env"
     text = env_file.read_text(encoding="utf-8")
     assert "MODEL=huggingface/openai/gpt-oss-120b:fastest" in text
     assert "HUGGINGFACE_API_KEY=hf-secret" in text
@@ -930,7 +930,7 @@ def test_admin_key_change_requires_restart_for_active_voice_backend(
 ):
     _set_home(monkeypatch, tmp_path)
     _clear_process_config(monkeypatch)
-    env_file = tmp_path / ".fcc" / ".env"
+    env_file = tmp_path / ".claudey" / ".env"
     env_file.parent.mkdir(parents=True)
     env_file.write_text(
         "\n".join(
@@ -984,7 +984,7 @@ def test_admin_constructor_captured_setting_requires_restart(
 ):
     _set_home(monkeypatch, tmp_path)
     _clear_process_config(monkeypatch)
-    env_file = tmp_path / ".fcc" / ".env"
+    env_file = tmp_path / ".claudey" / ".env"
     env_file.parent.mkdir(parents=True)
     env_file.write_text(f"{key}={initial}\n", encoding="utf-8")
     app = create_test_app()
@@ -1025,7 +1025,7 @@ def test_admin_apply_writes_cohere_key_and_masks_preview(monkeypatch, tmp_path):
     body = response.json()
     assert body["applied"] is True
     assert "COHERE_API_KEY=********" in body["env_preview"]
-    env_file = tmp_path / ".fcc" / ".env"
+    env_file = tmp_path / ".claudey" / ".env"
     text = env_file.read_text(encoding="utf-8")
     assert "MODEL=cohere/command-a-plus-05-2026" in text
     assert "COHERE_API_KEY=cohere-secret" in text
@@ -1052,7 +1052,7 @@ def test_admin_apply_writes_github_models_token_and_masks_preview(
     body = response.json()
     assert body["applied"] is True
     assert "GITHUB_MODELS_TOKEN=********" in body["env_preview"]
-    env_file = tmp_path / ".fcc" / ".env"
+    env_file = tmp_path / ".claudey" / ".env"
     text = env_file.read_text(encoding="utf-8")
     assert "MODEL=github_models/openai/gpt-4.1" in text
     assert "GITHUB_MODELS_TOKEN=github-secret" in text
@@ -1063,7 +1063,7 @@ def test_admin_apply_preserves_hidden_diagnostics_and_smoke_values(
 ):
     _set_home(monkeypatch, tmp_path)
     _clear_process_config(monkeypatch)
-    env_file = tmp_path / ".fcc" / ".env"
+    env_file = tmp_path / ".claudey" / ".env"
     env_file.parent.mkdir(parents=True)
     env_file.write_text(
         "\n".join(
@@ -1095,7 +1095,7 @@ def test_admin_apply_preserves_hidden_diagnostics_and_smoke_values(
 def test_admin_apply_omits_stale_zai_base_url(monkeypatch, tmp_path):
     _set_home(monkeypatch, tmp_path)
     _clear_process_config(monkeypatch)
-    env_file = tmp_path / ".fcc" / ".env"
+    env_file = tmp_path / ".claudey" / ".env"
     env_file.parent.mkdir(parents=True)
     env_file.write_text(
         "\n".join(
@@ -1126,7 +1126,7 @@ def test_admin_apply_omits_stale_zai_base_url(monkeypatch, tmp_path):
 def test_admin_apply_omits_stale_fixed_claude_runtime_settings(monkeypatch, tmp_path):
     _set_home(monkeypatch, tmp_path)
     _clear_process_config(monkeypatch)
-    env_file = tmp_path / ".fcc" / ".env"
+    env_file = tmp_path / ".claudey" / ".env"
     env_file.parent.mkdir(parents=True)
     env_file.write_text(
         "\n".join(
@@ -1222,7 +1222,7 @@ def test_admin_process_env_values_are_locked_and_not_written(monkeypatch, tmp_pa
     )
 
     assert response.status_code == 200
-    env_file = tmp_path / ".fcc" / ".env"
+    env_file = tmp_path / ".claudey" / ".env"
     assert "deepseek/managed-model" not in env_file.read_text("utf-8")
 
 
@@ -1247,7 +1247,7 @@ def test_admin_first_apply_migrates_repo_env(monkeypatch, tmp_path):
     )
 
     assert response.status_code == 200
-    managed_text = (tmp_path / ".fcc" / ".env").read_text("utf-8")
+    managed_text = (tmp_path / ".claudey" / ".env").read_text("utf-8")
     assert "MODEL=deepseek/deepseek-chat" in managed_text
     assert "DEEPSEEK_API_KEY=deepseek-secret" in managed_text
 
