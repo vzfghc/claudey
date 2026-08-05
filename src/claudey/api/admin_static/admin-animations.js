@@ -61,10 +61,30 @@ function setLabelOpacity(opacity) {
   });
 }
 
+/** Clear the per-frame layout inline styles (nav gap/padding-left,
+    label widths, brand gap/text width). Label opacity and the
+    sidebar's own width/padding are managed separately. */
+function clearSidebarLayout() {
+  document.querySelectorAll(".nav-link").forEach((link) => {
+    link.style.gap = "";
+    link.style.paddingLeft = "";
+  });
+  document.querySelectorAll(".nav-label").forEach((label) => {
+    label.style.width = "";
+  });
+  const brand = document.querySelector(".brand");
+  if (brand) {
+    brand.style.gap = "";
+    const text = brand.querySelector(".brand-text");
+    if (text) text.style.width = "";
+  }
+}
+
 /** Jump straight to a collapsed/expanded state (no tween). */
 function snapSidebar(collapsed) {
   const sidebar = document.querySelector(".sidebar");
   if (!sidebar) return;
+  clearSidebarLayout();
   if (collapsed) {
     sidebar.style.width = `${SIDEBAR_W.collapsed}px`;
     sidebar.style.paddingLeft = `${SIDEBAR_W.padCollapsed}px`;
@@ -105,6 +125,25 @@ function tweenSidebar(targetCollapsed) {
   const startPad = parseFloat(sidebar.style.paddingLeft) || SIDEBAR_W.padExpanded;
   const endW = targetCollapsed ? SIDEBAR_W.collapsed : SIDEBAR_W.expanded;
   const endPad = targetCollapsed ? SIDEBAR_W.padCollapsed : SIDEBAR_W.padExpanded;
+  // Capture the layout so the icons glide to center as the rail
+  // closes — instead of snapping when body.sidebar-rail lands with
+  // justify-content: center. scrollWidth reads the natural label
+  // width even while the rail has collapsed it to 0.
+  const navLinks = Array.from(document.querySelectorAll(".nav-link")).map((link) => {
+    const label = link.querySelector(".nav-label");
+    return {
+      link,
+      label,
+      labelW: label ? label.scrollWidth : 0,
+      startGap: targetCollapsed ? 10 : 0,
+      endGap: targetCollapsed ? 0 : 10,
+      startPadLeft: targetCollapsed ? 14 : 10,
+      endPadLeft: targetCollapsed ? 10 : 14,
+    };
+  });
+  const brand = document.querySelector(".brand");
+  const brandText = brand ? brand.querySelector(".brand-text") : null;
+  const brandTextW = brandText ? brandText.scrollWidth : 0;
   const startedAt = performance.now();
   if (!targetCollapsed) {
     document.body.classList.remove("sidebar-rail");
@@ -119,11 +158,25 @@ function tweenSidebar(targetCollapsed) {
     sidebar.style.paddingRight = `${pad}px`;
     document.documentElement.style.setProperty("--sidebar-w", `${width}px`);
     setLabelOpacity(String(labelOpacityFor(width)));
+    navLinks.forEach(({ link, label, labelW, startGap, endGap, startPadLeft, endPadLeft }) => {
+      link.style.gap = `${startGap + (endGap - startGap) * eased}px`;
+      link.style.paddingLeft = `${startPadLeft + (endPadLeft - startPadLeft) * eased}px`;
+      if (label) {
+        label.style.width = `${targetCollapsed ? labelW * (1 - eased) : labelW * eased}px`;
+      }
+    });
+    if (brand) {
+      brand.style.gap = `${targetCollapsed ? 12 * (1 - eased) : 12 * eased}px`;
+      if (brandText) {
+        brandText.style.width = `${targetCollapsed ? brandTextW * (1 - eased) : brandTextW * eased}px`;
+      }
+    }
     if (progress < 1) {
       sidebarTweenId = requestAnimationFrame(frame);
     } else {
       sidebarTweenId = null;
       sidebarTweenTarget = null;
+      clearSidebarLayout();
       if (targetCollapsed) {
         document.body.classList.add("sidebar-rail");
       } else {

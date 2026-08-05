@@ -260,7 +260,7 @@ wheels = [
 
 [[package]]
 name = "claudey"
-version = "5.10.1"
+version = "5.10.2"
 source = { editable = "." }
 dependencies = [
     { name = "aiohttp" },

@@ -41,13 +41,14 @@
   }
 
   .nav-pill-active {
-    background: var(--accent-muted);
-    border-radius: 999px;
+    background: #f7eae5;
+    border-radius: 10px;
     box-shadow: var(--shadow-sm);
   }
 
   .nav-pill-hover {
     background: rgba(28, 25, 23, 0.04);
+    border-radius: 12px;
     opacity: 0;
   }
 
@@ -75,7 +76,7 @@
   .nav-link.active {
     background: transparent;
     border-color: transparent;
-    color: var(--accent);
+    color: #ec5b29;
   }
 
   .nav-link::before {
@@ -86,6 +87,13 @@
      labels; nothing else may interpolate them. */
   .nav-label {
     transition: none;
+  }
+
+  /* The sidebar tween also shrinks the brand text inline; clip it
+     so it collapses cleanly instead of wrapping. */
+  .brand-text {
+    overflow: hidden;
+    white-space: nowrap;
   }
 
   /* After the fade finishes, take the labels out of the

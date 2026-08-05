@@ -1635,9 +1635,11 @@ textarea:focus-visible,
     display: none;
   }
   body.sidebar-rail .nav-link {
-    justify-content: center;
     gap: 0;
-    padding: 10px 0;
+    /* Icon centered in the 64px rail: sidebar padding 12px + 1px
+       border + 10px here. The tween glides padding-left 14px->10px,
+       so justify-content is left alone (not animatable anyway). */
+    padding: 10px 0 10px 10px;
   }
   body.sidebar-rail .nav-label {
     width: 0;
