@@ -64,8 +64,8 @@ def build_asgi_app(
         settings,
         runtime_factory=runtime_factory,
         connected_provider_ids=_merge_connected_ids(
-            openai_auth.connected_provider_ids,
-            anthropic_auth.connected_provider_ids,
+            openai_auth.connected_provider_ids(),
+            anthropic_auth.connected_provider_ids(),
         ),
         model_catalog_publisher=CodexModelCatalogPublisher(),
     )
