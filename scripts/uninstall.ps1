@@ -20,6 +20,14 @@ $HansCommands = @(
     "hans-init",
     "claudey"
 )
+# Legacy fcc-* deprecation shims installed via install.ps1 -LegacyFcc.
+$LegacyFccCommands = @(
+    "fcc-server",
+    "fcc-claude",
+    "fcc-codex",
+    "fcc-pi",
+    "fcc-desktop"
+)
 $script:UvPath = ""
 $script:UvToolBin = ""
 
@@ -28,6 +36,7 @@ function Show-Usage {
 Usage: uninstall.ps1 [options]
 
 Removes the Claudey uv tool and deletes ~/.fcc/ after removal is verified.
+Also removes the legacy fcc-* deprecation shims installed by -LegacyFcc.
 Does not remove uv, Claude Code, Codex, Pi, the uv-managed Python runtime, or shared PATH entries.
 
 Options:
@@ -211,6 +220,31 @@ function Confirm-HansCommandsRemoved {
     }
 }
 
+function Remove-LegacyFccShims {
+    if ($DryRun) {
+        Write-Host "+ remove legacy fcc-* deprecation shims from the uv tool bin directory"
+        return
+    }
+    if ([string]::IsNullOrWhiteSpace($script:UvToolBin)) {
+        return
+    }
+
+    foreach ($name in $LegacyFccCommands) {
+        $shimPath = Join-Path $script:UvToolBin "$name.cmd"
+        if (-not (Test-Path -LiteralPath $shimPath -PathType Leaf)) {
+            continue
+        }
+        $content = Get-Content -LiteralPath $shimPath -Raw -ErrorAction SilentlyContinue
+        if ($null -ne $content -and $content.Contains("is deprecated: use hans-")) {
+            Write-Host "+ Remove-Item -LiteralPath $(Format-Argument $shimPath) -Force"
+            Remove-Item -LiteralPath $shimPath -Force
+        }
+        else {
+            Write-Host "A file not managed by Claudey exists at $shimPath; leaving it unchanged."
+        }
+    }
+}
+
 function Test-EquivalentPath {
     param(
         [string] $Left,
@@ -320,6 +354,9 @@ Uninstall-FreeClaudeCode
 
 Write-Step "Verifying Claudey entry points were removed"
 Confirm-HansCommandsRemoved
+
+Write-Step "Removing legacy fcc-* deprecation shims"
+Remove-LegacyFccShims
 
 Write-Step "Removing Claudey desktop shortcuts"
 Remove-HansDesktopShortcuts

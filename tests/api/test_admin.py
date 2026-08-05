@@ -303,7 +303,7 @@ def test_admin_provider_cards_support_non_key_configuration():
     script = Path("src/claudey/api/admin_static/admin.js").read_text(encoding="utf-8")
 
     assert '"missing_config"' in script
-    assert ": provider.configuration;" in script
+    assert "provider.configuration.split" in script  # used by primary field resolver
 
 
 def test_admin_page_no_longer_renders_generated_env_panel(monkeypatch, tmp_path):
@@ -341,6 +341,38 @@ def test_admin_static_renders_server_status_pill():
     assert "Running on :" in script
     assert "updateHeader" not in script
     assert "modelBadge" not in script
+
+
+def test_admin_static_guards_unsaved_changes_on_close():
+    script = Path("src/claudey/api/admin_static/admin.js").read_text(encoding="utf-8")
+
+    assert 'window.addEventListener("beforeunload",' in script
+    assert "event.returnValue" in script
+    assert "suppressBeforeUnload" in script
+    assert "changedValues()).length" in script
+    # The apply-triggered restart navigation must not trip the guard.
+    assert "suppressBeforeUnload = true" in script
+
+
+def test_admin_static_nav_renders_icon_rail_with_labels():
+    script = Path("src/claudey/api/admin_static/admin.js").read_text(encoding="utf-8")
+    styles = Path("src/claudey/api/admin_static/admin.css").read_text(encoding="utf-8")
+
+    assert 'icon: `<svg viewBox="0 0 24 24"' in script
+    assert 'className = "nav-icon"' in script
+    assert 'className = "nav-label"' in script
+    assert ".nav-label" in styles
+    # Below 900px the sidebar collapses to an icon rail with labels hidden.
+    assert "@media (max-width: 900px)" in styles
+    assert ".nav-label {\n    display: none;" in styles
+    assert "min-height: 44px" in styles
+
+
+def test_admin_static_buttons_meet_40px_touch_targets():
+    styles = Path("src/claudey/api/admin_static/admin.css").read_text(encoding="utf-8")
+
+    assert "min-height: 40px;" in styles
+    assert "min-height: 36px;" not in styles
 
 
 def test_admin_static_hides_managed_source_label():

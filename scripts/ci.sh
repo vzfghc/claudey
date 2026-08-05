@@ -1,7 +1,7 @@
 #!/bin/sh
 set -eu
 
-CHECK_ORDER="logos suppressions ruff-format ruff-check ty pytest"
+CHECK_ORDER="logos icons suppressions ruff-format ruff-check ty pytest"
 
 dry_run=0
 only_checks=""
@@ -17,6 +17,7 @@ Local ruff checks repair formatting and autofixable lint before later checks.
 
 Checks (in order):
   logos          Verify admin_static provider logos exist and are in sync
+  icons          Verify app icon assets exist (SVG source + all PNG sizes)
   suppressions   Ban type ignores and legacy future annotations
   ruff-format    uv run ruff format
   ruff-check     uv run ruff check --fix
@@ -70,7 +71,7 @@ run() {
 
 valid_check_id() {
     case "$1" in
-        logos | suppressions | ruff-format | ruff-check | ty | pytest) return 0 ;;
+        logos | icons | suppressions | ruff-format | ruff-check | ty | pytest) return 0 ;;
         *) return 1 ;;
     esac
 }
@@ -129,6 +130,11 @@ run_logos() {
     run uv run python scripts/fetch_provider_logos.py --check
 }
 
+run_icons() {
+    step "app icon assets"
+    run uv run python scripts/generate_icons.py --check
+}
+
 run_suppressions() {
     step "Ban suppressions and legacy annotations"
     pattern='# type: ignore|# ty: ignore|from __future__ import annotations'
@@ -165,6 +171,7 @@ run_pytest() {
 run_check() {
     case "$1" in
         logos) run_logos ;;
+        icons) run_icons ;;
         suppressions) run_suppressions ;;
         ruff-format) run_ruff_format ;;
         ruff-check) run_ruff_check ;;

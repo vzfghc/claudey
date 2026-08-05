@@ -3,6 +3,7 @@ param(
     [switch] $VoiceLocal,
     [switch] $VoiceAll,
     [string] $TorchBackend = "",
+    [switch] $LegacyFcc,
     [switch] $DryRun,
     [switch] $Help,
     [Parameter(ValueFromRemainingArguments = $true)]
@@ -25,6 +26,7 @@ $script:InstallClaudeCode = $true
 $script:InstallCodex = $true
 $script:InstallPi = $true
 $script:PiAvailable = $false
+$script:UvToolBin = ""
 $HansCommands = @(
     # Include retired entry points so updates reject older Claudey processes before replacement.
     "hans-desktop",
@@ -47,6 +49,7 @@ Options:
   -VoiceLocal            Install local Whisper voice transcription support.
   -VoiceAll              Install all voice transcription backends.
   -TorchBackend VALUE    Use a uv PyTorch backend, such as cu130. Requires local voice.
+  -LegacyFcc             Install fcc-* deprecation shims that print a notice and exit 2.
   -DryRun                Print commands without running them.
   -Help                  Show this help text.
 "@
@@ -630,6 +633,7 @@ function Export-HansDesktopIcon {
 function Configure-AndConfirmFreeClaudeCode {
     $iconPath = Join-Path $env:USERPROFILE ".fcc\app-icon.ico"
     if ($DryRun) {
+        $script:UvToolBin = "<uv-tool-bin>"
         Write-Host "+ uv tool update-shell"
         Write-Host "+ uv tool dir --bin"
         Write-Host "+ verify hans-desktop, hans-server, hans-claude, hans-codex, and hans-pi in the uv tool bin directory"
@@ -652,6 +656,7 @@ function Configure-AndConfirmFreeClaudeCode {
     if ([string]::IsNullOrWhiteSpace($toolBin)) {
         throw "uv returned an empty tool bin directory."
     }
+    $script:UvToolBin = $toolBin
 
     Add-PathEntry $toolBin
     $toolBinPath = ([IO.Path]::GetFullPath($toolBin)).TrimEnd(
@@ -747,6 +752,30 @@ function Install-HansDesktopShortcuts {
     }
 }
 
+function Install-LegacyFccShims {
+    $legacyCommands = @(
+        @{ Legacy = "fcc-server"; Hans = "hans-server" },
+        @{ Legacy = "fcc-claude"; Hans = "hans-claude" },
+        @{ Legacy = "fcc-codex"; Hans = "hans-codex" },
+        @{ Legacy = "fcc-pi"; Hans = "hans-pi" },
+        @{ Legacy = "fcc-desktop"; Hans = "hans-desktop" }
+    )
+    foreach ($entry in $legacyCommands) {
+        $shimPath = Join-Path $script:UvToolBin "$($entry.Legacy).cmd"
+        Write-Host "+ write legacy shim $shimPath -> $($entry.Hans)"
+        if ($DryRun) {
+            continue
+        }
+        $lines = @(
+            "@echo off"
+            "echo $($entry.Legacy) is deprecated: use $($entry.Hans) 1>&2"
+            "exit /b 2"
+        )
+        Set-Content -LiteralPath $shimPath -Value $lines -Encoding ascii
+    }
+    Write-Host "Legacy fcc-* shims installed: each prints a deprecation notice and exits 2."
+}
+
 if ($Help) {
     Show-Usage
     return
@@ -781,6 +810,11 @@ Install-FreeClaudeCode
 
 Write-Step "Configuring PATH and verifying Claudey"
 Configure-AndConfirmFreeClaudeCode
+
+if ($LegacyFcc) {
+    Write-Step "Installing legacy fcc-* deprecation shims"
+    Install-LegacyFccShims
+}
 
 Write-Host ""
 if ($DryRun) {

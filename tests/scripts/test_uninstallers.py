@@ -244,6 +244,28 @@ def test_uninstall_sh_removes_and_verifies_only_hans(
     ]
 
 
+def test_uninstall_sh_removes_legacy_fcc_shims(
+    posix_uninstall_harness: PosixUninstallHarness,
+) -> None:
+    tool_bin = posix_uninstall_harness.tool_bin
+    for name in ("fcc-server", "fcc-claude", "fcc-codex", "fcc-pi", "fcc-desktop"):
+        _write_executable(
+            tool_bin / name,
+            f"#!/bin/sh\nprintf '%s\\n' '{name} is deprecated: use hans-server' >&2\nexit 2\n",
+        )
+    foreign = tool_bin / "fcc-other"
+    foreign.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+
+    result = posix_uninstall_harness.run()
+
+    assert result.returncode == 0, result.stderr
+    assert "Removing legacy fcc-* deprecation shims" in result.stdout
+    for name in ("fcc-server", "fcc-claude", "fcc-codex", "fcc-pi", "fcc-desktop"):
+        assert not (tool_bin / name).exists(), name
+    assert foreign.exists()
+    assert not posix_uninstall_harness.hans_home.exists()
+
+
 def test_uninstall_sh_is_idempotent_when_tool_is_already_absent(
     posix_uninstall_harness: PosixUninstallHarness,
 ) -> None:
@@ -575,6 +597,28 @@ def test_uninstall_ps1_removes_and_verifies_only_hans(
         f"remove:{Path(powershell_uninstall_harness.env['APPDATA']) / 'Microsoft' / 'Windows' / 'Start Menu' / 'Programs' / 'Claudey.lnk'}",
         f"remove:{powershell_uninstall_harness.hans_home}",
     ]
+
+
+def test_uninstall_ps1_removes_legacy_fcc_shims(
+    powershell_uninstall_harness: PowerShellUninstallHarness,
+) -> None:
+    tool_bin = powershell_uninstall_harness.tool_bin
+    for name in ("fcc-server", "fcc-claude", "fcc-codex", "fcc-pi", "fcc-desktop"):
+        (tool_bin / f"{name}.cmd").write_text(
+            f"@echo off\necho {name} is deprecated: use hans-server 1>&2\nexit /b 2\n",
+            encoding="utf-8",
+        )
+    foreign = tool_bin / "fcc-other.cmd"
+    foreign.write_text("@echo off\nexit /b 0\n", encoding="utf-8")
+
+    result = powershell_uninstall_harness.run()
+
+    assert result.returncode == 0, result.stderr
+    assert "Removing legacy fcc-* deprecation shims" in result.stdout
+    for name in ("fcc-server", "fcc-claude", "fcc-codex", "fcc-pi", "fcc-desktop"):
+        assert not (tool_bin / f"{name}.cmd").exists(), name
+    assert foreign.exists()
+    assert not powershell_uninstall_harness.hans_home.exists()
 
 
 def test_uninstall_ps1_preserves_unowned_desktop_shortcut(

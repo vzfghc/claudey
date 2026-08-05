@@ -17,6 +17,7 @@ dry_run=0
 voice_nim=0
 voice_local=0
 voice_all=0
+legacy_fcc=0
 install_claude=1
 install_codex=1
 install_pi=1
@@ -36,6 +37,7 @@ Options:
   --voice-local            Install local Whisper voice transcription support.
   --voice-all              Install all voice transcription backends.
   --torch-backend VALUE    Use a uv PyTorch backend, such as cu130. Requires local voice.
+  --legacy-fcc             Install fcc-* deprecation shims that print a notice and exit 2.
   --dry-run                Print commands without running them.
   --help                   Show this help text.
 USAGE
@@ -523,6 +525,9 @@ parse_args() {
                 torch_backend=${1#*=}
                 [ -n "$torch_backend" ] || fail "--torch-backend requires a non-empty value."
                 ;;
+            --legacy-fcc)
+                legacy_fcc=1
+                ;;
             --dry-run)
                 dry_run=1
                 ;;
@@ -609,6 +614,39 @@ configure_and_verify_claudey() {
     done
 
     run "$tool_bin/hans-server" --version
+}
+
+legacy_fcc_target() {
+    case "$1" in
+        fcc-server) printf '%s' "hans-server" ;;
+        fcc-claude) printf '%s' "hans-claude" ;;
+        fcc-codex) printf '%s' "hans-codex" ;;
+        fcc-pi) printf '%s' "hans-pi" ;;
+        fcc-desktop) printf '%s' "hans-desktop" ;;
+        *) return 1 ;;
+    esac
+}
+
+install_legacy_fcc_shims() {
+    [ "$legacy_fcc" -eq 1 ] || return 0
+
+    for name in fcc-server fcc-claude fcc-codex fcc-pi fcc-desktop; do
+        target=$(legacy_fcc_target "$name")
+        if [ "$dry_run" -eq 1 ]; then
+            printf '+ write legacy shim %s -> %s\n' "$name" "$target"
+            continue
+        fi
+        [ -n "$tool_bin" ] || fail "The uv tool bin directory is unknown; cannot install legacy shims."
+        shim_path="$tool_bin/$name"
+        {
+            printf '%s\n' '#!/bin/sh'
+            printf '%s\n' "printf '%s\\n' '$name is deprecated: use $target' >&2"
+            printf '%s\n' 'exit 2'
+        } > "$shim_path"
+        chmod +x "$shim_path"
+    done
+
+    printf 'Legacy fcc-* shims installed: each prints a deprecation notice and exits 2.\n'
 }
 
 shell_quote() {
@@ -731,6 +769,11 @@ install_claudey
 step "Configuring PATH and verifying Claudey"
 configure_and_verify_claudey
 
+if [ "$legacy_fcc" -eq 1 ]; then
+    step "Installing legacy fcc-* deprecation shims"
+    install_legacy_fcc_shims
+fi
+
 if [ "$(uname -s)" = "Darwin" ]; then
     step "Installing the Claudey desktop launcher"
     install_macos_desktop_app
@@ -753,5 +796,8 @@ else
     fi
     if [ "$pi_available" -eq 1 ]; then
         printf 'Run Pi with: hans-pi\n'
+    fi
+    if [ "$legacy_fcc" -eq 1 ]; then
+        printf 'Legacy fcc-* commands now print a deprecation notice and exit 2.\n'
     fi
 fi

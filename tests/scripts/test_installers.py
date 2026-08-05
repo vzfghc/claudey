@@ -430,6 +430,62 @@ def test_install_sh_fresh_install_is_verified(posix_harness: PosixHarness) -> No
     ]
 
 
+def test_install_sh_legacy_fcc_flag_installs_deprecation_shims(
+    posix_harness: PosixHarness,
+) -> None:
+    result = posix_harness.run("--legacy-fcc")
+
+    assert result.returncode == 0, result.stderr
+    assert "Installing legacy fcc-* deprecation shims" in result.stdout
+    assert (
+        "Legacy fcc-* commands now print a deprecation notice and exit 2."
+        in result.stdout
+    )
+    for name, target in (
+        ("fcc-server", "hans-server"),
+        ("fcc-claude", "hans-claude"),
+        ("fcc-codex", "hans-codex"),
+        ("fcc-pi", "hans-pi"),
+        ("fcc-desktop", "hans-desktop"),
+    ):
+        shim = posix_harness.tool_bin / name
+        assert shim.exists(), name
+        assert shim.stat().st_mode & 0o111
+        shim_text = shim.read_text(encoding="utf-8")
+        assert f"{name} is deprecated: use {target}" in shim_text
+        assert "exit 2" in shim_text
+
+    completed = subprocess.run(
+        [str(posix_harness.tool_bin / "fcc-server")],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert completed.returncode == 2
+    assert "fcc-server is deprecated: use hans-server" in completed.stderr
+
+
+def test_install_sh_legacy_fcc_dry_run_prints_shim_commands(
+    posix_harness: PosixHarness,
+) -> None:
+    result = posix_harness.run("--legacy-fcc", "--dry-run")
+
+    assert result.returncode == 0, result.stderr
+    assert "+ write legacy shim fcc-server -> hans-server" in result.stdout
+    assert "+ write legacy shim fcc-desktop -> hans-desktop" in result.stdout
+    assert not (posix_harness.tool_bin / "fcc-server").exists()
+
+
+def test_install_sh_without_legacy_flag_creates_no_shims(
+    posix_harness: PosixHarness,
+) -> None:
+    result = posix_harness.run()
+
+    assert result.returncode == 0, result.stderr
+    assert not (posix_harness.tool_bin / "fcc-server").exists()
+    assert "Legacy fcc-* commands now print" not in result.stdout
+
+
 def test_install_sh_reprompts_then_installs_only_selected_agent(
     posix_harness: PosixHarness,
 ) -> None:
@@ -1287,6 +1343,53 @@ def test_install_ps1_fresh_install_is_verified(
     assert (
         app_data / "Microsoft" / "Windows" / "Start Menu" / "Programs" / "Claudey.lnk"
     ).is_file()
+
+
+def test_install_ps1_legacy_fcc_flag_installs_deprecation_shims(
+    powershell_harness: PowerShellHarness,
+) -> None:
+    result = powershell_harness.run("-LegacyFcc")
+
+    assert result.returncode == 0, result.stderr
+    assert "Installing legacy fcc-* deprecation shims" in result.stdout
+    assert (
+        "Legacy fcc-* shims installed: each prints a deprecation notice and exits 2."
+        in result.stdout
+    )
+    for name, target in (
+        ("fcc-server", "hans-server"),
+        ("fcc-claude", "hans-claude"),
+        ("fcc-codex", "hans-codex"),
+        ("fcc-pi", "hans-pi"),
+        ("fcc-desktop", "hans-desktop"),
+    ):
+        shim = powershell_harness.tool_bin / f"{name}.cmd"
+        assert shim.is_file(), name
+        shim_text = shim.read_text(encoding="utf-8")
+        assert f"{name} is deprecated: use {target}" in shim_text
+        assert "exit /b 2" in shim_text
+
+    completed = subprocess.run(
+        [str(powershell_harness.tool_bin / "fcc-server.cmd")],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert completed.returncode == 2
+    assert "fcc-server is deprecated: use hans-server" in completed.stderr
+
+
+def test_install_ps1_legacy_fcc_dry_run_prints_shim_commands(
+    powershell_harness: PowerShellHarness,
+) -> None:
+    result = powershell_harness.run("-LegacyFcc", "-DryRun")
+
+    assert result.returncode == 0, result.stderr
+    assert (
+        "+ write legacy shim <uv-tool-bin>\\fcc-server.cmd -> hans-server"
+        in result.stdout
+    )
+    assert not (powershell_harness.tool_bin / "fcc-server.cmd").exists()
 
 
 def test_install_ps1_stops_if_windows_icon_export_fails(

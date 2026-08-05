@@ -16,6 +16,7 @@ const VIEW_GROUPS = [
     title: "Providers",
     sections: ["providers", "runtime"],
     containerId: "providersSections",
+    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg>`,
   },
   {
     id: "model_config",
@@ -23,6 +24,7 @@ const VIEW_GROUPS = [
     title: "Model Config",
     sections: ["models", "reasoning", "web_tools"],
     containerId: "modelConfigSections",
+    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h19"/><circle cx="16" cy="7" r="2.5"/><path d="M4 17h19"/><circle cx="10" cy="17" r="2.5"/></svg>`,
   },
   {
     id: "messaging",
@@ -30,6 +32,7 @@ const VIEW_GROUPS = [
     title: "Messaging",
     sections: ["messaging", "voice"],
     containerId: "messagingSections",
+    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>`,
   },
 ];
 
@@ -95,6 +98,9 @@ const ICON_CLOSE = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" s
 
 const byId = (id) => document.getElementById(id);
 
+const REDUCED_MOTION = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+const SMOOTH_SCROLL = { behavior: REDUCED_MOTION ? "auto" : "smooth" };
+
 function sourceLabel(source) {
   const labels = {
     default: "default",
@@ -120,14 +126,37 @@ function sourceText(field) {
   return parts.join(" ");
 }
 
+const LOBEHUB_COLOR_ICONS = new Set([
+  "nvidia", "gemini", "vertexai", "deepseek", "mistral", "azure",
+  "openrouter", "bedrock", "huggingface", "cohere", "cerebras",
+  "cloudflare", "fireworks", "kimi", "minimax", "sambanova",
+]);
+
+const LOBEHUB_ID_MAP = {
+  nvidia_nim: "nvidia", gemini: "gemini", vertex: "vertexai",
+  deepseek: "deepseek", mistral: "mistral", mistral_codestral: "mistral",
+  azure_openai: "azure", open_router: "openrouter", bedrock: "bedrock",
+  huggingface: "huggingface", cohere: "cohere", cerebras: "cerebras",
+  cloudflare: "cloudflare", fireworks: "fireworks", kimi: "kimi",
+  kimi_code: "kimi", minimax: "minimax", sambanova: "sambanova",
+};
+
+const LOBEHUB_CDN = "https://cdn.jsdelivr.net/npm/@lobehub/icons-static-svg@1.94.0/icons";
+
 function providerLogo(providerId) {
+  const lobeSlug = LOBEHUB_ID_MAP[providerId];
   const logo = document.createElement("img");
   logo.className = "provider-logo";
-  logo.src = `/admin/assets/logos/${providerId}.svg`;
   logo.alt = "";
   logo.width = 32;
   logo.height = 32;
   logo.loading = "lazy";
+
+  if (lobeSlug && LOBEHUB_COLOR_ICONS.has(lobeSlug)) {
+    logo.src = `${LOBEHUB_CDN}/${lobeSlug}-color.svg`;
+  } else {
+    logo.src = `/admin/assets/logos/${providerId}.svg`;
+  }
   return logo;
 }
 
@@ -157,6 +186,17 @@ async function api(path, options = {}) {
   return response.json();
 }
 
+// Warn before closing the page with unsaved changes. Suppressed while the
+// apply flow navigates away for an automatic server restart.
+let suppressBeforeUnload = false;
+window.addEventListener("beforeunload", (event) => {
+  if (suppressBeforeUnload) return;
+  if (Object.keys(changedValues()).length > 0) {
+    event.preventDefault();
+    event.returnValue = "";
+  }
+});
+
 async function load() {
   showMessage("Loading admin config");
   const config = await api("/admin/api/config");
@@ -165,6 +205,7 @@ async function load() {
   renderNav();
   renderProviders(config.provider_status);
   renderOnboarding(config.provider_status);
+  renderGreeting();
   renderSections(config.sections, config.fields);
   renderServerStatus();
   byId("configPath").textContent = config.paths.managed;
@@ -176,6 +217,14 @@ async function load() {
   showMessage("");
 }
 
+function renderGreeting() {
+  const el = byId("welcomeGreeting");
+  if (!el) return;
+  const seed = Math.floor(Date.now() / 3600000);
+  const index = (seed + WELCOME_GREETINGS.length) % WELCOME_GREETINGS.length;
+  el.textContent = WELCOME_GREETINGS[Math.abs(index)];
+}
+
 function renderNav() {
   const nav = byId("sectionNav");
   nav.innerHTML = "";
@@ -184,7 +233,16 @@ function renderNav() {
     button.type = "button";
     button.className = `nav-link${index === 0 ? " active" : ""}`;
     button.dataset.view = view.id;
-    button.textContent = view.label;
+    button.title = view.label;
+    button.style.setProperty("--nav-index", index);
+    const icon = document.createElement("span");
+    icon.className = "nav-icon";
+    icon.innerHTML = view.icon;
+    button.appendChild(icon);
+    const label = document.createElement("span");
+    label.className = "nav-label";
+    label.textContent = view.label;
+    button.appendChild(label);
     if (index === 0) {
       button.setAttribute("aria-current", "page");
     }
@@ -219,8 +277,73 @@ function setActiveView(viewId, { scroll = false } = {}) {
   });
 
   if (scroll) {
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    window.scrollTo({ top: 0, ...SMOOTH_SCROLL });
   }
+}
+
+
+const PROVIDER_ORDER_KEY = "claudey.providerOrder";
+
+function _savedOrder() {
+  try { return JSON.parse(localStorage.getItem(PROVIDER_ORDER_KEY)) || []; }
+  catch { return []; }
+}
+
+function _saveOrder(order) {
+  localStorage.setItem(PROVIDER_ORDER_KEY, JSON.stringify(order));
+}
+
+function _sortedProviders(providers) {
+  const order = _savedOrder();
+  if (!order.length) return providers;
+  const byId = new Map(providers.map((p) => [p.provider_id, p]));
+  const ordered = [];
+  for (const id of order) {
+    if (byId.has(id)) ordered.push(byId.get(id));
+    byId.delete(id);
+  }
+  for (const [, provider] of byId) ordered.push(provider);
+  return ordered;
+}
+
+function _attachDrag(card, providerId) {
+  card.draggable = true;
+  card.addEventListener("dragstart", (e) => {
+    e.dataTransfer.setData("text/plain", providerId);
+    e.dataTransfer.effectAllowed = "move";
+    card.classList.add("dragging");
+  });
+  card.addEventListener("dragend", () => {
+    card.classList.remove("dragging");
+    document.querySelectorAll(".provider-card.drag-over").forEach((c) =>
+      c.classList.remove("drag-over"),
+    );
+  });
+  card.addEventListener("dragover", (e) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    if (!card.classList.contains("dragging")) {
+      card.classList.add("drag-over");
+    }
+  });
+  card.addEventListener("dragleave", () => {
+    card.classList.remove("drag-over");
+  });
+  card.addEventListener("drop", (e) => {
+    e.preventDefault();
+    card.classList.remove("drag-over");
+    const fromId = e.dataTransfer.getData("text/plain");
+    if (!fromId || fromId === providerId) return;
+    const grid = card.parentNode;
+    const fromCard = grid.querySelector(`[data-provider="${fromId}"]`);
+    if (!fromCard) return;
+    const after = card.nextSibling === fromCard ? card : card.nextSibling;
+    grid.insertBefore(fromCard, after);
+    const ids = Array.from(grid.querySelectorAll("[data-provider]")).map(
+      (c) => c.dataset.provider,
+    );
+    _saveOrder(ids);
+  });
 }
 
 function renderProviders(providerStatus) {
@@ -232,56 +355,72 @@ function renderProviders(providerStatus) {
     (provider) => provider.kind === "connected_account",
   );
   byId("connectedAccountsSection").hidden = connected.length === 0;
-  providerStatus.forEach((provider) => {
-    if (provider.kind === "connected_account") {
-      connectedGrid.appendChild(renderConnectedAccountCard(provider));
-      return;
-    }
+  connected.forEach((provider) => {
+    const card = renderConnectedAccountCard(provider);
+    card.style.setProperty("--card-index", connectedGrid.children.length);
+    connectedGrid.appendChild(card);
+  });
+  _sortedProviders(
+    providerStatus.filter((p) => p.kind !== "connected_account"),
+  ).forEach((provider) => {
     const card = document.createElement("article");
     card.className = "provider-card";
     card.dataset.provider = provider.provider_id;
 
     const title = document.createElement("div");
     title.className = "provider-title";
-    const nameGroup = document.createElement("span");
-    nameGroup.className = "provider-name";
+    const logo = providerLogo(provider.provider_id);
     const name = document.createElement("strong");
     name.textContent = provider.display_name || provider.provider_id;
-    nameGroup.append(providerLogo(provider.provider_id), name);
-
-    const pill = document.createElement("span");
-    const pillState = pillForStatus(provider.status);
-    pill.className = `status-pill ${pillState.className}`;
-    pill.textContent = pillState.label;
-    title.append(nameGroup, pill);
-
-    const meta = document.createElement("div");
-    meta.className = "provider-meta";
-    meta.textContent =
-      provider.kind === "local"
-        ? provider.base_url || "No local URL configured"
-        : provider.configuration;
+    title.append(logo, name);
 
     const actions = document.createElement("div");
     actions.className = "provider-actions";
 
-    const configure = document.createElement("button");
-    configure.type = "button";
-    configure.className = "secondary-button";
-    configure.textContent = "Configure";
-    configure.addEventListener("click", () =>
-      scrollToField(providerPrimaryFieldKey(provider)),
-    );
-    actions.appendChild(configure);
+    const isConfigured = ["configured", "reachable"].includes(provider.status);
+    const primaryField = providerPrimaryFieldKey(provider);
+    const fieldDesc =
+      (primaryField && state.fields.get(primaryField)?.description) || "";
 
-    const test = document.createElement("button");
-    test.type = "button";
-    test.className = "test-button";
-    test.textContent = provider.kind === "local" ? "Test" : "Refresh models";
-    test.addEventListener("click", () => testProvider(provider.provider_id, test));
-    actions.appendChild(test);
+    if (isConfigured) {
+      const badge = document.createElement("span");
+      badge.className = "configured-badge";
+      const check = document.createElement("span");
+      check.className = "configured-check";
+      check.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>`;
+      badge.append(check, "Configured");
+      actions.appendChild(badge);
+    } else {
+      const configure = document.createElement("button");
+      configure.type = "button";
+      configure.className = "secondary-button card-configure";
+      configure.textContent = "Configure";
+      configure.addEventListener("click", () => scrollToField(primaryField));
+      actions.appendChild(configure);
+    }
 
-    card.append(title, meta, actions);
+    if (isConfigured) {
+      const switchBtn = document.createElement("button");
+      switchBtn.type = "button";
+      switchBtn.className = "secondary-button";
+      switchBtn.textContent = "Switch key";
+      switchBtn.addEventListener("click", () => scrollToField(primaryField));
+      actions.appendChild(switchBtn);
+    } else {
+      const about = document.createElement("button");
+      about.type = "button";
+      about.className = "secondary-button about-tooltip";
+      about.textContent = "About key";
+      about.setAttribute(
+        "data-tooltip",
+        fieldDesc || "No description available.",
+      );
+      actions.appendChild(about);
+    }
+
+    card.append(title, actions);
+    card.style.setProperty("--card-index", grid.children.length);
+    _attachDrag(card, provider.provider_id);
     grid.appendChild(card);
   });
 }
@@ -320,11 +459,9 @@ function scrollToField(fieldKey) {
   ) {
     section.querySelector(".advanced-toggle")?.click();
   }
-  input.scrollIntoView({ behavior: "smooth", block: "center" });
+  input.scrollIntoView({ ...SMOOTH_SCROLL, block: "center" });
   input.focus({ preventScroll: true });
-  wrapper?.classList.add("field-highlight");
-  window.setTimeout(() => wrapper?.classList.remove("field-highlight"), 2200);
-}
+  }
 
 function renderConnectedAccountCard(provider, status = provider) {
   const card = document.createElement("article");
@@ -380,6 +517,10 @@ function connectedAccountMeta(status) {
   if (status.state === "connecting") {
     return "Finish signing in, then return to this page.";
   }
+  if (status.state === "error") {
+    const detail = status.message ? ` - ${status.message}` : "";
+    return `Something went wrong${detail}. Try disconnecting, then connect again.`;
+  }
   return status.message || "Connect a ChatGPT account to discover subscription models.";
 }
 
@@ -430,7 +571,7 @@ function populateConnectedAccountActions(provider, status, actions) {
   );
 }
 
-function authButton(label, action, className = "test-button") {
+function authButton(label, action, className = "secondary-button card-configure") {
   const button = document.createElement("button");
   button.type = "button";
   button.className = className;
@@ -479,14 +620,17 @@ async function startConnectedAccountLogin(providerId, mode, button) {
     const provider = connectedAccountDescriptor(providerId);
     updateConnectedAccountCard(provider, status);
     const target = status.authorization_url || status.verification_url;
-    if (target && popup) {
-      popup.location.replace(target);
-    } else if (target) {
-      window.open(target, "_blank", "noopener");
-    } else if (popup) {
-      popup.close();
+    try {
+      if (target && popup && !popup.closed) {
+        popup.location.replace(target);
+      } else if (target) {
+        window.open(target, "_blank", "noopener");
+      } else if (popup && !popup.closed) {
+        popup.close();
+      }
+    } catch {
+      // Popup closed or blocked - login already started, card handles recovery
     }
-    pollConnectedAccount(provider);
   } catch (error) {
     if (popup) popup.close();
     showMessage(error.message, true);
@@ -555,6 +699,7 @@ async function copyDeviceCode(code) {
 
 function setCardPill(card, status, label, pulsing = false) {
   const pill = card.querySelector(".status-pill");
+  if (!pill) return;
   pill.className = `status-pill ${statusClass(status)}${pulsing ? " pulsing" : ""}`;
   pill.textContent = label;
 }
@@ -565,7 +710,8 @@ function updateProviderCard(providerId, status, label, metaText, pulsing = false
   const pillState = pillForStatus(status);
   setCardPill(card, status, pulsing ? label : pillState.label, pulsing);
   if (metaText) {
-    card.querySelector(".provider-meta").textContent = metaText;
+    const meta = card.querySelector(".provider-meta");
+    if (meta) meta.textContent = metaText;
   }
 }
 
@@ -1188,6 +1334,7 @@ async function apply() {
   if (restart.required && restart.automatic) {
     showMessage("Applied. Restarting server...", "ok");
     byId("applyButton").disabled = true;
+    suppressBeforeUnload = true;
     setTimeout(() => {
       window.location.href = restart.admin_url || "/admin";
     }, 1600);
@@ -1341,7 +1488,6 @@ function renderOnboarding(providerStatus) {
   container.innerHTML = "";
   const hasConfigured = providerStatus.some(
     (provider) =>
-      provider.kind !== "connected_account" &&
       ["configured", "reachable"].includes(provider.status),
   );
   if (hasConfigured) {
@@ -1490,9 +1636,35 @@ document.addEventListener("keydown", (event) => {
   }
 });
 
+
 byId("validateButton").addEventListener("click", () => validate(true));
 byId("applyButton").addEventListener("click", apply);
+
+const sidebarToggle = byId("sidebarToggle");
+const sectionNav = byId("sectionNav");
+const mobileQuery = window.matchMedia("(max-width: 900px)");
+
+function applySidebarCollapsed(collapsed) {
+  document.body.classList.toggle("sidebar-collapsed", collapsed);
+  sidebarToggle.setAttribute("aria-expanded", String(!collapsed));
+  sidebarToggle.setAttribute("aria-label", collapsed ? "Expand sidebar" : "Collapse sidebar");
+  sidebarToggle.title = collapsed ? "Expand sidebar" : "Collapse sidebar";
+  sectionNav.inert = collapsed && mobileQuery.matches;
+  localStorage.setItem(SIDEBAR_STATE_KEY, collapsed ? "collapsed" : "expanded");
+}
+
+sidebarToggle.addEventListener("click", () => {
+  applySidebarCollapsed(!document.body.classList.contains("sidebar-collapsed"));
+});
+
+mobileQuery.addEventListener("change", (event) => {
+  sectionNav.inert = event.matches && document.body.classList.contains("sidebar-collapsed");
+});
+
+applySidebarCollapsed(localStorage.getItem(SIDEBAR_STATE_KEY) === "collapsed");
+
 document.addEventListener("pointerdown", (event) => {
+
   state.modelComboboxes.forEach((combobox) => {
     if (combobox.isOpen && !combobox.element.contains(event.target)) combobox.close();
   });

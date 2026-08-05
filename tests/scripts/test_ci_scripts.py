@@ -61,7 +61,10 @@ def test_ci_sh_runs_ci_checks_in_order() -> None:
     text = _script_text("ci.sh")
     legacy_future_import = "from __future__ import " + "annotations"
 
-    assert 'CHECK_ORDER="logos suppressions ruff-format ruff-check ty pytest"' in text
+    assert (
+        'CHECK_ORDER="logos icons suppressions ruff-format ruff-check ty pytest"'
+        in text
+    )
     assert "grep -rE" in text
     assert "Fix the underlying type/import issue instead" in text
     assert legacy_future_import in text
@@ -130,6 +133,27 @@ def test_ci_sh_dry_run_prints_local_ruff_repair_commands(
 
     assert result.returncode == 0
     assert command in result.stdout
+    assert "uv is required" not in result.stderr
+
+
+def test_ci_sh_icons_dry_run_prints_icon_check() -> None:
+    result = subprocess.run(
+        [
+            _shell_interpreter(),
+            str(_repo_root() / "scripts" / "ci.sh"),
+            "--only",
+            "icons",
+            "--dry-run",
+        ],
+        cwd=_repo_root(),
+        env={**os.environ, "PATH": _path_without_uv()},
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+    assert result.returncode == 0
+    assert "+ uv run python scripts/generate_icons.py --check" in result.stdout
     assert "uv is required" not in result.stderr
 
 

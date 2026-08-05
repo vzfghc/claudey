@@ -7,6 +7,8 @@ HANS_MACOS_BUNDLE_ID="io.github.vzfghc.claudey"
 HANS_MACOS_OWNER_FILE=".claudey-owner"
 # Include retired entry points so older installations are fully stopped and removed.
 HANS_COMMANDS="hans-desktop hans-server hans-claude hans-codex hans-pi hans-init claudey"
+# Legacy fcc-* deprecation shims installed via install.sh --legacy-fcc.
+LEGACY_FCC_COMMANDS="fcc-server fcc-claude fcc-codex fcc-pi fcc-desktop"
 
 dry_run=0
 uv_tool_bin=""
@@ -16,6 +18,7 @@ show_usage() {
 Usage: uninstall.sh [options]
 
 Removes the Claudey uv tool and deletes ~/.fcc/ after removal is verified.
+Also removes the legacy fcc-* deprecation shims installed by --legacy-fcc.
 Does not remove uv, Claude Code, Codex, Pi, the uv-managed Python runtime, or shared PATH entries.
 
 Options:
@@ -202,6 +205,20 @@ verify_hans_commands_removed() {
     fi
 }
 
+remove_legacy_fcc_shims() {
+    [ -n "$uv_tool_bin" ] || return 0
+
+    for name in $LEGACY_FCC_COMMANDS; do
+        shim_path="$uv_tool_bin/$name"
+        [ -e "$shim_path" ] || continue
+        if grep -q "is deprecated: use hans-" "$shim_path" 2>/dev/null; then
+            run rm -f "$shim_path"
+        else
+            printf 'A file not managed by Claudey exists at %s; leaving it unchanged.\n' "$shim_path"
+        fi
+    done
+}
+
 macos_app_is_hans_owned() {
     app_dir=$1
     owner_file="$app_dir/Contents/$HANS_MACOS_OWNER_FILE"
@@ -287,6 +304,9 @@ uninstall_claudey
 
 step "Verifying Claudey entry points were removed"
 verify_hans_commands_removed
+
+step "Removing legacy fcc-* deprecation shims"
+remove_legacy_fcc_shims
 
 step "Removing the Claudey desktop launcher"
 remove_macos_desktop_app
