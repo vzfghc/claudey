@@ -614,7 +614,9 @@ def test_sync_billing_continues_after_failed_month(monkeypatch, tmp_path):
 
     result = deepseek_billing.sync_billing(tmp_path, "tok-123")
 
-    assert result["error"] == "offline"
+    # A failed month must not stop the loop or fail the whole sync:
+    # partial success reports ok (error None).
+    assert result["error"] is None
     assert result["synced_days"] == 1
     stored = deepseek_billing._read_store(tmp_path)
     assert stored["2026-07-01"]["tokens"] == 7
@@ -704,6 +706,63 @@ def test_balance_usd_returns_none_on_any_failure(monkeypatch):
 
 
 # ------------------------------------------------------------- billing_payload
+
+
+def test_unwrap_token_accepts_bare_and_envelope():
+    assert deepseek_billing._unwrap_token("abc123") == "abc123"
+    envelope = '{"value":"mjF+secret","__version":"0"}'
+    assert deepseek_billing._unwrap_token(envelope) == "mjF+secret"
+    assert deepseek_billing._unwrap_token('{"other":1}') == '{"other":1}'
+    assert deepseek_billing._unwrap_token("not json {") == "not json {"
+
+
+def test_billing_payload_unwraps_enveloped_session_token(monkeypatch, tmp_path):
+    _settings(
+        monkeypatch,
+        token='{"value":"mjF+secret","__version":"0"}',
+        api_key="",
+    )
+    captured: dict[str, str] = {}
+
+    def _fake_sync(home, token):
+        captured["token"] = token
+        return {"synced_days": 0, "error": None}
+
+    monkeypatch.setattr(deepseek_billing, "sync_billing", _fake_sync)
+    monkeypatch.setattr(deepseek_billing, "_read_store", lambda home: {})
+    monkeypatch.setattr(deepseek_billing, "_store_is_stale", lambda store: True)
+
+    deepseek_billing.billing_payload(home=tmp_path)
+
+    assert captured["token"] == "mjF+secret"
+
+
+def test_sync_billing_partial_failure_reports_ok(monkeypatch, tmp_path):
+    monkeypatch.setattr(deepseek_billing, "SYNC_MONTHS", 2)
+
+    def _fake_fetch(token, month, year):
+        if month == 8:
+            return None  # transient failure (e.g. pre-account month)
+        return {"2026-07-01": {"tokens": 10, "requests": 1, "cost_usd": 0.5}}
+
+    monkeypatch.setattr(deepseek_billing, "fetch_month_usage", _fake_fetch)
+
+    result = deepseek_billing.sync_billing(tmp_path, "tok-123")
+
+    assert result["synced_days"] >= 1
+    assert result["error"] is None
+
+
+def test_sync_billing_all_months_failed_reports_offline(monkeypatch, tmp_path):
+    monkeypatch.setattr(deepseek_billing, "SYNC_MONTHS", 2)
+    monkeypatch.setattr(
+        deepseek_billing, "fetch_month_usage", lambda token, month, year: None
+    )
+
+    result = deepseek_billing.sync_billing(tmp_path, "tok-123")
+
+    assert result["synced_days"] == 0
+    assert result["error"] == "offline"
 
 
 def test_billing_payload_not_configured_is_safe_and_empty(monkeypatch, tmp_path):

@@ -354,26 +354,32 @@ def sync_billing(home: Path, token: str) -> dict[str, Any]:
                 error = "invalid_token"
                 break
             error = "offline"
-            continue
         except Exception:
             error = "offline"
-            continue
-        if month_days is None:
-            error = "offline"
-            continue
-        for date, values in month_days.items():
-            days[date] = {
-                "tokens": values["tokens"],
-                "requests": values["requests"],
-                "cost_usd": values["cost_usd"],
-                "synced_at": synced_at,
-            }
-            synced_days += 1
+        else:
+            if month_days is None:
+                error = "offline"
+            else:
+                for date, values in month_days.items():
+                    days[date] = {
+                        "tokens": values["tokens"],
+                        "requests": values["requests"],
+                        "cost_usd": values["cost_usd"],
+                        "synced_at": synced_at,
+                    }
+                    synced_days += 1
+        # Decrement on every iteration, failed months included — otherwise a
+        # failing month retries itself in place and drops the older ones.
         month -= 1
         if month == 0:
             month = 12
             year -= 1
 
+    # A single pre-account or transiently failed month is not an outage:
+    # report ok as long as at least one month synced. invalid_token always
+    # wins because it stops the loop.
+    if error == "offline" and synced_days:
+        error = None
     if error is not None:
         _trace_sync_failure(error)
     if synced_days:
@@ -433,6 +439,23 @@ def _cached_balance(api_key: str) -> dict[str, Any] | None:
     return value
 
 
+def _unwrap_token(value: str) -> str:
+    """Extract the bearer token from the platform's localStorage format.
+
+    platform.deepseek.com stores `userToken` as a JSON envelope
+    ``{"value": "<token>", "__version": "0"}``; accept both the envelope
+    and a bare token so either paste works.
+    """
+    stripped = value.strip()
+    try:
+        parsed = json.loads(stripped)
+    except json.JSONDecodeError:
+        return stripped
+    if isinstance(parsed, dict) and isinstance(parsed.get("value"), str):
+        return parsed["value"]
+    return stripped
+
+
 def billing_payload(home: Path | None = None) -> dict[str, Any]:
     """Assemble the DeepSeek billing payload the Usage view renders.
 
@@ -444,7 +467,7 @@ def billing_payload(home: Path | None = None) -> dict[str, Any]:
     """
     home = home or Path.home()
     settings = get_settings()
-    token = settings.deepseek_session_token
+    token = _unwrap_token(settings.deepseek_session_token)
     api_key = settings.deepseek_api_key
     configured = bool(token)
 
