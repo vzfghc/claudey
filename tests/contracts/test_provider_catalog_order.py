@@ -34,6 +34,7 @@ _EXPECTED_PROVIDER_ORDER: tuple[str, ...] = (
     "fireworks",
     "cloudflare",
     "zai",
+    "pecut",
     "ollama_cloud",
     "lmstudio",
     "llamacpp",

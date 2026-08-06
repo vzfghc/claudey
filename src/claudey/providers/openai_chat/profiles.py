@@ -160,6 +160,14 @@ OPENAI_CHAT_PROFILES: dict[str, OpenAIChatProfile] = {
         _policy("OPENCODE", ReasoningReplayMode.REASONING_CONTENT),
         NO_REASONING,
     ),
+    "pecut": OpenAIChatProfile(
+        _policy(
+            "PECUT",
+            ReasoningReplayMode.REASONING_CONTENT,
+            default_max_tokens=ANTHROPIC_DEFAULT_MAX_OUTPUT_TOKENS,
+        ),
+        NO_REASONING,
+    ),
     "opencode_go": OpenAIChatProfile(
         _policy("OPENCODE_GO", ReasoningReplayMode.REASONING_CONTENT),
         NO_REASONING,

@@ -46,6 +46,7 @@ PROVIDER_LOBEHUB_BRAND: dict[str, str | None] = {
     "cohere": "Cohere",
     "github_models": "Github",
     "wafer": None,
+    "pecut": None,
     "kimi": "Kimi",
     "kimi_code": "Kimi",
     "kilo": "KiloCode",

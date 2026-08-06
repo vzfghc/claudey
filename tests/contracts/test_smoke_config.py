@@ -131,6 +131,42 @@ def test_ollama_cloud_provider_configuration_uses_api_key(monkeypatch) -> None:
     assert models[0].source == "provider_default"
 
 
+def test_pecut_smoke_model_env_is_normalized_with_provider_prefix(
+    monkeypatch,
+) -> None:
+    monkeypatch.setenv("HANS_SMOKE_MODEL_PECUT", "pecut/claude-opus-4-8")
+    config = _smoke_config(
+        settings=_settings(
+            model="ollama/llama3.1",
+            pecut_api_key="pecut-key",
+            ollama_base_url="",
+        )
+    )
+
+    models = config.provider_smoke_models()
+
+    assert [model.provider for model in models] == ["pecut"]
+    assert models[0].full_model == "pecut/claude-opus-4-8"
+    assert models[0].source == "HANS_SMOKE_MODEL_PECUT"
+
+
+def test_pecut_smoke_model_defaults_to_catalog_fallback(monkeypatch) -> None:
+    monkeypatch.delenv("HANS_SMOKE_MODEL_PECUT", raising=False)
+    config = _smoke_config(
+        settings=_settings(
+            model="ollama/llama3.1",
+            pecut_api_key="pecut-key",
+            ollama_base_url="",
+        )
+    )
+
+    models = config.provider_smoke_models()
+
+    assert [model.provider for model in models] == ["pecut"]
+    assert models[0].full_model == "pecut/smoke-default"
+    assert models[0].source == "provider_default"
+
+
 def test_provider_smoke_models_cover_configured_providers_independent_of_model_mapping(
     monkeypatch,
 ) -> None:

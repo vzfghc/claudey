@@ -238,6 +238,13 @@ class TestSettings:
 
         assert Settings().ollama_api_key == "ollama-cloud-key"
 
+    def test_pecut_api_key_from_env(self, monkeypatch):
+        from claudey.config.settings import Settings
+
+        monkeypatch.setenv("PECUT_API_KEY", "pecut-key")
+
+        assert Settings().pecut_api_key == "pecut-key"
+
     def test_provider_rate_limit_from_env(self, monkeypatch):
         """PROVIDER_RATE_LIMIT env var is loaded into settings."""
         from claudey.config.settings import Settings
@@ -863,6 +870,7 @@ class TestPerModelMapping:
                 "open_router/anthropic/claude-3-haiku",
             ),
             ({"MODEL": "deepseek/deepseek-chat"}, "deepseek/deepseek-chat", None),
+            ({"MODEL": "pecut/claude-opus-4-8"}, "pecut/claude-opus-4-8", None),
             ({"MODEL": "wafer/DeepSeek-V4-Pro"}, "wafer/DeepSeek-V4-Pro", None),
             (
                 {"MODEL": "cloudflare/@cf/moonshotai/kimi-k2.6"},
@@ -960,6 +968,18 @@ class TestPerModelMapping:
         assert (
             ModelRouter(s).resolve("claude-fable-5").provider_model_ref
             == "open_router/anthropic/claude-fable-5"
+        )
+
+    def test_resolve_model_pecut_ref(self):
+        """ModelRouter resolves a pecut-prefixed model ref through the catalog."""
+        from claudey.application.routing import ModelRouter
+        from claudey.config.settings import Settings
+
+        s = Settings()
+        s.model = "pecut/claude-opus-4-8"
+        assert (
+            ModelRouter(s).resolve("claude-opus-4").provider_model_ref
+            == "pecut/claude-opus-4-8"
         )
 
     def test_resolve_model_opus_override(self):

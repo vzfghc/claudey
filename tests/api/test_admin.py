@@ -40,6 +40,7 @@ def _clear_process_config(monkeypatch) -> None:
         "HUGGINGFACE_API_KEY",
         "OPENROUTER_API_KEY",
         "DEEPSEEK_API_KEY",
+        "PECUT_API_KEY",
         "DEEPSEEK_SESSION_TOKEN",
         "AWS_BEARER_TOKEN_BEDROCK",
         "BEDROCK_BASE_URL",
@@ -123,6 +124,7 @@ def test_admin_http_errors_are_never_cached(
         "nvidia_nim",
         "anthropic",
         "wafer",
+        "pecut",
     ),
 )
 def test_admin_provider_logos_are_served(monkeypatch, tmp_path, provider_id):
@@ -448,6 +450,7 @@ def test_admin_config_masks_secrets_and_exposes_manifest(monkeypatch, tmp_path):
     assert "ANTHROPIC_AUTH_TOKEN" in keys
     assert "OPENROUTER_API_KEY" in keys
     assert "DEEPSEEK_API_KEY" in keys
+    assert "PECUT_API_KEY" in keys
     assert "DEEPSEEK_SESSION_TOKEN" in keys
     assert "AWS_BEARER_TOKEN_BEDROCK" in keys
     assert "BEDROCK_BASE_URL" in keys
@@ -1576,7 +1579,8 @@ def test_admin_static_scout_dashboard_replaces_flow_diagram():
     html = Path("src/claudey/api/admin_static/index.html").read_text(encoding="utf-8")
     logos_dir = Path("src/claudey/api/admin_static/logos")
     slugs = sorted(path.stem for path in logos_dir.glob("*.svg"))
-    assert len(slugs) == 32
+    assert len(slugs) == 33
+    assert "pecut" in slugs
 
     # The marquee and the flow diagram are both gone; logos stay untouched.
     assert "provider-marquee" not in html

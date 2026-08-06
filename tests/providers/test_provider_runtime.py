@@ -60,6 +60,7 @@ def _make_settings(**overrides):
     mock.mistral_api_key = "test_mistral_key"
     mock.codestral_api_key = "test_codestral_key"
     mock.deepseek_api_key = "test_deepseek_key"
+    mock.pecut_api_key = "test_pecut_key"
     mock.wafer_api_key = "test_wafer_key"
     mock.minimax_api_key = "test_minimax_key"
     mock.opencode_api_key = "test_opencode_key"
@@ -485,6 +486,7 @@ def test_create_provider_instantiates_each_builtin():
         "cohere": OpenAIChatProvider,
         "github_models": GitHubModelsProvider,
         "zai": OpenAIChatProvider,
+        "pecut": OpenAIChatProvider,
         "gemini": GeminiProvider,
         "vertex": VertexProvider,
         "groq": OpenAIChatProvider,

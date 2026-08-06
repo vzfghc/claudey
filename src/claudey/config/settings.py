@@ -43,6 +43,9 @@ class Settings(BaseSettings):
         default="", validation_alias="DEEPSEEK_SESSION_TOKEN"
     )
 
+    # ==================== Pecut Config ====================
+    pecut_api_key: str = Field(default="", validation_alias="PECUT_API_KEY")
+
     # ==================== Kimi Config ====================
     kimi_api_key: str = Field(default="", validation_alias="KIMI_API_KEY")
 

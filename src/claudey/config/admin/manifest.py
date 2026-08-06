@@ -701,6 +701,12 @@ _NON_PROVIDER_FIELDS: tuple[ConfigFieldSpec, ...] = (
         advanced=True,
     ),
     ConfigFieldSpec(
+        "HANS_SMOKE_MODEL_PECUT",
+        "Smoke Pecut Model",
+        "smoke",
+        advanced=True,
+    ),
+    ConfigFieldSpec(
         "HANS_SMOKE_MODEL_FIREWORKS",
         "Smoke Fireworks Model",
         "smoke",

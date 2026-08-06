@@ -157,6 +157,27 @@ def test_vertex_admin_status_uses_project_configuration_not_an_api_key() -> None
     assert vertex_status("vertex-project")["status"] == "configured"
 
 
+def test_pecut_credential_is_admin_field_and_status_tracks_key() -> None:
+    from claudey.config.admin.status import provider_config_status
+
+    entry = FIELD_BY_KEY["PECUT_API_KEY"]
+
+    assert entry.settings_attr == "pecut_api_key"
+    assert entry.section_id == "providers"
+    assert entry.secret is True
+
+    def pecut_status(api_key: str) -> dict[str, object]:
+        statuses = provider_config_status({"PECUT_API_KEY": {"value": api_key}})
+        return next(status for status in statuses if status["provider_id"] == "pecut")
+
+    missing = pecut_status("")
+    assert missing["status"] == "missing_key"
+    assert missing["label"] == "Missing key"
+    assert missing["kind"] == "remote"
+    assert missing["configuration"] == "PECUT_API_KEY"
+    assert pecut_status("pecut-key")["status"] == "configured"
+
+
 def test_azure_openai_admin_status_distinguishes_key_and_url() -> None:
     from claudey.config.admin.status import provider_config_status
 

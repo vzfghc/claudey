@@ -66,6 +66,21 @@ def test_every_provider_declares_its_configuration_boundary() -> None:
     )
 
 
+def test_pecut_catalog_entry_is_an_openai_compatible_api_key_provider() -> None:
+    descriptor = PROVIDER_CATALOG["pecut"]
+
+    assert descriptor.provider_id == "pecut"
+    assert descriptor.display_name == "Pecut"
+    assert descriptor.auth_kind is ProviderAuthKind.CONFIGURATION
+    assert descriptor.local is False
+    assert descriptor.credential_env == "PECUT_API_KEY"
+    assert descriptor.credential_attr == "pecut_api_key"
+    assert descriptor.default_base_url == "https://api.pecutopus.web.id/v1"
+    assert descriptor.base_url_attr is None
+    assert descriptor.proxy_attr is None
+    assert descriptor.configuration_attrs() == ("pecut_api_key",)
+
+
 def test_openai_is_a_connected_account_without_api_key_configuration() -> None:
     descriptor = PROVIDER_CATALOG["openai"]
 

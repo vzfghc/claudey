@@ -39,6 +39,8 @@ COHERE_DEFAULT_BASE = "https://api.cohere.ai/compatibility/v1"
 GITHUB_MODELS_DEFAULT_BASE = "https://models.github.ai/inference"
 # Z.ai GLM Coding Plan OpenAI-compatible Chat Completions API.
 ZAI_DEFAULT_BASE = "https://api.z.ai/api/coding/paas/v4"
+# PecutOpus OpenAI-compatible gateway.
+PECUT_DEFAULT_BASE = "https://api.pecutopus.web.id/v1"
 # Google AI Studio Gemini API OpenAI-compat layer (not Vertex AI).
 GEMINI_DEFAULT_BASE = "https://generativelanguage.googleapis.com/v1beta/openai/"
 # Vertex AI API root. The provider owns project/location endpoint composition.
@@ -344,6 +346,13 @@ PROVIDER_CATALOG: dict[str, ProviderDescriptor] = {
         credential_attr="zai_api_key",
         default_base_url=ZAI_DEFAULT_BASE,
         proxy_attr="zai_proxy",
+    ),
+    "pecut": ProviderDescriptor(
+        provider_id="pecut",
+        display_name="Pecut",
+        credential_env="PECUT_API_KEY",
+        credential_attr="pecut_api_key",
+        default_base_url=PECUT_DEFAULT_BASE,
     ),
     "ollama_cloud": ProviderDescriptor(
         provider_id="ollama_cloud",
