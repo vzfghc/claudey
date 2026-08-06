@@ -1691,6 +1691,14 @@ function formatTokens(n) {
   return String(n);
 }
 
+function formatUsd(value) {
+  if (value === null || value === undefined || Number.isNaN(Number(value))) return "—";
+  return `$${Number(value).toLocaleString("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+}
+
 function countUp(el, final) {
   if (REDUCED_MOTION) {
     el.textContent = formatTokens(final);
@@ -1960,6 +1968,76 @@ function renderUsageStatCells(payload) {
   return grid;
 }
 
+function renderUsageBillingRow(label, value, accent) {
+  const row = document.createElement("div");
+  row.className = "usage-billing-row";
+  const labelEl = document.createElement("span");
+  labelEl.className = "usage-billing-label";
+  labelEl.textContent = label;
+  const valueEl = document.createElement("strong");
+  valueEl.className = accent ? "usage-billing-value accent" : "usage-billing-value";
+  valueEl.textContent = value;
+  row.append(labelEl, valueEl);
+  return row;
+}
+
+function renderUsageBillingCard(billing) {
+  if (!billing || (!billing.available && !billing.configured)) return null;
+  const card = document.createElement("article");
+  card.className = "usage-card usage-billing";
+  const title = document.createElement("h4");
+  title.className = "usage-card-title";
+  title.textContent = "DeepSeek billing";
+  const status = document.createElement("span");
+  status.className = "status-pill";
+  card.append(title, status);
+
+  if (!billing.available) {
+    status.className = "status-pill warn";
+    status.textContent = "Syncing";
+    const hint = document.createElement("p");
+    hint.className = "usage-billing-hint";
+    hint.textContent = "Syncing on next load…";
+    card.appendChild(hint);
+    return card;
+  }
+
+  const syncStatus = billing.status || "ok";
+  if (syncStatus === "invalid_token") {
+    status.className = "status-pill warn";
+    status.textContent = "Session expired";
+    const hint = document.createElement("p");
+    hint.className = "usage-billing-hint";
+    hint.textContent = "Paste a fresh userToken from platform.deepseek.com.";
+    card.appendChild(hint);
+  } else if (syncStatus === "offline") {
+    status.className = "status-pill warn";
+    status.textContent = "Offline";
+  } else if (syncStatus === "not_configured") {
+    status.className = "status-pill warn";
+    status.textContent = "Not configured";
+  } else {
+    status.className = "status-pill ok";
+    status.textContent = "Synced";
+  }
+
+  const rows = document.createElement("div");
+  rows.className = "usage-billing-rows";
+  rows.append(
+    renderUsageBillingRow("Balance", formatUsd(billing.balance_usd), true),
+    renderUsageBillingRow("All-time cost", formatUsd(billing.total_cost_usd), true),
+    renderUsageBillingRow("Tokens", formatTokens(billing.total_tokens || 0), false),
+    renderUsageBillingRow(
+      "Requests",
+      (billing.total_requests || 0).toLocaleString("en-US"),
+      false,
+    ),
+    renderUsageBillingRow("Last synced", formatUsageTimestamp(billing.last_synced), false),
+  );
+  card.appendChild(rows);
+  return card;
+}
+
 function renderUsageEmpty(kind) {
   const card = document.createElement("div");
   card.className = "usage-empty";
@@ -2125,8 +2203,12 @@ function renderUsageProviders(payload) {
   return card;
 }
 
-function renderUsageDailyTable(daily) {
+function renderUsageDailyTable(daily, billing) {
   const rows = daily || [];
+  const costByDate = new Map();
+  (billing && billing.days || []).forEach((day) => {
+    costByDate.set(day.date, day.cost_usd);
+  });
   const card = document.createElement("article");
   card.className = "usage-card";
   const title = document.createElement("h4");
@@ -2140,7 +2222,7 @@ function renderUsageDailyTable(daily) {
   table.className = "usage-table";
   const thead = document.createElement("thead");
   const headRow = document.createElement("tr");
-  ["Date", "Total", "Input", "Output", "Cached", "Reasoning", "Conversations"].forEach((label) => {
+  ["Date", "Total", "Input", "Output", "Cached", "Reasoning", "Conversations", "Cost"].forEach((label) => {
     const th = document.createElement("th");
     th.scope = "col";
     th.textContent = label;
@@ -2151,6 +2233,7 @@ function renderUsageDailyTable(daily) {
   [...rows].reverse().forEach((row) => {
     const tr = document.createElement("tr");
     if (!(row.total_tokens || 0)) tr.className = "zero";
+    const cost = costByDate.has(row.date) ? formatUsd(costByDate.get(row.date)) : "—";
     [
       row.date,
       formatTokens(row.total_tokens || 0),
@@ -2159,6 +2242,7 @@ function renderUsageDailyTable(daily) {
       formatTokens(row.cached_input_tokens || 0),
       formatTokens(row.reasoning_output_tokens || 0),
       String(row.conversations || 0),
+      cost,
     ].forEach((text) => {
       const td = document.createElement("td");
       td.textContent = text;
@@ -2236,10 +2320,12 @@ function renderUsage(payload) {
     renderUsageHeatmapCard(payload.heatmap),
     renderUsageTrendCard(payload.daily),
   );
+  right.append(renderUsageHero(payload));
+  const billingCard = renderUsageBillingCard(payload.billing);
+  if (billingCard) right.appendChild(billingCard);
   right.append(
-    renderUsageHero(payload),
     renderUsageProviders(payload),
-    renderUsageDailyTable(payload.daily),
+    renderUsageDailyTable(payload.daily, payload.billing),
   );
   grid.append(left, right);
   strip.appendChild(grid);

@@ -39,6 +39,9 @@ class Settings(BaseSettings):
 
     # ==================== DeepSeek Config ====================
     deepseek_api_key: str = Field(default="", validation_alias="DEEPSEEK_API_KEY")
+    deepseek_session_token: str = Field(
+        default="", validation_alias="DEEPSEEK_SESSION_TOKEN"
+    )
 
     # ==================== Kimi Config ====================
     kimi_api_key: str = Field(default="", validation_alias="KIMI_API_KEY")

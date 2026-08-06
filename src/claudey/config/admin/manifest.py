@@ -133,6 +133,19 @@ SECTIONS: tuple[ConfigSectionSpec, ...] = (
 
 _NON_PROVIDER_FIELDS: tuple[ConfigFieldSpec, ...] = (
     ConfigFieldSpec(
+        "DEEPSEEK_SESSION_TOKEN",
+        "DeepSeek session token",
+        "providers",
+        "secret",
+        settings_attr="deepseek_session_token",
+        secret=True,
+        description=(
+            "Paste the userToken from platform.deepseek.com localStorage to "
+            "sync usage/cost history in the admin Usage view; it expires "
+            "periodically."
+        ),
+    ),
+    ConfigFieldSpec(
         "MODEL",
         "Default Model",
         "models",

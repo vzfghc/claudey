@@ -39,6 +39,8 @@ def _clear_process_config(monkeypatch) -> None:
         "NVIDIA_NIM_API_KEY",
         "HUGGINGFACE_API_KEY",
         "OPENROUTER_API_KEY",
+        "DEEPSEEK_API_KEY",
+        "DEEPSEEK_SESSION_TOKEN",
         "AWS_BEARER_TOKEN_BEDROCK",
         "BEDROCK_BASE_URL",
         "BEDROCK_PROXY",
@@ -445,6 +447,8 @@ def test_admin_config_masks_secrets_and_exposes_manifest(monkeypatch, tmp_path):
     assert "REASONING_FABLE" in keys
     assert "ANTHROPIC_AUTH_TOKEN" in keys
     assert "OPENROUTER_API_KEY" in keys
+    assert "DEEPSEEK_API_KEY" in keys
+    assert "DEEPSEEK_SESSION_TOKEN" in keys
     assert "AWS_BEARER_TOKEN_BEDROCK" in keys
     assert "BEDROCK_BASE_URL" in keys
     assert "FIREWORKS_API_KEY" in keys
@@ -1285,6 +1289,31 @@ def test_admin_first_apply_migrates_repo_env(monkeypatch, tmp_path):
     assert "DEEPSEEK_API_KEY=deepseek-secret" in managed_text
 
 
+def test_admin_deepseek_session_token_applies_and_persists(monkeypatch, tmp_path):
+    _set_home(monkeypatch, tmp_path)
+    _clear_process_config(monkeypatch)
+    app = create_test_app()
+
+    config = _local_client(app).get("/admin/api/config").json()
+    field = next(
+        field for field in config["fields"] if field["key"] == "DEEPSEEK_SESSION_TOKEN"
+    )
+    assert field["secret"] is True
+    assert field["type"] == "secret"
+    # Empty secrets are exposed as empty (only non-empty values are masked).
+    assert field["value"] == ""
+
+    response = _local_client(app).post(
+        "/admin/api/config/apply",
+        json={"values": {"DEEPSEEK_SESSION_TOKEN": "user-tok-123"}},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["applied"] is True
+    managed_text = (tmp_path / ".claudey" / ".env").read_text("utf-8")
+    assert "DEEPSEEK_SESSION_TOKEN=user-tok-123" in managed_text
+
+
 def test_admin_local_provider_status_reports_reachable(monkeypatch, tmp_path):
     _set_home(monkeypatch, tmp_path)
     _clear_process_config(monkeypatch)
@@ -1797,7 +1826,13 @@ def test_admin_usage_endpoint_is_loopback_only(monkeypatch, tmp_path):
 
 def test_admin_usage_endpoint_degrades_when_log_missing(monkeypatch, tmp_path):
     _set_home(monkeypatch, tmp_path)
-    response = _local_client(create_test_app()).get("/admin/api/usage")
+    with patch(
+        "claudey.api.deepseek_billing.get_settings",
+        return_value=Settings.model_construct(
+            deepseek_session_token="", deepseek_api_key=""
+        ),
+    ):
+        response = _local_client(create_test_app()).get("/admin/api/usage")
 
     assert response.status_code == 200
     assert response.headers["cache-control"] == "no-store"
@@ -1812,11 +1847,49 @@ def test_admin_usage_endpoint_degrades_when_log_missing(monkeypatch, tmp_path):
         "models",
         "providers",
         "heatmap",
+        "billing",
     }
     assert "sources" not in payload
     assert payload["available"] is False
     assert payload["total_entries"] == 0
     assert payload["last_updated"] is None
+
+
+def test_admin_usage_endpoint_includes_billing_with_expected_subkeys(
+    monkeypatch, tmp_path
+):
+    _set_home(monkeypatch, tmp_path)
+    with patch(
+        "claudey.api.deepseek_billing.get_settings",
+        return_value=Settings.model_construct(
+            deepseek_session_token="", deepseek_api_key=""
+        ),
+    ):
+        payload = _local_client(create_test_app()).get("/admin/api/usage").json()
+
+    billing = payload["billing"]
+    assert set(billing) == {
+        "available",
+        "configured",
+        "status",
+        "total_cost_usd",
+        "total_tokens",
+        "total_requests",
+        "balance_usd",
+        "currency",
+        "days",
+        "last_synced",
+    }
+    assert billing["configured"] is False
+    assert billing["status"] == "not_configured"
+    assert billing["available"] is False
+    assert billing["days"] == []
+    assert billing["total_cost_usd"] == 0.0
+    assert billing["total_tokens"] == 0
+    assert billing["total_requests"] == 0
+    assert billing["balance_usd"] is None
+    assert billing["currency"] is None
+    assert billing["last_synced"] is None
 
 
 def test_admin_usage_endpoint_returns_aggregated_data(monkeypatch, tmp_path):
@@ -1952,6 +2025,9 @@ def test_admin_static_usage_view_markup(monkeypatch, tmp_path):
     assert "renderUsageTrendCard" in js
     assert "renderUsageDailyTable" in js
     assert "function formatTokens" in js
+    assert "function formatUsd" in js
+    assert "renderUsageBillingCard" in js
+    assert "DeepSeek billing" in js
     assert 'if (activeView.id === "usage")' in js
     assert "usage-period-tab" in js
     assert "heat-cell heat-" in js
@@ -1962,6 +2038,9 @@ def test_admin_static_usage_view_markup(monkeypatch, tmp_path):
     assert ".heat-cell" in css
     assert ".usage-provider-bar" in css
     assert ".usage-table" in css
+    assert ".usage-billing" in css
+    assert ".usage-billing-value" in css
+    assert "color: #ff4d00;" in css
     assert "background: #ff4d00;" in css
     assert "background: #f9f3f0;" in css
     assert "var(--heat" not in css

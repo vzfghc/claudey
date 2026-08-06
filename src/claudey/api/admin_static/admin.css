@@ -1889,6 +1889,61 @@ textarea:focus-visible,
   font-variant-numeric: tabular-nums;
 }
 
+/* DeepSeek billing card */
+.usage-billing {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.usage-billing .status-pill {
+  align-self: flex-start;
+}
+
+.usage-billing-rows {
+  display: flex;
+  flex-direction: column;
+}
+
+.usage-billing-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 0;
+  border-top: 1px solid var(--line);
+}
+
+.usage-billing-row:first-child {
+  border-top: none;
+}
+
+.usage-billing-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+}
+
+.usage-billing-value {
+  font-family: var(--font-rounded);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-strong);
+  font-variant-numeric: tabular-nums;
+}
+
+.usage-billing-value.accent {
+  color: #ff4d00;
+}
+
+.usage-billing-hint {
+  font-size: 12px;
+  color: var(--muted);
+  margin: 0;
+}
+
 /* Activity heatmap */
 .usage-heatmap {
   overflow-x: auto;

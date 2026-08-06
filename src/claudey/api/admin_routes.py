@@ -24,6 +24,7 @@ from claudey.config.provider_catalog import (
 )
 
 from .admin_dashboard import dashboard_payload
+from .deepseek_billing import billing_payload
 from .dependencies import get_services
 from .ports import ApiServices
 from .usage_aggregate import usage_payload
@@ -126,7 +127,9 @@ async def get_admin_dashboard(request: Request):
 @router.get("/admin/api/usage")
 async def get_admin_usage(request: Request):
     require_loopback_admin(request)
-    return usage_payload()
+    payload = usage_payload()
+    payload["billing"] = billing_payload()
+    return payload
 
 
 @router.get("/admin/api/config")
