@@ -1757,7 +1757,7 @@ textarea:focus-visible,
 }
 
 /* ==========================================================
-   Usage view — TokenTracker tokens, heatmap, and breakdowns
+   Usage view — TokenTracker-style dashboard
    Heat accent stays literal: #ff4d00 / #f9f3f0, no --heat-* vars
    ========================================================== */
 .usage-actions {
@@ -1766,63 +1766,163 @@ textarea:focus-visible,
   gap: 10px;
 }
 
-.usage-stats {
+.usage-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  grid-template-columns: 4fr 8fr;
   gap: 16px;
-  margin-bottom: 24px;
 }
 
-.usage-stat-card {
+.usage-col {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-md);
-  padding: 14px;
-  background: var(--card);
+  gap: 16px;
+  min-width: 0;
 }
 
-.usage-stat-label {
+.usage-card {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--card);
+  padding: 20px;
+  font-variant-numeric: tabular-nums;
+}
+
+.usage-card-title {
+  font-family: var(--font-rounded);
+  font-size: 14px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
   color: var(--muted);
-  font-size: 11px;
+  margin: 0 0 16px 0;
+}
+
+/* Period tabs */
+.usage-period-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 18px;
+}
+
+.usage-period-tab {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-full);
+  background: transparent;
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 12px;
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.usage-period-tab:hover {
+  color: var(--text-strong);
+}
+
+.usage-period-tab.active {
+  background: var(--neutral-bg);
+  color: var(--text-strong);
+  border-color: var(--line-strong);
+}
+
+/* Hero stat */
+.usage-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.usage-hero-number {
+  border: none;
+  background: none;
+  padding: 0;
+  font-family: var(--font-rounded);
+  font-size: clamp(2.5rem, 6vw, 4rem);
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--text-strong);
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+
+.usage-hero-conversations {
+  margin: 6px 0 0 0;
+  font-size: 13px;
+  font-weight: 500;
+  color: #ff4d00;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Stat cells */
+.usage-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+.usage-stat-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: var(--neutral-bg);
+  border-radius: 8px;
+  padding: 12px 14px;
+}
+
+.usage-stat-cell-label {
+  font-size: 10px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
+  color: var(--muted);
 }
 
-.usage-stat-value {
+.usage-stat-cell-value {
   font-family: var(--font-rounded);
-  font-size: 22px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--text-strong);
   font-variant-numeric: tabular-nums;
 }
 
-.usage-subheading {
-  font-family: var(--font-rounded);
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--text-strong);
-  margin: 0 0 12px 0;
+/* Activity heatmap */
+.usage-heatmap {
+  overflow-x: auto;
 }
 
-.usage-heatmap {
+.usage-heatmap-months {
+  display: grid;
+  grid-template-columns: repeat(52, 12px);
+  gap: 3px;
+  height: 14px;
+  margin-bottom: 6px;
+}
+
+.usage-heatmap-month {
+  align-self: end;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.usage-heatmap-grid {
   display: grid;
   grid-auto-flow: column;
-  grid-template-rows: repeat(7, 10px);
+  grid-template-rows: repeat(7, 12px);
   gap: 3px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-md);
-  padding: 14px;
-  background: var(--card);
-  overflow-x: auto;
-  margin-bottom: 24px;
+  width: max-content;
 }
 
 .heat-cell {
-  width: 10px;
-  height: 10px;
+  width: 12px;
+  height: 12px;
   border-radius: 2px;
   background: #f9f3f0;
 }
@@ -1832,59 +1932,267 @@ textarea:focus-visible,
 .heat-cell.heat-3 { background: rgba(255, 77, 0, 0.62); }
 .heat-cell.heat-4 { background: #ff4d00; }
 
-@media (prefers-color-scheme: dark) {
-  .heat-cell {
-    background: rgba(255, 255, 255, 0.06);
-  }
+/* Trend chart */
+.usage-trend-chart {
+  position: relative;
+  height: 160px;
+  padding-right: 48px;
 }
 
-.usage-cols {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 24px;
+.usage-trend-gridlines {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 48px;
+  pointer-events: none;
 }
 
-.usage-bars {
+.usage-trend-gridline {
+  position: absolute;
+  left: 0;
+  right: 0;
+  border-top: 1px solid var(--line);
+}
+
+.usage-trend-gridline-label {
+  position: absolute;
+  top: -6px;
+  right: -50px;
+  font-size: 10px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.usage-trend-cols {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 48px;
   display: flex;
-  flex-direction: column;
+  gap: 3px;
+}
+
+.usage-trend-col {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 1px;
+}
+
+.usage-trend-seg {
+  width: 100%;
+  min-height: 1px;
+  border-radius: 1px;
+}
+
+/* Provider distribution */
+.usage-provider-bar {
+  display: flex;
+  height: 6px;
+  border-radius: 3px;
+  overflow: hidden;
+  background: var(--neutral-bg);
+  margin-bottom: 14px;
+}
+
+.usage-provider-bar-seg {
+  height: 100%;
+}
+
+.usage-provider-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
   gap: 10px;
 }
 
-.usage-bar-row {
-  display: grid;
-  grid-template-columns: minmax(120px, 1fr) minmax(120px, 2fr) auto;
-  align-items: center;
-  gap: 12px;
+.usage-provider-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card);
+  padding: 12px 14px;
+  cursor: pointer;
+  transition: border-color var(--transition-fast), background var(--transition-fast);
 }
 
-.usage-bar-label {
-  color: var(--text-secondary);
+.usage-provider-card:hover {
+  border-color: var(--line-strong);
+  background: var(--card-hover);
+}
+
+.usage-provider-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.usage-provider-name {
+  font-family: var(--font-rounded);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-strong);
+}
+
+.usage-provider-stats {
+  font-size: 10px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.usage-provider-tokens {
   font-size: 12px;
-  font-weight: 500;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.usage-provider-models {
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--line);
+  margin-top: 6px;
+  padding-top: 8px;
+}
+
+.usage-model-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0 6px 0;
+}
+
+.usage-model-name {
+  font-size: 11px;
+  color: var(--text-secondary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.usage-bar-track {
-  height: 8px;
-  border-radius: var(--radius-full);
-  background: var(--neutral-bg);
-  overflow: hidden;
-}
-
-.usage-bar-fill {
-  height: 100%;
-  border-radius: var(--radius-full);
-  background: #ff4d00;
-}
-
-.usage-bar-value {
+.usage-model-tokens {
+  font-size: 11px;
   color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.usage-model-share {
+  font-size: 11px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  min-width: 44px;
+}
+
+.usage-model-bar {
+  grid-column: 1 / -1;
+  height: 3px;
+  border-radius: 2px;
+  opacity: 0.45;
+}
+
+/* Daily table */
+.usage-table-scroll {
+  max-height: 384px;
+  overflow-y: auto;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.usage-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
   font-size: 12px;
   font-variant-numeric: tabular-nums;
 }
 
+.usage-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--card);
+  border-bottom: 1px solid var(--line);
+  padding: 8px 10px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.usage-table thead th:first-child {
+  text-align: left;
+}
+
+.usage-table td {
+  padding: 6px 10px;
+  text-align: right;
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+}
+
+.usage-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.usage-table td:first-child {
+  text-align: left;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.usage-table tr.zero td {
+  color: var(--muted);
+}
+
+.usage-table tbody tr:hover td {
+  background: var(--card-hover);
+}
+
+/* Heatmap tooltip */
+.usage-tooltip {
+  position: fixed;
+  z-index: 1000;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  backdrop-filter: blur(8px);
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px 14px;
+  box-shadow: var(--shadow-sm);
+}
+
+.usage-tooltip-date {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.usage-tooltip-value {
+  font-family: var(--font-rounded);
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-strong);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Empty states */
 .usage-empty {
   border: 1px dashed var(--line-strong);
   border-radius: var(--radius-md);
@@ -1913,12 +2221,18 @@ textarea:focus-visible,
   margin: 0;
 }
 
-@media (max-width: 600px) {
-  .usage-bar-row {
-    grid-template-columns: 1fr auto;
+@media (prefers-color-scheme: dark) {
+  .heat-cell {
+    background: rgba(255, 255, 255, 0.06);
   }
-  .usage-bar-track {
-    grid-column: 1 / -1;
-    grid-row: 2;
+
+  .usage-tooltip {
+    background: rgba(17, 17, 17, 0.92);
+  }
+}
+
+@media (max-width: 900px) {
+  .usage-grid {
+    grid-template-columns: 1fr;
   }
 }

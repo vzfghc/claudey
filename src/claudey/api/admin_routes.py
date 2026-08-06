@@ -26,7 +26,7 @@ from claudey.config.provider_catalog import (
 from .admin_dashboard import dashboard_payload
 from .dependencies import get_services
 from .ports import ApiServices
-from .tokentracker_usage import usage_payload
+from .usage_aggregate import usage_payload
 
 router = APIRouter()
 

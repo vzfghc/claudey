@@ -1706,75 +1706,258 @@ function countUp(el, final) {
   requestAnimationFrame(step);
 }
 
-function heatLevel(value, max) {
-  if (value <= 0 || max <= 0) return 0;
-  const ratio = value / max;
-  if (ratio > 0.75) return 4;
-  if (ratio > 0.5) return 3;
-  if (ratio > 0.25) return 2;
-  return 1;
+const USAGE_PERIODS = ["24h", "7d", "30d", "Total"];
+const USAGE_MONTHS = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
+const USAGE_WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const USAGE_TREND_SEGMENTS = [
+  ["input", "#38bdf8"],
+  ["cached_input", "#14b8a6"],
+  ["output", "#a78bfa"],
+  ["reasoning_output", "#fb7185"],
+];
+const USAGE_PROVIDER_COLORS = {
+  anthropic: "#d97757",
+  openai: "#3b82f6",
+  nvidia_nim: "#76b900",
+  deepseek: "#4d6bfe",
+  gemini: "#2196f3",
+  ollama: "#404040",
+  lmstudio: "#14b8a6",
+  llamacpp: "#14b8a6",
+  open_router: "#ff9900",
+  azure_openai: "#0078d4",
+  bedrock: "#ff9900",
+  groq: "#f55036",
+};
+
+let usagePeriod = "7d";
+let usageFullNumbers = false;
+let usageTooltipEl = null;
+
+function usageProviderColor(provider, index) {
+  return USAGE_PROVIDER_COLORS[provider] || `hsl(${150 + index * 40}, 60%, 45%)`;
 }
 
-function renderUsageHeatmap(heatmap) {
+function usageHeroValue(payload) {
+  if (usagePeriod === "Total") return payload.totals.total_tokens || 0;
+  const windows = payload.windows || {};
+  return windows[usagePeriod] || 0;
+}
+
+function usageNumberText(n) {
+  return usageFullNumbers ? n.toLocaleString("en-US") : formatTokens(n);
+}
+
+function formatUsageTimestamp(iso) {
+  return iso ? iso.replace("T", " ").replace("+00:00", " UTC") : "never";
+}
+
+function getUsageTooltip() {
+  if (!usageTooltipEl) {
+    usageTooltipEl = document.createElement("div");
+    usageTooltipEl.className = "usage-tooltip";
+    const date = document.createElement("span");
+    date.className = "usage-tooltip-date";
+    const value = document.createElement("strong");
+    value.className = "usage-tooltip-value";
+    usageTooltipEl.append(date, value);
+    usageTooltipEl.hidden = true;
+    document.body.appendChild(usageTooltipEl);
+  }
+  return usageTooltipEl;
+}
+
+function positionUsageTooltip(event) {
+  const tip = getUsageTooltip();
+  const pad = 14;
+  tip.style.left = `${event.clientX + pad}px`;
+  tip.style.top = `${event.clientY + pad}px`;
+  const rect = tip.getBoundingClientRect();
+  if (rect.right > window.innerWidth) {
+    tip.style.left = `${event.clientX - rect.width - pad}px`;
+  }
+  if (rect.bottom > window.innerHeight) {
+    tip.style.top = `${event.clientY - rect.height - pad}px`;
+  }
+}
+
+function showUsageTooltip(event, cell) {
+  const tip = getUsageTooltip();
+  const date = new Date(`${cell.dataset.date}T00:00:00Z`);
+  tip.querySelector(".usage-tooltip-date").textContent =
+    `${date.toISOString().slice(0, 10)} · ${USAGE_WEEKDAYS[date.getUTCDay()]}`;
+  tip.querySelector(".usage-tooltip-value").textContent =
+    formatTokens(Number(cell.dataset.value) || 0);
+  tip.hidden = false;
+  positionUsageTooltip(event);
+}
+
+function hideUsageTooltip() {
+  if (usageTooltipEl) usageTooltipEl.hidden = true;
+}
+
+// Heat levels via quantiles over positive day values only; when fewer than
+// 4 positive days exist, fall back to ratio-of-max thresholds.
+function usageHeatLevels(weeks) {
+  const positive = [];
+  weeks.forEach((week) => {
+    week.days.forEach((value) => {
+      if (value > 0) positive.push(value);
+    });
+  });
+  if (positive.length < 4) {
+    const max = Math.max(0, ...positive);
+    return (value) => {
+      if (value <= 0 || max <= 0) return 0;
+      const ratio = value / max;
+      if (ratio > 0.75) return 4;
+      if (ratio > 0.5) return 3;
+      if (ratio > 0.25) return 2;
+      return 1;
+    };
+  }
+  const sorted = [...positive].sort((a, b) => a - b);
+  const pick = (p) => sorted[Math.min(sorted.length - 1, Math.floor((sorted.length - 1) * p))];
+  const t1 = pick(0.5);
+  const t2 = pick(0.75);
+  const t3 = pick(0.9);
+  return (value) => (value <= 0 ? 0 : value <= t1 ? 1 : value <= t2 ? 2 : value <= t3 ? 3 : 4);
+}
+
+function renderUsageHeatmapCard(heatmap) {
+  const weeks = (heatmap && heatmap.weeks) || [];
+  const card = document.createElement("article");
+  card.className = "usage-card";
+  const title = document.createElement("h4");
+  title.className = "usage-card-title";
+  title.textContent = "Activity — last 52 weeks";
+  card.appendChild(title);
+
   const wrap = document.createElement("div");
   wrap.className = "usage-heatmap";
-  wrap.setAttribute("role", "img");
-  wrap.setAttribute("aria-label", "Token usage heatmap over the last 52 weeks");
-  heatmap.weeks.forEach((week) => {
+
+  const months = document.createElement("div");
+  months.className = "usage-heatmap-months";
+  let previousMonth = -1;
+  weeks.forEach((week, weekIndex) => {
+    const start = new Date(`${week.start}T00:00:00Z`);
+    const month = start.getUTCMonth();
+    if (month === previousMonth) return;
+    previousMonth = month;
+    const label = document.createElement("span");
+    label.className = "usage-heatmap-month";
+    label.textContent = USAGE_MONTHS[month];
+    label.style.gridColumn = `${weekIndex + 1} / span 2`;
+    months.appendChild(label);
+  });
+
+  const grid = document.createElement("div");
+  grid.className = "usage-heatmap-grid";
+  grid.setAttribute("role", "img");
+  grid.setAttribute("aria-label", "Token usage heatmap over the last 52 weeks");
+  const levelFor = usageHeatLevels(weeks);
+  weeks.forEach((week) => {
     const weekStart = new Date(`${week.start}T00:00:00Z`);
     week.days.forEach((value, index) => {
       const cell = document.createElement("span");
       const date = new Date(weekStart);
       date.setUTCDate(date.getUTCDate() + index);
-      cell.className = `heat-cell heat-${heatLevel(value, heatmap.max_day_tokens)}`;
-      cell.title = `${date.toISOString().slice(0, 10)} · ${formatTokens(value)} tokens`;
-      wrap.appendChild(cell);
+      cell.className = `heat-cell heat-${levelFor(value)}`;
+      cell.dataset.date = date.toISOString().slice(0, 10);
+      cell.dataset.value = String(value);
+      cell.addEventListener("mouseenter", (event) => showUsageTooltip(event, cell));
+      cell.addEventListener("mousemove", positionUsageTooltip);
+      cell.addEventListener("mouseleave", hideUsageTooltip);
+      grid.appendChild(cell);
     });
   });
-  return wrap;
+
+  wrap.append(months, grid);
+  card.appendChild(wrap);
+  return card;
 }
 
-function renderUsageBars(rows, labelKey) {
-  const wrap = document.createElement("div");
-  wrap.className = "usage-bars";
+function renderUsageTrendCard(daily) {
+  const rows = daily || [];
+  const card = document.createElement("article");
+  card.className = "usage-card";
+  const title = document.createElement("h4");
+  title.className = "usage-card-title";
+  title.textContent = "Last 30 days";
+  card.appendChild(title);
+
   if (!rows.length) {
     const note = document.createElement("p");
     note.className = "usage-empty-note";
     note.textContent = "No data yet.";
-    wrap.appendChild(note);
-    return wrap;
+    card.appendChild(note);
+    return card;
   }
-  const max = rows[0].total_tokens || 1;
-  rows.forEach((row) => {
-    const item = document.createElement("div");
-    item.className = "usage-bar-row";
+
+  const chart = document.createElement("div");
+  chart.className = "usage-trend-chart";
+
+  const gridlines = document.createElement("div");
+  gridlines.className = "usage-trend-gridlines";
+  const maxTotal = Math.max(1, ...rows.map((row) => row.total_tokens || 0));
+  [0, 25, 50, 75, 100].forEach((percent) => {
+    const line = document.createElement("div");
+    line.className = "usage-trend-gridline";
+    line.style.bottom = `${percent}%`;
     const label = document.createElement("span");
-    label.className = "usage-bar-label";
-    label.textContent = row[labelKey];
-    label.title = row[labelKey];
-    const track = document.createElement("div");
-    track.className = "usage-bar-track";
-    const fill = document.createElement("div");
-    fill.className = "usage-bar-fill";
-    fill.style.width = `${Math.max((row.total_tokens / max) * 100, 1)}%`;
-    track.appendChild(fill);
-    const value = document.createElement("span");
-    value.className = "usage-bar-value";
-    value.textContent = formatTokens(row.total_tokens);
-    item.append(label, track, value);
-    wrap.appendChild(item);
+    label.className = "usage-trend-gridline-label";
+    label.textContent = percent === 0 ? "0" : formatTokens(Math.round((maxTotal * percent) / 100));
+    line.appendChild(label);
+    gridlines.appendChild(line);
   });
-  return wrap;
+
+  const cols = document.createElement("div");
+  cols.className = "usage-trend-cols";
+  rows.forEach((row) => {
+    const column = document.createElement("div");
+    column.className = "usage-trend-col";
+    const titleLines = [`${row.date} · ${formatTokens(row.total_tokens || 0)} total`];
+    USAGE_TREND_SEGMENTS.forEach(([key, color]) => {
+      const value = row[key] || 0;
+      titleLines.push(`${key}: ${formatTokens(value)}`);
+      if (value <= 0) return;
+      const segment = document.createElement("div");
+      segment.className = "usage-trend-seg";
+      segment.style.background = color;
+      segment.style.height = `${Math.min((value / maxTotal) * 100, 100)}%`;
+      column.appendChild(segment);
+    });
+    column.title = titleLines.join("\n");
+    cols.appendChild(column);
+  });
+
+  chart.append(gridlines, cols);
+  card.appendChild(chart);
+  return card;
 }
 
-function renderUsageBarsSection(title, rows, labelKey) {
-  const section = document.createElement("div");
-  section.className = "usage-bars-section";
-  const heading = document.createElement("h4");
-  heading.className = "usage-subheading";
-  heading.textContent = title;
-  section.append(heading, renderUsageBars(rows, labelKey));
-  return section;
+function renderUsageStatCells(payload) {
+  const windows = payload.windows || {};
+  const grid = document.createElement("div");
+  grid.className = "usage-stat-grid";
+  [
+    ["24h tokens", windows["24h"] || 0],
+    ["7d tokens", windows["7d"] || 0],
+    ["30d tokens", windows["30d"] || 0],
+    ["Conversations", payload.totals.conversations || 0],
+  ].forEach(([label, value]) => {
+    const cell = document.createElement("div");
+    cell.className = "usage-stat-cell";
+    const labelEl = document.createElement("span");
+    labelEl.className = "usage-stat-cell-label";
+    labelEl.textContent = label;
+    const valueEl = document.createElement("strong");
+    valueEl.className = "usage-stat-cell-value";
+    cell.append(labelEl, valueEl);
+    countUp(valueEl, value);
+    grid.appendChild(cell);
+  });
+  return grid;
 }
 
 function renderUsageEmpty(kind) {
@@ -1783,18 +1966,209 @@ function renderUsageEmpty(kind) {
   const title = document.createElement("h3");
   const body = document.createElement("p");
   if (kind === "not-found") {
-    title.textContent = "TokenTracker not found";
-    body.textContent =
-      "Run TokenTracker (github.com/xiufengsun/TokenTracker) to collect usage into ~/.tokentracker/queue.jsonl. Tokens from Claude Code, Codex, Cursor, and other tools will appear here.";
-  } else if (kind === "empty") {
     title.textContent = "No usage recorded yet";
-    body.textContent =
-      "TokenTracker is installed but the queue is empty. Usage appears after your next coding session.";
+    body.textContent = "claudey writes ~/.claudey/usage.jsonl as requests complete.";
+  } else if (kind === "empty") {
+    title.textContent = "No requests served yet";
+    body.textContent = "Usage appears after your next conversation.";
   } else {
     title.textContent = "Could not load usage data";
     body.textContent = "The usage endpoint is unreachable. Try refreshing.";
   }
   card.append(title, body);
+  return card;
+}
+
+function renderUsageHero(payload) {
+  const card = document.createElement("article");
+  card.className = "usage-card usage-hero";
+
+  const tabs = document.createElement("div");
+  tabs.className = "usage-period-tabs";
+  tabs.setAttribute("role", "tablist");
+  tabs.setAttribute("aria-label", "Period");
+  USAGE_PERIODS.forEach((period) => {
+    const tab = document.createElement("button");
+    tab.type = "button";
+    tab.className = `usage-period-tab${period === usagePeriod ? " active" : ""}`;
+    tab.textContent = period;
+    tab.setAttribute("role", "tab");
+    tab.setAttribute("aria-selected", String(period === usagePeriod));
+    tab.addEventListener("click", () => {
+      if (period === usagePeriod) return;
+      usagePeriod = period;
+      tabs.querySelectorAll(".usage-period-tab").forEach((other) => {
+        other.classList.toggle("active", other === tab);
+        other.setAttribute("aria-selected", String(other === tab));
+      });
+      if (usageFullNumbers) {
+        heroNumber.textContent = usageNumberText(usageHeroValue(payload));
+      } else {
+        countUp(heroNumber, usageHeroValue(payload));
+      }
+    });
+    tabs.appendChild(tab);
+  });
+  card.appendChild(tabs);
+
+  const heroNumber = document.createElement("button");
+  heroNumber.type = "button";
+  heroNumber.className = "usage-hero-number";
+  heroNumber.title = "Click to toggle between compact and full numbers";
+  heroNumber.setAttribute("aria-pressed", String(usageFullNumbers));
+  heroNumber.addEventListener("click", () => {
+    usageFullNumbers = !usageFullNumbers;
+    heroNumber.setAttribute("aria-pressed", String(usageFullNumbers));
+    heroNumber.textContent = usageNumberText(usageHeroValue(payload));
+  });
+  countUp(heroNumber, usageHeroValue(payload));
+  card.appendChild(heroNumber);
+
+  const conversations = document.createElement("p");
+  conversations.className = "usage-hero-conversations";
+  conversations.textContent = `${payload.totals.conversations || 0} conversations`;
+  card.appendChild(conversations);
+
+  return card;
+}
+
+function renderUsageProviders(payload) {
+  const providers = payload.providers || [];
+  const card = document.createElement("article");
+  card.className = "usage-card";
+  const title = document.createElement("h4");
+  title.className = "usage-card-title";
+  title.textContent = "Providers";
+  card.appendChild(title);
+
+  if (!providers.length) {
+    const note = document.createElement("p");
+    note.className = "usage-empty-note";
+    note.textContent = "No provider data yet.";
+    card.appendChild(note);
+    return card;
+  }
+
+  const total = providers.reduce((sum, provider) => sum + (provider.total_tokens || 0), 0);
+
+  const bar = document.createElement("div");
+  bar.className = "usage-provider-bar";
+  bar.setAttribute("role", "img");
+  bar.setAttribute("aria-label", "Token share by provider");
+  providers.forEach((provider, index) => {
+    if ((provider.total_tokens || 0) <= 0 || total <= 0) return;
+    const segment = document.createElement("div");
+    segment.className = "usage-provider-bar-seg";
+    segment.style.background = usageProviderColor(provider.provider, index);
+    segment.style.width = `${(provider.total_tokens / total) * 100}%`;
+    segment.title = `${provider.provider} · ${formatTokens(provider.total_tokens)} tokens`;
+    bar.appendChild(segment);
+  });
+  card.appendChild(bar);
+
+  const grid = document.createElement("div");
+  grid.className = "usage-provider-grid";
+  providers.forEach((provider, index) => {
+    const share = total > 0 ? (provider.total_tokens / total) * 100 : 0;
+    const color = usageProviderColor(provider.provider, index);
+    const item = document.createElement("button");
+    item.type = "button";
+    item.className = "usage-provider-card";
+    item.setAttribute("aria-expanded", "false");
+    const head = document.createElement("div");
+    head.className = "usage-provider-head";
+    const name = document.createElement("span");
+    name.className = "usage-provider-name";
+    name.textContent = provider.provider;
+    const meta = document.createElement("span");
+    meta.className = "usage-provider-stats";
+    meta.textContent = `${share.toFixed(2)}% · ${provider.model_count || 0} models`;
+    head.append(name, meta);
+    const tokens = document.createElement("span");
+    tokens.className = "usage-provider-tokens";
+    tokens.textContent = formatTokens(provider.total_tokens || 0);
+    const modelsWrap = document.createElement("div");
+    modelsWrap.className = "usage-provider-models";
+    modelsWrap.hidden = true;
+    (payload.models || [])
+      .filter((model) => model.provider_id === provider.provider)
+      .sort((a, b) => (b.total_tokens || 0) - (a.total_tokens || 0))
+      .forEach((model) => {
+        const modelShare = total > 0 ? ((model.total_tokens || 0) / total) * 100 : 0;
+        const row = document.createElement("div");
+        row.className = "usage-model-row";
+        const modelName = document.createElement("span");
+        modelName.className = "usage-model-name";
+        modelName.textContent = model.model;
+        modelName.title = model.model;
+        const modelTokens = document.createElement("span");
+        modelTokens.className = "usage-model-tokens";
+        modelTokens.textContent = formatTokens(model.total_tokens || 0);
+        const shareEl = document.createElement("span");
+        shareEl.className = "usage-model-share";
+        shareEl.textContent = `${modelShare.toFixed(2)}%`;
+        const modelBar = document.createElement("div");
+        modelBar.className = "usage-model-bar";
+        modelBar.style.background = color;
+        modelBar.style.width = `${Math.min(modelShare, 100)}%`;
+        row.append(modelName, modelTokens, shareEl, modelBar);
+        modelsWrap.appendChild(row);
+      });
+    item.append(head, tokens, modelsWrap);
+    item.addEventListener("click", () => {
+      modelsWrap.hidden = !modelsWrap.hidden;
+      item.setAttribute("aria-expanded", String(!modelsWrap.hidden));
+    });
+    grid.appendChild(item);
+  });
+  card.appendChild(grid);
+  return card;
+}
+
+function renderUsageDailyTable(daily) {
+  const rows = daily || [];
+  const card = document.createElement("article");
+  card.className = "usage-card";
+  const title = document.createElement("h4");
+  title.className = "usage-card-title";
+  title.textContent = "Daily breakdown";
+  card.appendChild(title);
+
+  const scroll = document.createElement("div");
+  scroll.className = "usage-table-scroll";
+  const table = document.createElement("table");
+  table.className = "usage-table";
+  const thead = document.createElement("thead");
+  const headRow = document.createElement("tr");
+  ["Date", "Total", "Input", "Output", "Cached", "Reasoning", "Conversations"].forEach((label) => {
+    const th = document.createElement("th");
+    th.scope = "col";
+    th.textContent = label;
+    headRow.appendChild(th);
+  });
+  thead.appendChild(headRow);
+  const tbody = document.createElement("tbody");
+  [...rows].reverse().forEach((row) => {
+    const tr = document.createElement("tr");
+    if (!(row.total_tokens || 0)) tr.className = "zero";
+    [
+      row.date,
+      formatTokens(row.total_tokens || 0),
+      formatTokens(row.input_tokens || 0),
+      formatTokens(row.output_tokens || 0),
+      formatTokens(row.cached_input_tokens || 0),
+      formatTokens(row.reasoning_output_tokens || 0),
+      String(row.conversations || 0),
+    ].forEach((text) => {
+      const td = document.createElement("td");
+      td.textContent = text;
+      tr.appendChild(td);
+    });
+    tbody.appendChild(tr);
+  });
+  table.append(thead, tbody);
+  scroll.appendChild(table);
+  card.appendChild(scroll);
   return card;
 }
 
@@ -1814,8 +2188,7 @@ function renderUsage(payload) {
   heading.append(h3, sub);
 
   const pill = document.createElement("span");
-  pill.className = `status-pill ${payload.available ? "ok" : "warn"}`;
-  pill.textContent = payload.available ? "Tracking" : "Not found";
+  pill.className = "status-pill";
   const refresh = document.createElement("button");
   refresh.type = "button";
   refresh.className = "secondary-button";
@@ -1831,54 +2204,45 @@ function renderUsage(payload) {
   strip.appendChild(header);
 
   if (!payload.available) {
-    sub.textContent = "TokenTracker is not installed on this machine.";
+    pill.className = "status-pill warn";
+    pill.textContent = "Not found";
+    sub.textContent = "Claudey records its own usage as requests complete.";
     strip.appendChild(renderUsageEmpty("not-found"));
     container.appendChild(strip);
     return;
   }
-  sub.textContent = payload.last_updated
-    ? `Collected from ~/.tokentracker/queue.jsonl · last updated ${payload.last_updated.replace("T", " ").replace("+00:00", " UTC")}`
-    : "Collected from ~/.tokentracker/queue.jsonl";
 
   if (payload.total_entries === 0) {
+    pill.className = "status-pill warn";
+    pill.textContent = "Collecting";
+    sub.textContent = "No usage recorded yet — claudey writes it as requests complete.";
     strip.appendChild(renderUsageEmpty("empty"));
     container.appendChild(strip);
     return;
   }
 
-  const stats = document.createElement("div");
-  stats.className = "usage-stats";
-  [
-    ["Tokens · 24h", payload.windows["24h"]],
-    ["Tokens · 7d", payload.windows["7d"]],
-    ["Tokens · 30d", payload.windows["30d"]],
-    ["Conversations", payload.totals.conversations],
-  ].forEach(([label, value]) => {
-    const card = document.createElement("article");
-    card.className = "usage-stat-card";
-    const name = document.createElement("span");
-    name.className = "usage-stat-label";
-    name.textContent = label;
-    const valueEl = document.createElement("strong");
-    valueEl.className = "usage-stat-value";
-    card.append(name, valueEl);
-    countUp(valueEl, value);
-    stats.appendChild(card);
-  });
-  strip.appendChild(stats);
+  pill.className = "status-pill ok";
+  pill.textContent = "Tracking";
+  sub.textContent = `Collected from ~/.claudey/usage.jsonl · last updated ${formatUsageTimestamp(payload.last_updated)}`;
 
-  const heatmapHeading = document.createElement("h4");
-  heatmapHeading.className = "usage-subheading";
-  heatmapHeading.textContent = "Activity — last 52 weeks";
-  strip.appendChild(heatmapHeading);
-  strip.appendChild(renderUsageHeatmap(payload.heatmap));
-
-  const cols = document.createElement("div");
-  cols.className = "usage-cols";
-  cols.appendChild(renderUsageBarsSection("Top models", payload.models, "model"));
-  cols.appendChild(renderUsageBarsSection("Sources", payload.sources, "source"));
-  strip.appendChild(cols);
-
+  const grid = document.createElement("div");
+  grid.className = "usage-grid";
+  const left = document.createElement("div");
+  left.className = "usage-col";
+  const right = document.createElement("div");
+  right.className = "usage-col";
+  left.append(
+    renderUsageStatCells(payload),
+    renderUsageHeatmapCard(payload.heatmap),
+    renderUsageTrendCard(payload.daily),
+  );
+  right.append(
+    renderUsageHero(payload),
+    renderUsageProviders(payload),
+    renderUsageDailyTable(payload.daily),
+  );
+  grid.append(left, right);
+  strip.appendChild(grid);
   container.appendChild(strip);
 }
 

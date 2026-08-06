@@ -1,5 +1,6 @@
 import json
 from collections.abc import AsyncIterator
+from pathlib import Path
 from typing import Any
 from unittest.mock import MagicMock, patch
 
@@ -92,6 +93,39 @@ def _json_response_content(response: JSONResponse) -> dict[str, Any]:
     return content
 
 
+def _set_home(monkeypatch, tmp_path: Path) -> None:
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("USERPROFILE", str(tmp_path))
+    monkeypatch.chdir(tmp_path)
+
+
+def _usage_records(tmp_path: Path) -> list[dict[str, Any]]:
+    log = tmp_path / ".claudey" / "usage.jsonl"
+    if not log.is_file():
+        return []
+    return [json.loads(line) for line in log.read_text(encoding="utf-8").splitlines()]
+
+
+def _usage_events() -> list[str]:
+    """An Anthropic-style stream whose message_delta carries usage."""
+    return [
+        format_sse_event("message_start", {"type": "message_start"}),
+        format_sse_event(
+            "message_delta",
+            {
+                "type": "message_delta",
+                "delta": {"stop_reason": "end_turn", "stop_sequence": None},
+                "usage": {
+                    "input_tokens": 10,
+                    "output_tokens": 5,
+                    "cache_read_input_tokens": 2,
+                },
+            },
+        ),
+        format_sse_event("message_stop", {"type": "message_stop"}),
+    ]
+
+
 def _trace_events(trace_mock: MagicMock, event: str) -> list[dict[str, Any]]:
     return [
         dict(call.kwargs)
@@ -152,7 +186,12 @@ async def test_messages_handler_preflight_invalid_request_stays_http_error(
 
 
 @pytest.mark.asyncio
-async def test_messages_handler_aggregates_provider_stream_when_stream_false() -> None:
+async def test_messages_handler_aggregates_provider_stream_when_stream_false(
+    monkeypatch, tmp_path
+) -> None:
+    # The stream carries a message_delta usage, so the recorder would write to
+    # the real home dir unless redirected to the test sandbox.
+    _set_home(monkeypatch, tmp_path)
     provider = FakeProvider(
         [
             format_sse_event(
@@ -567,3 +606,79 @@ def test_token_count_handler_routes_and_counts_tokens() -> None:
     assert all(
         call.kwargs["request_id"] == "req_ingress" for call in trace.call_args_list
     )
+
+
+@pytest.mark.asyncio
+async def test_messages_streaming_records_usage_once(monkeypatch, tmp_path) -> None:
+    _set_home(monkeypatch, tmp_path)
+    provider = FakeProvider(_usage_events())
+    handler = MessagesHandler(Settings(), provider_resolver=lambda _: provider)
+    request = MessagesRequest(
+        model="nvidia_nim/test-model",
+        max_tokens=100,
+        stream=True,
+        messages=[Message(role="user", content="hi")],
+    )
+
+    response = await handler.create(request)
+    assert isinstance(response, StreamingResponse)
+    await _streaming_body_text(response)
+
+    records = _usage_records(tmp_path)
+    assert len(records) == 1
+    record = records[0]
+    assert record["wire_api"] == "messages"
+    assert record["provider_id"] == "nvidia_nim"
+    assert record["provider_model"] == "test-model"
+    assert record["original_model"] == "nvidia_nim/test-model"
+    assert record["input_tokens"] == 10
+    assert record["cached_input_tokens"] == 2
+    assert record["output_tokens"] == 5
+    assert record["total_tokens"] == 17
+    assert record["conversations"] == 1
+
+
+@pytest.mark.asyncio
+async def test_messages_non_streaming_records_usage(monkeypatch, tmp_path) -> None:
+    _set_home(monkeypatch, tmp_path)
+    provider = FakeProvider(_usage_events())
+    handler = MessagesHandler(Settings(), provider_resolver=lambda _: provider)
+    request = MessagesRequest(
+        model="nvidia_nim/test-model",
+        max_tokens=100,
+        stream=False,
+        messages=[Message(role="user", content="hi")],
+    )
+
+    response = await handler.create(request)
+    assert isinstance(response, JSONResponse)
+
+    records = _usage_records(tmp_path)
+    assert len(records) == 1
+    assert records[0]["wire_api"] == "messages"
+    assert records[0]["input_tokens"] == 10
+    assert records[0]["cached_input_tokens"] == 2
+    assert records[0]["total_tokens"] == 17
+
+
+@pytest.mark.asyncio
+async def test_responses_stream_records_usage_with_responses_wire_api(
+    monkeypatch, tmp_path
+) -> None:
+    _set_home(monkeypatch, tmp_path)
+    provider = FakeProvider(_usage_events())
+    handler = ResponsesHandler(Settings(), provider_resolver=lambda _: provider)
+
+    response = await handler.create(
+        OpenAIResponsesRequest(model="nvidia_nim/test-model", input="hi")
+    )
+    assert isinstance(response, StreamingResponse)
+    await _streaming_body_text(response)
+
+    records = _usage_records(tmp_path)
+    assert len(records) == 1
+    assert records[0]["wire_api"] == "responses"
+    assert records[0]["provider_id"] == "nvidia_nim"
+    assert records[0]["provider_model"] == "test-model"
+    assert records[0]["input_tokens"] == 10
+    assert records[0]["total_tokens"] == 17

@@ -21,6 +21,7 @@ from claudey.core.trace import (
 
 from .ports import ProviderResolver
 from .routing import RoutedMessagesRequest
+from .usage_recorder import observe_usage
 
 TokenCounter = Callable[
     [list[Message], str | list[SystemContent] | None, list[Tool] | None],
@@ -139,7 +140,12 @@ class ProviderExecutor:
             stream_trace["generation_id"] = self._generation_id
 
         return traced_async_stream(
-            provider_body(),
+            observe_usage(
+                provider_body(),
+                request_id=request_id,
+                wire_api=wire_api,
+                resolved=routed.resolved,
+            ),
             stage="egress",
             source="api",
             complete_event=(

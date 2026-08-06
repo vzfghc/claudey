@@ -1795,7 +1795,7 @@ def test_admin_usage_endpoint_is_loopback_only(monkeypatch, tmp_path):
     assert client.get("/admin/api/usage").status_code == 403
 
 
-def test_admin_usage_endpoint_degrades_when_queue_missing(monkeypatch, tmp_path):
+def test_admin_usage_endpoint_degrades_when_log_missing(monkeypatch, tmp_path):
     _set_home(monkeypatch, tmp_path)
     response = _local_client(create_test_app()).get("/admin/api/usage")
 
@@ -1810,68 +1810,127 @@ def test_admin_usage_endpoint_degrades_when_queue_missing(monkeypatch, tmp_path)
         "windows",
         "daily",
         "models",
-        "sources",
+        "providers",
         "heatmap",
     }
+    assert "sources" not in payload
     assert payload["available"] is False
     assert payload["total_entries"] == 0
     assert payload["last_updated"] is None
 
 
-def test_admin_usage_endpoint_returns_queue_data(monkeypatch, tmp_path):
+def test_admin_usage_endpoint_returns_aggregated_data(monkeypatch, tmp_path):
     _set_home(monkeypatch, tmp_path)
-    queue = tmp_path / ".tokentracker" / "queue.jsonl"
-    queue.parent.mkdir(parents=True)
-    hour_start = (datetime.now(UTC) - timedelta(hours=2)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    log = tmp_path / ".claudey" / "usage.jsonl"
+    log.parent.mkdir(parents=True)
+    ts = (datetime.now(UTC) - timedelta(hours=2)).isoformat()
     lines = [
         json.dumps(
             {
-                "hour_start": hour_start,
-                "source": "claude-code",
-                "model": "m1",
+                "ts": ts,
+                "request_id": "req_1",
+                "wire_api": "messages",
+                "provider_id": "nvidia_nim",
+                "provider_model": "m1",
+                "original_model": "nvidia_nim/m1",
                 "input_tokens": 10,
                 "output_tokens": 5,
                 "total_tokens": 15,
-                "conversation_count": 1,
+                "conversations": 1,
             }
         ),
         json.dumps(
             {
-                "hour_start": hour_start,
-                "source": "claude-code",
-                "model": "m1",
+                "ts": ts,
+                "request_id": "req_2",
+                "wire_api": "messages",
+                "provider_id": "open_router",
+                "provider_model": "m2",
+                "original_model": "open_router/m2",
                 "input_tokens": 20,
                 "output_tokens": 10,
-                "total_tokens": 30,
-                "conversation_count": 1,
-            }
-        ),
-        json.dumps(
-            {
-                "hour_start": hour_start,
-                "source": "cursor",
-                "model": "m2",
-                "input_tokens": 100,
-                "output_tokens": 50,
-                "total_tokens": 150,
-                "conversation_count": 2,
+                "cached_input_tokens": 2,
+                "total_tokens": 32,
+                "conversations": 1,
             }
         ),
     ]
-    queue.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    log.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
     response = _local_client(create_test_app()).get("/admin/api/usage")
 
     assert response.status_code == 200
     payload = response.json()
     assert payload["available"] is True
-    assert payload["total_entries"] == 2  # duplicate source/model/hour deduped
-    assert payload["totals"]["total_tokens"] == 180
-    assert payload["totals"]["conversations"] == 3
-    assert payload["windows"]["24h"] == 180
-    assert len(payload["models"]) == 2
-    assert len(payload["sources"]) == 2
+    assert payload["total_entries"] == 2
+    assert payload["totals"]["total_tokens"] == 47
+    assert payload["totals"]["cached_input_tokens"] == 2
+    assert payload["totals"]["conversations"] == 2
+    assert payload["windows"]["24h"] == 47
+    assert payload["models"] == [
+        {
+            "model": "m2",
+            "provider_id": "open_router",
+            "total_tokens": 32,
+            "conversations": 1,
+        },
+        {
+            "model": "m1",
+            "provider_id": "nvidia_nim",
+            "total_tokens": 15,
+            "conversations": 1,
+        },
+    ]
+    assert payload["providers"] == [
+        {
+            "provider": "open_router",
+            "total_tokens": 32,
+            "conversations": 1,
+            "model_count": 1,
+        },
+        {
+            "provider": "nvidia_nim",
+            "total_tokens": 15,
+            "conversations": 1,
+            "model_count": 1,
+        },
+    ]
+    assert len(payload["daily"]) == 30
     assert len(payload["heatmap"]["weeks"]) == 52
+
+
+def test_admin_usage_payload_uses_providers_not_sources(monkeypatch, tmp_path):
+    _set_home(monkeypatch, tmp_path)
+    log = tmp_path / ".claudey" / "usage.jsonl"
+    log.parent.mkdir(parents=True)
+    ts = (datetime.now(UTC) - timedelta(hours=1)).isoformat()
+    log.write_text(
+        "\n".join(
+            [
+                json.dumps(
+                    {
+                        "ts": ts,
+                        "request_id": "req_1",
+                        "wire_api": "messages",
+                        "provider_id": "nvidia_nim",
+                        "provider_model": "m1",
+                        "original_model": "nvidia_nim/m1",
+                        "input_tokens": 10,
+                        "output_tokens": 5,
+                        "total_tokens": 15,
+                        "conversations": 1,
+                    }
+                )
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    payload = _local_client(create_test_app()).get("/admin/api/usage").json()
+
+    assert "sources" not in payload
+    assert payload["providers"][0]["provider"] == "nvidia_nim"
 
 
 def test_admin_static_usage_view_markup(monkeypatch, tmp_path):
@@ -1883,22 +1942,29 @@ def test_admin_static_usage_view_markup(monkeypatch, tmp_path):
     assert 'data-view="usage"' in page
     assert 'id="usageSections"' in page
 
-    js = _local_client(create_test_app()).get("/admin/assets/admin.js?v=5.12.0").text
+    js = _local_client(create_test_app()).get("/admin/assets/admin.js?v=5.13.0").text
     assert 'id: "usage"' in js
     assert 'containerId: "usageSections"' in js
     assert 'api("/admin/api/usage")' in js
     assert "function loadUsage" in js
-    assert "function renderUsageHeatmap" in js
-    assert "function renderUsageBars" in js
+    assert "USAGE_PROVIDER_COLORS" in js
+    assert "renderUsageProviders" in js
+    assert "renderUsageTrendCard" in js
+    assert "renderUsageDailyTable" in js
     assert "function formatTokens" in js
     assert 'if (activeView.id === "usage")' in js
+    assert "usage-period-tab" in js
+    assert "heat-cell heat-" in js
 
-    css = _local_client(create_test_app()).get("/admin/assets/admin.css?v=5.12.0").text
+    css = _local_client(create_test_app()).get("/admin/assets/admin.css?v=5.13.0").text
+    assert ".usage-grid" in css
     assert ".usage-heatmap" in css
     assert ".heat-cell" in css
-    assert ".usage-bar-fill" in css
+    assert ".usage-provider-bar" in css
+    assert ".usage-table" in css
     assert "background: #ff4d00;" in css
     assert "background: #f9f3f0;" in css
+    assert "var(--heat" not in css
 
     for asset in (
         "admin.js",
@@ -1906,4 +1972,4 @@ def test_admin_static_usage_view_markup(monkeypatch, tmp_path):
         "admin.css",
         "admin-animations.css",
     ):
-        assert f"{asset}?v=5.12.0" in page
+        assert f"{asset}?v=5.13.0" in page
