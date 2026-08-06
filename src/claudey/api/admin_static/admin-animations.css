@@ -2,9 +2,9 @@
    admin-animations.css — firecrawl-style motion layer
    Loaded after admin.css. The sidebar width tween is driven
    per-frame from admin-animations.js; this file supplies the
-   rest states, pills, the provider flow diagram, and toast
+   rest states, pills, the scout activity dashboard, and toast
    choreography. The reduced-motion block in admin.css zeroes
-   every animation/transition duration, and the diagram loops
+   every animation/transition duration, and the dashboard loops
    are additionally gated behind prefers-reduced-motion, so
    all of this collapses to static styling for users who ask
    for less motion.
@@ -46,10 +46,15 @@
     box-shadow: var(--shadow-sm);
   }
 
+  /* The hover pill's transform is JS-tweened per frame by
+     admin-animations.js (position + mid-glide scale dip), so it
+     must not carry the shared pill transition — only the
+     opacity fade remains. */
   .nav-pill-hover {
     background: rgba(28, 25, 23, 0.04);
     border-radius: 12px;
     opacity: 0;
+    transition: opacity 0.15s ease;
   }
 
   #sectionNav:hover .nav-pill-hover {
@@ -76,7 +81,7 @@
   .nav-link.active {
     background: transparent;
     border-color: transparent;
-    color: #ec5b29;
+    color: #ff4d00;
   }
 
   .nav-link::before {
@@ -126,10 +131,10 @@
    ============================================ */
 
 .card-configure:hover:not(:disabled) {
-  background: #ec5b29;
-  box-shadow: inset 0 -6px 12px rgba(236, 91, 41, 0.25), 0 2px 4px rgba(236, 91, 41, 0.12),
-    0 1px 1px rgba(236, 91, 41, 0.12), 0 0.5px 0.5px rgba(236, 91, 41, 0.16),
-    0 0.25px 0.25px rgba(236, 91, 41, 0.2);
+  background: #ff4d00;
+  box-shadow: inset 0 -6px 12px rgba(255, 77, 0, 0.25), 0 2px 4px rgba(255, 77, 0, 0.12),
+    0 1px 1px rgba(255, 77, 0, 0.12), 0 0.5px 0.5px rgba(255, 77, 0, 0.16),
+    0 0.25px 0.25px rgba(255, 77, 0, 0.2);
   transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease,
     box-shadow 0.2s ease;
 }
@@ -173,11 +178,11 @@
 }
 
 .toast.toast-loading {
-  border-left-color: var(--accent);
+  border-left-color: #ff4d00;
 }
 
 .toast.toast-loading .toast-icon {
-  color: var(--accent);
+  color: #ff4d00;
   animation: toast-spin 0.8s linear infinite;
 }
 
@@ -188,210 +193,269 @@
 }
 
 /* ============================================
-   4. Provider flow diagram — "You → Claudey →
-   Providers & models"
-   Firecrawl-style mechanism: three node cards joined by
-   animated connectors. Pure CSS animation (no JS); every
-   loop is gated behind prefers-reduced-motion, so the
-   diagram is static for users who ask for less motion.
-   The diagram is aria-hidden; .flow-caption is the only
-   accessible text.
+   4. Scout activity dashboard — "Scout searching
+   in progress"
+   Ported from firecrawl open-scouts (ScoutAgent/Results).
+   The header carries the brand mark and the live title above
+   a bottom rule; the body splits into the left stat rows
+   (agents/skills, count-up in admin-animations.js) and the
+   right panel whose commit rows scroll in an endless marquee.
+   The track animation is paused until admin-animations.js
+   adds .scout-scrolling (rows revealed, typing done), and its
+   duration is set per-run from the row count, so the two
+   identical copies loop seamlessly. Every loop is gated
+   behind prefers-reduced-motion, so the panel is static for
+   users who ask for less motion.
    ============================================ */
 
-.provider-flow {
+.scout-dashboard {
   margin-bottom: 24px;
 }
 
-.flow-caption {
-  margin: 0 0 8px;
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+.scout-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 4px 0 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+.scout-brand {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 24px;
+  height: 24px;
+  color: #ff4d00;
+}
+
+.scout-brand svg {
+  width: 24px;
+  height: 24px;
+}
+
+.scout-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.scout-body {
+  display: grid;
+  grid-template-columns: 248px minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+  padding-top: 24px;
+}
+
+.scout-stats {
+  display: flex;
+  flex-direction: column;
+}
+
+.scout-stat-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 28px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.scout-stat-row:first-child {
+  padding-top: 0;
+}
+
+.scout-stat-label {
+  font-size: 14px;
   color: var(--muted);
 }
 
-.flow-diagram {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  max-width: 704px;
-  margin: 0 auto;
+.scout-stat-value {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
 }
 
-.flow-card {
+.scout-panel {
   position: relative;
-  z-index: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-  padding: 8px;
+  border: 1px solid var(--line);
   border-radius: 16px;
   background: var(--panel);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02), 0 8px 24px rgba(0, 0, 0, 0.03);
+  box-shadow: 0 40px 48px -20px rgba(0, 0, 0, 0.02),
+    0 32px 32px -20px rgba(0, 0, 0, 0.03), 0 16px 24px -12px rgba(0, 0, 0, 0.03),
+    0 0 0 1px rgba(0, 0, 0, 0.03);
+  overflow: hidden;
 }
 
-.flow-card::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border: 1px solid var(--line);
-  border-radius: inherit;
-  pointer-events: none;
+.scout-input {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  border-bottom: 1px solid var(--line);
+  font-size: 14px;
+  color: var(--text-secondary);
 }
 
-.flow-node {
-  position: relative;
-  display: grid;
-  place-items: center;
-  width: 96px;
-  height: 96px;
-  border-radius: 12px;
-  background-color: var(--panel-strong);
-  background-image: radial-gradient(circle, var(--line-strong) 1.4px, transparent 1.5px);
-  background-repeat: no-repeat;
-  background-position: 7px 7px, calc(100% - 7px) 7px, 7px calc(100% - 7px),
-    calc(100% - 7px) calc(100% - 7px);
-  background-size: 3px 3px;
+.scout-search-icon {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  color: var(--text-secondary);
 }
 
-.flow-grid-cross {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background-image: linear-gradient(var(--line) 1px, transparent 1px),
-    linear-gradient(90deg, var(--line) 1px, transparent 1px);
-  background-position: 50% 50%, 50% 50%;
-  background-repeat: no-repeat;
-  background-size: 48px 1px, 1px 48px;
+.scout-query {
+  min-height: 20px;
+  white-space: pre;
 }
 
-.flow-figure {
-  position: relative;
-  display: grid;
-  place-items: center;
-  width: 56px;
-  height: 56px;
-  color: var(--accent);
+.scout-cursor {
+  color: #ff4d00;
+  animation: scout-blink 1s steps(1) infinite;
 }
 
-.flow-avatar {
-  width: 36px;
-  height: 36px;
+.scout-cursor-hidden {
+  display: none;
 }
 
-.flow-brand {
-  width: 32px;
-  height: 32px;
-  color: var(--heat-100);
+@keyframes scout-blink {
+  50% {
+    opacity: 0;
+  }
 }
 
-.flow-arc {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  transform-origin: center;
+.scout-viewport {
+  height: 396px; /* 3 rows of SCOUT_ROW_H */
+  overflow: hidden;
 }
 
-.flow-card-label {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+.scout-track {
+  will-change: transform;
+  animation-name: scout-scroll;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+  animation-play-state: paused;
+}
+
+.scout-track.scout-scrolling {
+  animation-play-state: running;
+}
+
+@keyframes scout-scroll {
+  from {
+    transform: translateY(0);
+  }
+
+  to {
+    transform: translateY(-50%);
+  }
+}
+
+.scout-copy {
+  display: flex;
+  flex-direction: column;
+}
+
+.scout-row {
+  box-sizing: border-box;
+  height: 132px;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--line);
+  opacity: 0;
+  transition: opacity 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.scout-row-visible {
+  opacity: 1;
+}
+
+.scout-row-title {
+  height: 20px;
+  margin-bottom: 4px;
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 20px;
+  color: var(--text-primary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.scout-row-desc {
+  height: 40px;
+  margin-bottom: 12px;
+  overflow: hidden;
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--muted);
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.scout-row-foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
   color: var(--muted);
 }
 
-.flow-connector {
-  flex: 1;
-  min-width: 44px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-}
-
-.flow-rings {
+.scout-row-dot {
   position: relative;
-  width: 20px;
-  height: 20px;
-}
-
-.flow-ring {
-  position: absolute;
-  inset: 0;
-  border: 1.5px solid rgba(28, 25, 23, 0.12);
-  border-top-color: var(--heat-100);
+  flex: none;
+  width: 16px;
+  height: 16px;
   border-radius: 50%;
-  transform-origin: center;
+  background: #f9f3f0;
 }
 
-.flow-ring-b {
-  inset: 3px;
-  border-color: rgba(28, 25, 23, 0.12);
-  border-right-color: var(--heat-100);
+.scout-row-dot::after {
+  content: "";
+  position: absolute;
+  inset: 5px;
+  border-radius: 50%;
+  background: #ff4d00;
 }
 
-.flow-arrow {
-  display: block;
-  width: 100%;
-  height: 12px;
+.scout-row-cost {
+  margin-left: auto;
+  color: #ff4d00;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  .flow-arc {
-    animation: flow-spin 1s linear infinite;
+/* The marquee never runs for reduced-motion users; the cursor
+   and row fades collapse to static text via the zeroed
+   animation durations in admin.css. */
+@media (prefers-reduced-motion: reduce) {
+  .scout-track {
+    animation: none;
   }
 
-  .flow-ring-a {
-    animation: flow-spin 1s linear infinite;
-  }
-
-  .flow-ring-b {
-    animation: flow-spin 0.9s linear infinite reverse;
-  }
-
-  @keyframes flow-spin {
-    to {
-      transform: rotate(360deg);
-    }
-  }
-}
-
-@media (max-width: 600px) {
-  .flow-diagram {
-    flex-direction: column;
-  }
-
-  .flow-connector {
-    flex: none;
-    width: 100%;
-    min-width: 0;
-  }
-
-  .flow-arrow {
-    width: 56px;
-    height: 56px;
-    transform: rotate(90deg);
+  .scout-cursor {
+    display: none;
   }
 }
 
 @media (prefers-color-scheme: dark) {
-  .flow-card {
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.35), 0 8px 24px rgba(0, 0, 0, 0.25);
+  .scout-panel {
+    box-shadow: 0 40px 48px -20px rgba(0, 0, 0, 0.35),
+      0 32px 32px -20px rgba(0, 0, 0, 0.25), 0 16px 24px -12px rgba(0, 0, 0, 0.2),
+      0 0 0 1px rgba(0, 0, 0, 0.05);
+  }
+}
+
+@media (max-width: 600px) {
+  .scout-body {
+    grid-template-columns: 1fr;
   }
 
-  .flow-ring {
-    border-color: rgba(255, 255, 255, 0.14);
-    border-top-color: var(--heat-100);
-  }
-
-  .flow-ring-b {
-    border-color: rgba(255, 255, 255, 0.14);
-    border-right-color: var(--heat-100);
+  .scout-viewport {
+    height: 264px; /* 2 rows on small screens */
   }
 }
 

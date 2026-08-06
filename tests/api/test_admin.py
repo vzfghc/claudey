@@ -1,3 +1,5 @@
+import json
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
@@ -5,6 +7,7 @@ import httpx
 import pytest
 from fastapi.testclient import TestClient
 
+from claudey.api import admin_dashboard
 from claudey.application.connected_accounts import (
     ConnectedAccountLoginMode,
     ConnectedAccountState,
@@ -1322,11 +1325,11 @@ def test_admin_static_html_loads_animation_assets_in_order():
     # The ES module loads after admin.js and is declared as a module.
     assert html.index("admin-animations.js") > html.index("admin.js")
     assert 'type="module"' in html
-    # The provider flow diagram is the first child of the providers view.
+    # The scout dashboard is the first child of the providers view.
     providers = html.index('id="view-providers"')
-    flow = html.index('class="provider-flow"')
+    scout = html.index('class="scout-dashboard"')
     onboarding = html.index('id="onboardingCard"')
-    assert providers < flow < onboarding
+    assert providers < scout < onboarding
 
 
 def test_admin_static_sidebar_tween_contract():
@@ -1463,9 +1466,9 @@ def test_admin_static_buttons_flat_heat_only_on_configure():
     assert "secondary-button::before" not in animations
     assert "box-shadow: inset" not in styles
     assert ".card-configure:hover:not(:disabled) {" in animations
-    assert animations.index(".card-configure:hover:not(:disabled) {") < animations.index(
-        "inset 0 -6px 12px rgba("
-    )
+    assert animations.index(
+        ".card-configure:hover:not(:disabled) {"
+    ) < animations.index("inset 0 -6px 12px rgba(")
     # The 0.98 grouped press is restored for all three buttons.
     assert (
         ".primary-button:not(:disabled):active,\n"
@@ -1478,13 +1481,13 @@ def test_admin_static_buttons_flat_heat_only_on_configure():
         "}\n\n.test-button:not(:disabled):active {\n  transform: scale(0.98);\n}"
         not in styles
     )
-    # Configure turns heat (#ec5b29) on hover with the exact layered stack.
-    assert "background: #ec5b29;" in animations
+    # Configure turns heat (#ff4d00) on hover with the exact layered stack.
+    assert "background: #ff4d00;" in animations
     assert (
-        "box-shadow: inset 0 -6px 12px rgba(236, 91, 41, 0.25), 0 2px 4px rgba(236, 91, 41, 0.12),"
+        "box-shadow: inset 0 -6px 12px rgba(255, 77, 0, 0.25), 0 2px 4px rgba(255, 77, 0, 0.12),"
     ) in animations
     assert (
-        "0 1px 1px rgba(236, 91, 41, 0.12), 0 0.5px 0.5px rgba(236, 91, 41, 0.16),"
+        "0 1px 1px rgba(255, 77, 0, 0.12), 0 0.5px 0.5px rgba(255, 77, 0, 0.16),"
     ) in animations
     assert "transition: background-color 0.2s ease" in animations
     # The base heat hover stays in admin.css (surgical edit boundary).
@@ -1537,7 +1540,7 @@ def test_admin_static_toasts_sonner_style_with_swipe():
     assert 'if (kind !== "loading") {' in script
 
 
-def test_admin_static_flow_diagram_replaces_logo_marquee():
+def test_admin_static_scout_dashboard_replaces_flow_diagram():
     module = Path("src/claudey/api/admin_static/admin-animations.js").read_text(
         encoding="utf-8"
     )
@@ -1546,43 +1549,47 @@ def test_admin_static_flow_diagram_replaces_logo_marquee():
     slugs = sorted(path.stem for path in logos_dir.glob("*.svg"))
     assert len(slugs) == 32
 
-    # The marquee markup, CSS, and JS are all gone; logos stay untouched.
+    # The marquee and the flow diagram are both gone; logos stay untouched.
     assert "provider-marquee" not in html
     assert "marquee-track" not in html
-    assert "marquee-caption" not in html
+    assert "provider-flow" not in html
+    assert "flow-diagram" not in html
+    assert "flow-card" not in html
     assert "MARQUEE_LOGO_SLUGS" not in module
     assert "startMarquee" not in module
     assert "stopMarquee" not in module
-    # The flow diagram hosts three node cards joined by two connectors.
-    assert 'class="provider-flow"' in html
-    assert html.count('class="flow-card"') == 3
-    assert html.count('class="flow-connector"') == 2
-    assert html.count('class="flow-arc"') == 3
-    assert html.count('stroke="#FA5D19"') == 7
-    # Diagram is decorative; the caption is the only accessible text.
-    assert 'aria-hidden="true"' in html
-    assert "Data flows through your Claudey server to your providers" in html
-    # Node cards: 96px surface, corner dots, grid cross, inset border.
+    # The scout dashboard markup: header, left stats, scrolling panel.
+    assert 'class="scout-dashboard"' in html
+    assert 'id="scoutTitle"' in html
+    assert 'id="scoutQuery"' in html
+    assert 'id="scoutCursor"' in html
+    assert 'id="scoutStats"' in html
+    assert 'id="scoutTrack"' in html
+    assert 'class="scout-stat-value" data-final="0"' in html
+    assert 'aria-live="polite"' in html
+    assert "Scout searching in progress" in html
+    # The module fetches the dashboard data and ports the animation.
+    assert 'fetch("/admin/api/dashboard")' in module
+    assert "initScoutDashboard" in module
+    assert "scoutEncrypt" in module
+    assert "SCOUT_QUERY" in module
+    assert "countUpScoutValue" in module
+    # Panel: input row, fixed viewport, paused marquee track with
+    # seamless two-copy loop gated on .scout-scrolling.
     animations_css = Path(
         "src/claudey/api/admin_static/admin-animations.css"
     ).read_text(encoding="utf-8")
-    assert ".flow-card {\n" in animations_css
+    assert ".scout-panel" in animations_css
     assert "border-radius: 16px" in animations_css
-    assert ".flow-card::before" in animations_css
-    assert (
-        "box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02), 0 8px 24px rgba(0, 0, 0, 0.03);"
-        in animations_css
-    )
-    assert "width: 96px;\n  height: 96px;" in animations_css
-    assert (
-        "radial-gradient(circle, var(--line-strong) 1.4px, transparent 1.5px)"
-    ) in animations_css
-    assert ".flow-grid-cross" in animations_css
-    # Connectors: spinning rings plus an arrow between cards.
-    assert ".flow-rings" in animations_css
-    assert ".flow-arrow" in animations_css
-    assert "animation: flow-spin 1s linear infinite" in animations_css
-    assert "animation: flow-spin 0.9s linear infinite reverse" in animations_css
+    assert ".scout-input" in animations_css
+    assert ".scout-viewport" in animations_css
+    assert ".scout-track" in animations_css
+    assert "@keyframes scout-scroll" in animations_css
+    assert "translateY(-50%)" in animations_css
+    assert "animation-play-state: paused" in animations_css
+    assert ".scout-track.scout-scrolling" in animations_css
+    assert "height: 132px" in animations_css
+    assert ".scout-row-cost" in animations_css
     assert "@media (max-width: 600px)" in animations_css
 
 
@@ -1601,9 +1608,11 @@ def test_admin_static_reduced_motion_gates_all_loops():
     assert "if (REDUCED_MOTION || !DESKTOP.matches) {" in module
     assert "startMarquee" not in module
     assert "stopMarquee" not in module
-    # CSS loops (arcs, rings) run only when motion is allowed.
-    assert "@media (prefers-reduced-motion: no-preference)" in animations
-    assert "flow-spin" in animations
+    # The scout marquee stays paused and is killed under reduced motion.
+    assert "@keyframes scout-scroll" in animations
+    assert "animation-play-state: paused" in animations
+    assert "@media (prefers-reduced-motion: reduce)" in animations
+    assert ".scout-track {\n    animation: none;" in animations
     # The CSS baseline zeroes every animation/transition duration.
     assert "@media (prefers-reduced-motion: reduce)" in styles
     assert "animation-duration: 0.01ms !important" in styles
@@ -1636,3 +1645,265 @@ def test_admin_static_preserves_accessibility_attributes():
     assert "focus-visible" in styles
     assert 'sidebarToggle.setAttribute("aria-expanded"' in script
     assert 'toast.setAttribute("role", "status")' in script
+
+
+def test_admin_dashboard_endpoint_loopback_and_shape(monkeypatch, tmp_path):
+    _set_home(monkeypatch, tmp_path)
+    with patch("claudey.api.admin_dashboard.usd_to_idr", return_value=18000.0):
+        app = create_test_app()
+        response = _local_client(app).get("/admin/api/dashboard")
+
+    assert response.status_code == 200
+    assert response.headers["cache-control"] == "no-store"
+    payload = response.json()
+    assert set(payload) == {"commits", "stats", "usd_to_idr"}
+    assert payload["usd_to_idr"] == 18000.0
+    assert payload["stats"] == {"agents": 0, "skills": 0}
+    # Commits come from the real repo; only the shape is asserted.
+    for commit in payload["commits"]:
+        assert set(commit) == {
+            "hash",
+            "short",
+            "subject",
+            "date_iso",
+            "tokens",
+            "cost_usd",
+        }
+
+
+def test_admin_dashboard_is_loopback_only(monkeypatch, tmp_path):
+    _set_home(monkeypatch, tmp_path)
+    app = create_test_app()
+    client = TestClient(app, client=("203.0.113.10", 50000))
+
+    assert client.get("/admin/api/dashboard").status_code == 403
+
+
+def test_dashboard_payload_attributes_usage_to_commit_windows(monkeypatch, tmp_path):
+    _set_home(monkeypatch, tmp_path)
+    repo = tmp_path / "repo"
+    metrics = tmp_path / ".claude" / "metrics" / "costs.jsonl"
+    metrics.parent.mkdir(parents=True)
+    project_dir = str(repo).replace("/", "-")
+
+    def entry(timestamp: str, tokens: int, cost: float) -> str:
+        payload = {
+            "timestamp": timestamp,
+            "transcript_path": f"/x/.claude/projects/{project_dir}/session.jsonl",
+            "input_tokens": tokens,
+            "output_tokens": 0,
+            "estimated_cost_usd": cost,
+        }
+        return json.dumps(payload)
+
+    # Newest-first commit list; windows are (next-older commit, this commit].
+    commits = [
+        {
+            "hash": "c" * 40,
+            "short": "c" * 7,
+            "subject": "newest",
+            "date_iso": "2026-08-05T04:00:00+00:00",
+        },
+        {
+            "hash": "b" * 40,
+            "short": "b" * 7,
+            "subject": "middle",
+            "date_iso": "2026-08-05T02:30:00+00:00",
+        },
+        {
+            "hash": "a" * 40,
+            "short": "a" * 7,
+            "subject": "oldest",
+            "date_iso": "2026-08-05T00:30:00+00:00",
+        },
+    ]
+    lines = [
+        entry("2026-08-05T00:00:00+00:00", 100, 0.01),  # oldest window
+        entry("2026-08-05T01:00:00+00:00", 200, 0.02),  # oldest window
+        entry("2026-08-05T02:00:00+00:00", 300, 0.03),  # oldest window
+        entry("2026-08-05T03:00:00+00:00", 400, 0.04),  # newest window
+        entry("2026-08-05T04:00:00+00:00", 500, 0.05),  # newest window (inclusive)
+        entry("2026-08-05T02:30:00+00:00", 600, 0.06),  # middle window (inclusive)
+    ]
+    metrics.write_text("\n".join(lines) + "\n")
+
+    with (
+        patch("claudey.api.admin_dashboard.latest_commits", return_value=commits),
+        patch("claudey.api.admin_dashboard.usd_to_idr", return_value=18000.0),
+    ):
+        payload = admin_dashboard.dashboard_payload(home=tmp_path, repo_root=repo)
+
+    assert payload["usd_to_idr"] == 18000.0
+    assert payload["stats"] == {"agents": 0, "skills": 0}
+    newest, middle, oldest = payload["commits"]
+    assert (newest["tokens"], newest["cost_usd"]) == (900, 0.09)
+    assert (middle["tokens"], middle["cost_usd"]) == (1100, 0.11)
+    assert (oldest["tokens"], oldest["cost_usd"]) == (100, 0.01)
+
+
+def test_dashboard_payload_degrades_when_sources_missing(monkeypatch, tmp_path):
+    _set_home(monkeypatch, tmp_path)
+    with patch("claudey.api.admin_dashboard.usd_to_idr", return_value=18000.0):
+        payload = admin_dashboard.dashboard_payload(
+            home=tmp_path, repo_root=tmp_path / "missing"
+        )
+
+    assert payload["commits"] == []
+    assert payload["stats"] == {"agents": 0, "skills": 0}
+
+
+def test_dashboard_counts_agents_and_skills_deduplicated(monkeypatch, tmp_path):
+    _set_home(monkeypatch, tmp_path)
+    (tmp_path / ".claude" / "agents").mkdir(parents=True)
+    (tmp_path / ".claude" / "agents" / "planner.md").write_text("x", encoding="utf-8")
+    (tmp_path / ".claude" / "agents" / "reviewer.md").write_text("x", encoding="utf-8")
+    skills = tmp_path / ".claude" / "skills"
+    (skills / "alpha" / "SKILL.md").parent.mkdir(parents=True)
+    (skills / "alpha" / "SKILL.md").write_text("x", encoding="utf-8")
+    (skills / "beta" / "SKILL.md").parent.mkdir(parents=True)
+    (skills / "beta" / "SKILL.md").write_text("x", encoding="utf-8")
+    (skills / "alpha" / "SKILL.md").unlink()  # keep alpha via marketplace below
+    marketplaces = tmp_path / ".claude" / "plugins" / "marketplaces"
+    (marketplaces / "ecc" / "agents" / "planner.md").parent.mkdir(parents=True)
+    (marketplaces / "ecc" / "agents" / "planner.md").write_text("x", encoding="utf-8")
+    (marketplaces / "ecc" / "skills" / "alpha" / "SKILL.md").parent.mkdir(parents=True)
+    (marketplaces / "ecc" / "skills" / "alpha" / "SKILL.md").write_text(
+        "x", encoding="utf-8"
+    )
+
+    counts = admin_dashboard.agents_skills_counts(tmp_path)
+
+    # planner.md appears in both places but counts once.
+    assert counts == {"agents": 2, "skills": 2}
+
+
+def test_usd_to_idr_falls_back_when_fetch_fails(monkeypatch):
+    monkeypatch.setattr(
+        admin_dashboard, "_rate_cache", {"rate": None, "fetched_at": None}
+    )
+    with patch(
+        "claudey.api.admin_dashboard.httpx.Client", side_effect=OSError("offline")
+    ):
+        assert admin_dashboard.usd_to_idr() == admin_dashboard.USD_IDR_FALLBACK
+
+
+def test_admin_usage_endpoint_is_loopback_only(monkeypatch, tmp_path):
+    _set_home(monkeypatch, tmp_path)
+    app = create_test_app()
+    client = TestClient(app, client=("203.0.113.10", 50000))
+
+    assert client.get("/admin/api/usage").status_code == 403
+
+
+def test_admin_usage_endpoint_degrades_when_queue_missing(monkeypatch, tmp_path):
+    _set_home(monkeypatch, tmp_path)
+    response = _local_client(create_test_app()).get("/admin/api/usage")
+
+    assert response.status_code == 200
+    assert response.headers["cache-control"] == "no-store"
+    payload = response.json()
+    assert set(payload) == {
+        "available",
+        "total_entries",
+        "last_updated",
+        "totals",
+        "windows",
+        "daily",
+        "models",
+        "sources",
+        "heatmap",
+    }
+    assert payload["available"] is False
+    assert payload["total_entries"] == 0
+    assert payload["last_updated"] is None
+
+
+def test_admin_usage_endpoint_returns_queue_data(monkeypatch, tmp_path):
+    _set_home(monkeypatch, tmp_path)
+    queue = tmp_path / ".tokentracker" / "queue.jsonl"
+    queue.parent.mkdir(parents=True)
+    hour_start = (datetime.now(UTC) - timedelta(hours=2)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    lines = [
+        json.dumps(
+            {
+                "hour_start": hour_start,
+                "source": "claude-code",
+                "model": "m1",
+                "input_tokens": 10,
+                "output_tokens": 5,
+                "total_tokens": 15,
+                "conversation_count": 1,
+            }
+        ),
+        json.dumps(
+            {
+                "hour_start": hour_start,
+                "source": "claude-code",
+                "model": "m1",
+                "input_tokens": 20,
+                "output_tokens": 10,
+                "total_tokens": 30,
+                "conversation_count": 1,
+            }
+        ),
+        json.dumps(
+            {
+                "hour_start": hour_start,
+                "source": "cursor",
+                "model": "m2",
+                "input_tokens": 100,
+                "output_tokens": 50,
+                "total_tokens": 150,
+                "conversation_count": 2,
+            }
+        ),
+    ]
+    queue.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+    response = _local_client(create_test_app()).get("/admin/api/usage")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["available"] is True
+    assert payload["total_entries"] == 2  # duplicate source/model/hour deduped
+    assert payload["totals"]["total_tokens"] == 180
+    assert payload["totals"]["conversations"] == 3
+    assert payload["windows"]["24h"] == 180
+    assert len(payload["models"]) == 2
+    assert len(payload["sources"]) == 2
+    assert len(payload["heatmap"]["weeks"]) == 52
+
+
+def test_admin_static_usage_view_markup(monkeypatch, tmp_path):
+    _set_home(monkeypatch, tmp_path)
+    response = _local_client(create_test_app()).get("/admin")
+
+    page = response.text
+    assert 'id="view-usage"' in page
+    assert 'data-view="usage"' in page
+    assert 'id="usageSections"' in page
+
+    js = _local_client(create_test_app()).get("/admin/assets/admin.js?v=5.12.0").text
+    assert 'id: "usage"' in js
+    assert 'containerId: "usageSections"' in js
+    assert 'api("/admin/api/usage")' in js
+    assert "function loadUsage" in js
+    assert "function renderUsageHeatmap" in js
+    assert "function renderUsageBars" in js
+    assert "function formatTokens" in js
+    assert 'if (activeView.id === "usage")' in js
+
+    css = _local_client(create_test_app()).get("/admin/assets/admin.css?v=5.12.0").text
+    assert ".usage-heatmap" in css
+    assert ".heat-cell" in css
+    assert ".usage-bar-fill" in css
+    assert "background: #ff4d00;" in css
+    assert "background: #f9f3f0;" in css
+
+    for asset in (
+        "admin.js",
+        "admin-animations.js",
+        "admin.css",
+        "admin-animations.css",
+    ):
+        assert f"{asset}?v=5.12.0" in page

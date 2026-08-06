@@ -23,8 +23,10 @@ from claudey.config.provider_catalog import (
     ProviderAuthKind,
 )
 
+from .admin_dashboard import dashboard_payload
 from .dependencies import get_services
 from .ports import ApiServices
+from .tokentracker_usage import usage_payload
 
 router = APIRouter()
 
@@ -113,6 +115,18 @@ async def admin_logo_asset(filename: str, request: Request):
     if logos_dir not in path.parents or not path.is_file():
         raise HTTPException(status_code=404, detail="Provider logo not found")
     return FileResponse(path, media_type="image/svg+xml")
+
+
+@router.get("/admin/api/dashboard")
+async def get_admin_dashboard(request: Request):
+    require_loopback_admin(request)
+    return dashboard_payload()
+
+
+@router.get("/admin/api/usage")
+async def get_admin_usage(request: Request):
+    require_loopback_admin(request)
+    return usage_payload()
 
 
 @router.get("/admin/api/config")

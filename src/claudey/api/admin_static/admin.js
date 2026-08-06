@@ -6,6 +6,7 @@ const state = {
   modelComboboxes: new Set(),
   authPollers: new Map(),
   activeView: "providers",
+  usageLoaded: false,
 };
 
 const MASKED_SECRET = "********";
@@ -33,6 +34,14 @@ const VIEW_GROUPS = [
     sections: ["messaging", "voice"],
     containerId: "messagingSections",
     icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>`,
+  },
+  {
+    id: "usage",
+    label: "Usage",
+    title: "Usage",
+    sections: [],
+    containerId: "usageSections",
+    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 20v-8"/><path d="M12 20V5"/><path d="M19 20v-11"/><path d="M3 20h18"/></svg>`,
   },
 ];
 
@@ -289,6 +298,10 @@ function setActiveView(viewId, { scroll = false } = {}) {
     view.classList.toggle("active", selected);
     view.hidden = !selected;
   });
+
+  if (activeView.id === "usage") {
+    loadUsage();
+  }
 
   if (scroll) {
     window.scrollTo({ top: 0, ...SMOOTH_SCROLL });
@@ -1668,6 +1681,222 @@ async function renderServerStatus() {
   } catch {
     pill.className = "server-status fallback";
     pill.textContent = "Claudey Admin";
+  }
+}
+
+function formatTokens(n) {
+  if (n >= 1_000_000_000) return `${(n / 1_000_000_000).toFixed(1)}B`;
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}k`;
+  return String(n);
+}
+
+function countUp(el, final) {
+  if (REDUCED_MOTION) {
+    el.textContent = formatTokens(final);
+    return;
+  }
+  const start = performance.now();
+  const step = (now) => {
+    const t = Math.min((now - start) / 500, 1);
+    const eased = 1 - Math.pow(1 - t, 3);
+    el.textContent = formatTokens(Math.round(final * eased));
+    if (t < 1) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
+
+function heatLevel(value, max) {
+  if (value <= 0 || max <= 0) return 0;
+  const ratio = value / max;
+  if (ratio > 0.75) return 4;
+  if (ratio > 0.5) return 3;
+  if (ratio > 0.25) return 2;
+  return 1;
+}
+
+function renderUsageHeatmap(heatmap) {
+  const wrap = document.createElement("div");
+  wrap.className = "usage-heatmap";
+  wrap.setAttribute("role", "img");
+  wrap.setAttribute("aria-label", "Token usage heatmap over the last 52 weeks");
+  heatmap.weeks.forEach((week) => {
+    const weekStart = new Date(`${week.start}T00:00:00Z`);
+    week.days.forEach((value, index) => {
+      const cell = document.createElement("span");
+      const date = new Date(weekStart);
+      date.setUTCDate(date.getUTCDate() + index);
+      cell.className = `heat-cell heat-${heatLevel(value, heatmap.max_day_tokens)}`;
+      cell.title = `${date.toISOString().slice(0, 10)} · ${formatTokens(value)} tokens`;
+      wrap.appendChild(cell);
+    });
+  });
+  return wrap;
+}
+
+function renderUsageBars(rows, labelKey) {
+  const wrap = document.createElement("div");
+  wrap.className = "usage-bars";
+  if (!rows.length) {
+    const note = document.createElement("p");
+    note.className = "usage-empty-note";
+    note.textContent = "No data yet.";
+    wrap.appendChild(note);
+    return wrap;
+  }
+  const max = rows[0].total_tokens || 1;
+  rows.forEach((row) => {
+    const item = document.createElement("div");
+    item.className = "usage-bar-row";
+    const label = document.createElement("span");
+    label.className = "usage-bar-label";
+    label.textContent = row[labelKey];
+    label.title = row[labelKey];
+    const track = document.createElement("div");
+    track.className = "usage-bar-track";
+    const fill = document.createElement("div");
+    fill.className = "usage-bar-fill";
+    fill.style.width = `${Math.max((row.total_tokens / max) * 100, 1)}%`;
+    track.appendChild(fill);
+    const value = document.createElement("span");
+    value.className = "usage-bar-value";
+    value.textContent = formatTokens(row.total_tokens);
+    item.append(label, track, value);
+    wrap.appendChild(item);
+  });
+  return wrap;
+}
+
+function renderUsageBarsSection(title, rows, labelKey) {
+  const section = document.createElement("div");
+  section.className = "usage-bars-section";
+  const heading = document.createElement("h4");
+  heading.className = "usage-subheading";
+  heading.textContent = title;
+  section.append(heading, renderUsageBars(rows, labelKey));
+  return section;
+}
+
+function renderUsageEmpty(kind) {
+  const card = document.createElement("div");
+  card.className = "usage-empty";
+  const title = document.createElement("h3");
+  const body = document.createElement("p");
+  if (kind === "not-found") {
+    title.textContent = "TokenTracker not found";
+    body.textContent =
+      "Run TokenTracker (github.com/xiufengsun/TokenTracker) to collect usage into ~/.tokentracker/queue.jsonl. Tokens from Claude Code, Codex, Cursor, and other tools will appear here.";
+  } else if (kind === "empty") {
+    title.textContent = "No usage recorded yet";
+    body.textContent =
+      "TokenTracker is installed but the queue is empty. Usage appears after your next coding session.";
+  } else {
+    title.textContent = "Could not load usage data";
+    body.textContent = "The usage endpoint is unreachable. Try refreshing.";
+  }
+  card.append(title, body);
+  return card;
+}
+
+function renderUsage(payload) {
+  const container = byId("usageSections");
+  container.innerHTML = "";
+
+  const strip = document.createElement("section");
+  strip.className = "provider-strip";
+
+  const header = document.createElement("div");
+  header.className = "strip-header";
+  const heading = document.createElement("div");
+  const h3 = document.createElement("h3");
+  h3.textContent = "Token usage";
+  const sub = document.createElement("p");
+  heading.append(h3, sub);
+
+  const pill = document.createElement("span");
+  pill.className = `status-pill ${payload.available ? "ok" : "warn"}`;
+  pill.textContent = payload.available ? "Tracking" : "Not found";
+  const refresh = document.createElement("button");
+  refresh.type = "button";
+  refresh.className = "secondary-button";
+  refresh.textContent = "Refresh";
+  refresh.addEventListener("click", () => {
+    state.usageLoaded = false;
+    loadUsage();
+  });
+  const actions = document.createElement("div");
+  actions.className = "usage-actions";
+  actions.append(pill, refresh);
+  header.append(heading, actions);
+  strip.appendChild(header);
+
+  if (!payload.available) {
+    sub.textContent = "TokenTracker is not installed on this machine.";
+    strip.appendChild(renderUsageEmpty("not-found"));
+    container.appendChild(strip);
+    return;
+  }
+  sub.textContent = payload.last_updated
+    ? `Collected from ~/.tokentracker/queue.jsonl · last updated ${payload.last_updated.replace("T", " ").replace("+00:00", " UTC")}`
+    : "Collected from ~/.tokentracker/queue.jsonl";
+
+  if (payload.total_entries === 0) {
+    strip.appendChild(renderUsageEmpty("empty"));
+    container.appendChild(strip);
+    return;
+  }
+
+  const stats = document.createElement("div");
+  stats.className = "usage-stats";
+  [
+    ["Tokens · 24h", payload.windows["24h"]],
+    ["Tokens · 7d", payload.windows["7d"]],
+    ["Tokens · 30d", payload.windows["30d"]],
+    ["Conversations", payload.totals.conversations],
+  ].forEach(([label, value]) => {
+    const card = document.createElement("article");
+    card.className = "usage-stat-card";
+    const name = document.createElement("span");
+    name.className = "usage-stat-label";
+    name.textContent = label;
+    const valueEl = document.createElement("strong");
+    valueEl.className = "usage-stat-value";
+    card.append(name, valueEl);
+    countUp(valueEl, value);
+    stats.appendChild(card);
+  });
+  strip.appendChild(stats);
+
+  const heatmapHeading = document.createElement("h4");
+  heatmapHeading.className = "usage-subheading";
+  heatmapHeading.textContent = "Activity — last 52 weeks";
+  strip.appendChild(heatmapHeading);
+  strip.appendChild(renderUsageHeatmap(payload.heatmap));
+
+  const cols = document.createElement("div");
+  cols.className = "usage-cols";
+  cols.appendChild(renderUsageBarsSection("Top models", payload.models, "model"));
+  cols.appendChild(renderUsageBarsSection("Sources", payload.sources, "source"));
+  strip.appendChild(cols);
+
+  container.appendChild(strip);
+}
+
+async function loadUsage() {
+  const container = byId("usageSections");
+  if (!container) return;
+  if (state.usageLoaded && container.hasChildNodes()) return;
+  try {
+    const payload = await api("/admin/api/usage");
+    state.usageLoaded = true;
+    renderUsage(payload);
+  } catch {
+    state.usageLoaded = true;
+    container.innerHTML = "";
+    const strip = document.createElement("section");
+    strip.className = "provider-strip";
+    strip.appendChild(renderUsageEmpty("error"));
+    container.appendChild(strip);
   }
 }
 
