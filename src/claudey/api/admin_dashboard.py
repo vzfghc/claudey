@@ -22,6 +22,8 @@ from typing import Any
 
 import httpx
 
+from .deepseek_billing import billing_payload
+
 REPO_ROOT = Path(__file__).resolve().parents[3]
 METRICS_PATH = Path(".claude/metrics/costs.jsonl")
 MARKETPLACES_PATH = Path(".claude/plugins/marketplaces")
@@ -31,6 +33,7 @@ MAX_METRICS_BYTES = 5_000_000  # read only the recent tail of the cost log
 RATE_URL = "https://open.er-api.com/v6/latest/USD"
 RATE_TTL = timedelta(hours=6)
 USD_IDR_FALLBACK = 18000.0  # seeded from a live fetch; used offline
+MONTHLY_LIMIT_USD = 100.0
 
 #: Cached exchange rate; refreshed at most every RATE_TTL.
 _rate_cache: dict[str, datetime | float | None] = {
@@ -199,6 +202,17 @@ def _usage_between(
     return tokens, cost
 
 
+def monthly_spend_usd(home: Path | None = None) -> float:
+    """Sum DeepSeek billing cost for days in the current calendar month."""
+    home = home or Path.home()
+    month_prefix = datetime.now(UTC).strftime("%Y-%m")
+    days = billing_payload(home)["days"]
+    return round(
+        sum(day["cost_usd"] for day in days if day["date"].startswith(month_prefix)),
+        6,
+    )
+
+
 def dashboard_payload(
     home: Path | None = None, repo_root: Path | None = None
 ) -> dict[str, Any]:
@@ -221,4 +235,6 @@ def dashboard_payload(
         "commits": rows,
         "stats": agents_skills_counts(home),
         "usd_to_idr": usd_to_idr(),
+        "monthly_spend_usd": monthly_spend_usd(home),
+        "monthly_limit_usd": MONTHLY_LIMIT_USD,
     }

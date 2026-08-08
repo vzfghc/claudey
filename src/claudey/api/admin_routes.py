@@ -1,6 +1,7 @@
 """Local admin UI routes and APIs."""
 
 import ipaddress
+import time
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlsplit
@@ -356,6 +357,38 @@ def _require_connected_account_provider(provider_id: str) -> None:
             status_code=404,
             detail="Provider does not support connected-account login.",
         )
+
+
+@router.post("/admin/api/providers/custom")
+async def create_custom_provider(
+    request: Request,
+    services: ApiServices = Depends(get_services),
+) -> JSONResponse:
+    """Create a new custom provider."""
+    payload = await request.json()
+    provider_type = payload.get("type")
+    name = payload.get("name")
+    base_url = payload.get("base_url")
+    _api_key = payload.get(
+        "api_key"
+    )  # TODO: Implement actual provider creation and persistence
+
+    if not provider_type or provider_type not in ["openai", "anthropic"]:
+        raise HTTPException(status_code=400, detail="Invalid provider type")
+    if not name:
+        raise HTTPException(status_code=400, detail="Name is required")
+    if not base_url:
+        raise HTTPException(status_code=400, detail="Base URL is required")
+
+    # TODO: Implement actual provider creation and persistence
+    # For now, just return a mock response
+    return _no_store(
+        {
+            "success": True,
+            "provider_id": f"custom_{provider_type}_{int(time.time())}",
+            "message": f"Custom {provider_type} provider '{name}' created (backend integration pending)",
+        }
+    )
 
 
 def _no_store(payload: Any) -> JSONResponse:

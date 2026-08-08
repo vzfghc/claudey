@@ -141,7 +141,6 @@ textarea {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   min-height: 100vh;
-  padding-bottom: 96px; /* Space for action bar */
 }
 
 /* Sidebar Navigation */
@@ -149,19 +148,26 @@ textarea {
   position: sticky;
   top: 0;
   width: 256px;
-  height: 100vh;
+  max-height: 100vh;
   border-right: 1px solid var(--line);
   background: var(--bg);
   padding: 24px 20px;
   display: flex;
   flex-direction: column;
   gap: 32px;
+  overflow-y: auto;
 }
 
 .brand {
   display: flex;
   align-items: center;
   gap: 12px;
+}
+
+.brand-text {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
 }
 
 .brand-mark {
@@ -243,14 +249,77 @@ textarea {
 
 .sidebar-footer {
   display: flex;
-  justify-content: flex-end;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
   margin-top: auto;
   padding-top: 12px;
   border-top: 1px solid var(--line);
 }
 
+/* Collapse button — matches the size and shape of a nav-link,
+   sits below the budget status block. */
+.sidebar-collapse-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 40px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--muted);
+  padding: 10px 14px;
+  text-align: left;
+  font-weight: 600;
+  font-size: 14px;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.sidebar-collapse-btn:hover {
+  background: var(--card-hover);
+  color: #ff4d00;
+}
+
+.sidebar-collapse-icon {
+  display: inline-flex;
+  flex: none;
+}
+
+.sidebar-collapse-icon svg {
+  width: 18px;
+  height: 18px;
+  display: block;
+  transition: transform var(--transition-normal);
+}
+
+.sidebar-collapse-btn:hover .sidebar-collapse-icon svg {
+  transform: translateX(-2px);
+}
+
+.sidebar-collapse-label {
+  overflow: hidden;
+  white-space: nowrap;
+  font-weight: 400;
+}
+
+body.sidebar-collapsed .sidebar-collapse-btn {
+  display: none;
+}
+
+body:not(.sidebar-collapsed) .sidebar-collapse-btn {
+  display: flex;
+}
+
+body:not(.sidebar-collapsed) .sidebar-toggle {
+  display: none;
+}
+
 .sidebar-toggle {
   display: grid;
+  flex: none;
   width: 40px;
   height: 40px;
   place-items: center;
@@ -277,6 +346,110 @@ body.sidebar-collapsed .sidebar-toggle svg {
   transform: rotate(180deg);
 }
 
+/* Sidebar budget status hierarchy: credit + usage icon (top),
+   usage bar, then reset date + upgrade (bottom). */
+.sidebar-budget {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+body:not(.sidebar-collapsed) .sidebar-budget {
+  display: flex;
+}
+
+body.sidebar-rail .sidebar-budget {
+  display: none;
+}
+
+.sidebar-budget-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.sidebar-budget-left {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-strong);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.sidebar-budget-stat {
+  display: grid;
+  flex: none;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.sidebar-budget-stat:hover {
+  background: var(--panel-strong);
+  color: #ff4d00;
+}
+
+.sidebar-budget-stat svg {
+  width: 16px;
+  height: 16px;
+}
+
+.sidebar-budget-bar {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--panel-strong);
+  overflow: hidden;
+}
+
+.sidebar-budget-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: #ff4d00;
+  transition: width var(--transition-normal);
+}
+
+.sidebar-budget-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.sidebar-budget-reset {
+  min-width: 0;
+  font-size: 12px;
+  color: var(--text-muted);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.sidebar-budget-link {
+  flex: none;
+  color: #ff4d00;
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: opacity var(--transition-fast);
+}
+
+.sidebar-budget-link:hover {
+  opacity: 0.7;
+}
 
 /* Accessible focus outlines */
 button:focus-visible,
@@ -291,7 +464,7 @@ textarea:focus-visible,
 /* Main Content Area */
 .main {
   min-width: 0;
-  padding: 40px 48px;
+  padding: 40px 48px 96px; /* 96px bottom = space for fixed action bar */
 }
 
 .topbar {
@@ -339,6 +512,12 @@ textarea:focus-visible,
   justify-content: space-between;
   gap: 16px;
   margin-bottom: 20px;
+}
+
+.provider-actions {
+  display: flex;
+  gap: 12px;
+  flex-shrink: 0;
 }
 
 .strip-header h3 {
@@ -417,7 +596,7 @@ textarea:focus-visible,
 .provider-title strong {
   min-width: 0;
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 500;
   color: var(--text-strong);
   white-space: nowrap;
   overflow: hidden;
@@ -440,6 +619,10 @@ textarea:focus-visible,
   text-transform: uppercase;
   letter-spacing: 0.05em;
   white-space: nowrap;
+}
+
+.status-pill:empty {
+  display: none;
 }
 
 .status-pill.ok {
@@ -570,14 +753,14 @@ textarea:focus-visible,
   color: #ffffff;
 }
 
-/* Configured badge - heat circled check */
+/* Configured badge - pulsing heat dot inside secondary heat circle */
 .configured-badge {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 7px;
   min-height: 40px;
-  padding: 8px 18px;
+  padding: 8px 16px;
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-md);
   background: transparent;
@@ -586,20 +769,36 @@ textarea:focus-visible,
   font-weight: 600;
 }
 
-.configured-check {
+.configured-dot {
   display: grid;
-  width: 18px;
-  height: 18px;
+  width: 20px;
+  height: 20px;
   place-items: center;
   border-radius: 50%;
-  background: #ff4d00;
-  color: #ffffff;
+  background: #f9f3f0;
   flex-shrink: 0;
+  position: relative;
 }
 
-.configured-check svg {
-  width: 10px;
-  height: 10px;
+.configured-dot::after {
+  content: "";
+  display: block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ff4d00;
+  animation: configured-dot-pulse 1.8s ease-in-out infinite;
+}
+
+@keyframes configured-dot-pulse {
+  0%, 100% {
+    opacity: 0.5;
+    transform: scale(0.7);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 /* About button tooltip - below cursor, grey, slide-up */
@@ -1624,7 +1823,8 @@ textarea:focus-visible,
     gap: 0;
   }
   body.sidebar-rail .brand-text {
-    display: none;
+    width: 0;
+    opacity: 0;
   }
   body.sidebar-rail .nav-link {
     gap: 0;
@@ -1639,6 +1839,9 @@ textarea:focus-visible,
   }
   body.sidebar-rail .sidebar-footer {
     justify-content: center;
+  }
+  body.sidebar-rail .sidebar-budget {
+    display: none;
   }
 }
 
@@ -1815,7 +2018,7 @@ textarea:focus-visible,
   font-weight: 600;
   padding: 4px 12px;
   cursor: pointer;
-  transition: background var(--transition-fast), color var(--transition-fast);
+  transition: background var(--transition-fast), color var(--transition-fast), transform 0.1s ease;
 }
 
 .usage-period-tab:hover {
@@ -1842,19 +2045,31 @@ textarea:focus-visible,
   padding: 0;
   font-family: var(--font-rounded);
   font-size: clamp(2.5rem, 6vw, 4rem);
-  font-weight: 700;
+  font-weight: 500;
   line-height: 1.1;
   color: var(--text-strong);
   font-variant-numeric: tabular-nums;
   cursor: pointer;
 }
 
-.usage-hero-conversations {
-  margin: 6px 0 0 0;
+.usage-hero-costs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin: 12px 0 0 0;
   font-size: 13px;
-  font-weight: 500;
   color: #ff4d00;
-  font-variant-numeric: tabular-nums;
+}
+
+.usage-hero-cost-item {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.usage-hero-cost-item strong {
+  font-weight: 600;
+  color: #ff4d00;
 }
 
 /* Stat cells */
@@ -1887,6 +2102,47 @@ textarea:focus-visible,
   font-weight: 600;
   color: var(--text-strong);
   font-variant-numeric: tabular-nums;
+}
+
+/* Provider stats grid (top providers in left column) */
+.usage-provider-stats-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+
+.usage-provider-stat-cell {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px 14px;
+}
+
+.usage-provider-stat-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex: none;
+}
+
+.usage-provider-stat-name {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-strong);
+}
+
+.usage-provider-stat-tokens {
+  font-family: var(--font-rounded);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-strong);
+  font-variant-numeric: tabular-nums;
+  min-width: 80px;
+  text-align: right;
 }
 
 /* DeepSeek billing card */
@@ -2214,8 +2470,16 @@ textarea:focus-visible,
   color: var(--muted);
 }
 
-.usage-table tbody tr:hover td {
-  background: var(--card-hover);
+.usage-table-total td {
+  background: #f9f3f0;
+  color: #ff4d00;
+  font-weight: 700;
+}
+
+.usage-table-total td:first-child {
+  color: #ff4d00;
+  font-family: inherit;
+  font-size: 12px;
 }
 
 /* Heatmap tooltip */
@@ -2232,6 +2496,10 @@ textarea:focus-visible,
   border-radius: 8px;
   padding: 10px 14px;
   box-shadow: var(--shadow-sm);
+}
+
+.usage-tooltip[hidden] {
+  display: none;
 }
 
 .usage-tooltip-date {
@@ -2284,6 +2552,65 @@ textarea:focus-visible,
   .usage-tooltip {
     background: rgba(17, 17, 17, 0.92);
   }
+}
+
+.custom-provider-dialog {
+  border: none;
+  border-radius: 12px;
+  padding: 0;
+  width: 480px;
+  max-width: calc(100vw - 48px);
+  background: var(--bg);
+  color: var(--text);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+.custom-provider-dialog::backdrop {
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.custom-provider-dialog form {
+  padding: 24px;
+}
+
+.custom-provider-dialog h3 {
+  margin: 0 0 24px 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.custom-provider-dialog .field {
+  margin-bottom: 20px;
+}
+
+.custom-provider-dialog label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.custom-provider-dialog input {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 14px;
+}
+
+.custom-provider-dialog input:focus {
+  outline: none;
+  border-color: #ff4d00;
+  box-shadow: 0 0 0 2px rgba(255, 77, 0, 0.2);
+}
+
+.custom-provider-dialog .dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 24px;
 }
 
 @media (max-width: 900px) {

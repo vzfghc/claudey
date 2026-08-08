@@ -211,7 +211,8 @@ def test_admin_connected_account_login_preopens_sign_in_window():
     assert "if (popup) popup.close()" in script
     assert '"Reconnect"' in script
     assert '"Copy code"' in script
-    assert "Restart your agent to refresh its model picker." in script
+    assert '"Open sign-in"' in script
+    assert '"Use device code"' in script
     assert 'window.confirm("Disconnect this ChatGPT account from Claudey?")' in script
 
 
@@ -1390,12 +1391,36 @@ def test_admin_static_sidebar_tween_contract():
     assert "expanded: 256" in module
     # The rail class is added only once the tween completes.
     assert 'document.body.classList.add("sidebar-rail")' in module
-    # CSS: the width transition is gone; the action bar follows the var.
-    assert "transition: width var(--transition-normal)" not in styles
+    # CSS: the sidebar's own width is tweened per-frame, not via a CSS
+    # transition (the action bar follows the var). The budget fill bar may
+    # still animate its width — that is a different element.
+    sidebar_rule = styles[styles.index(".sidebar {") : styles.index(".brand {")]
+    assert "transition" not in sidebar_rule
     assert "left: var(--sidebar-w, 256px)" in styles
     assert ":root {\n  --sidebar-w: 256px;" in animations
     # No-JS fallback keeps the collapsed width at 64px.
     assert "body.sidebar-collapsed .sidebar {\n    width: 64px;" in styles
+
+
+def test_admin_static_sidebar_budget_and_brand_fade():
+    module = Path("src/claudey/api/admin_static/admin-animations.js").read_text(
+        encoding="utf-8"
+    )
+    styles = Path("src/claudey/api/admin_static/admin.css").read_text(encoding="utf-8")
+
+    # The footer budget fades out with the width instead of being crushed,
+    # and its elements are cached once per tween (never re-queried per frame).
+    assert "BUDGET_FADE_END" in module
+    assert "budgetOpacityFor" in module
+    assert "setBudgetOpacity" in module
+    assert "fadeLabels" in module
+    assert 'const budget = document.querySelector(".sidebar-budget")' in module
+    # Brand text clips cleanly as the width tween shrinks it, and stays
+    # measurable in the rail (width 0, not display:none) so the expand
+    # tween can grow it back from the natural scrollWidth.
+    assert "overflow: hidden;" in styles
+    assert ".brand-text {" in styles
+    assert "body.sidebar-rail .brand-text {\n    width: 0;\n    opacity: 0;" in styles
 
 
 def test_admin_static_sidebar_click_delegates_to_tween():
@@ -1411,42 +1436,39 @@ def test_admin_static_sidebar_click_delegates_to_tween():
     assert "sectionNav.inert" in script
 
 
-def test_admin_static_sidebar_hover_peek():
+def test_admin_static_sidebar_no_hover_peek():
     module = Path("src/claudey/api/admin_static/admin-animations.js").read_text(
         encoding="utf-8"
     )
 
-    # Hover drives the peek: expand on enter, collapse on leave.
-    assert 'sidebarEl.addEventListener("mouseenter"' in module
-    assert 'sidebarEl.addEventListener("mouseleave"' in module
-    assert "peekSidebar(true)" in module
-    assert "peekSidebar(false)" in module
-    # Desktop-only and only while the sidebar is unpinned (collapsed).
-    assert "if (!DESKTOP.matches || !isSidebarCollapsed()) return;" in module
-    # The peek is purely visual: tween or snap, never the pin state.
-    assert "snapSidebar(!expanded)" in module
-    assert "tweenSidebar(!expanded)" in module
-    assert "Pinned (class removed)" in module
-    # admin.js owns applySidebarCollapsed/localStorage; the hover-peek
-    # section calls neither (the peek is purely visual).
-    peek_section = module[
-        module.index("1b. Sidebar hover-peek") : module.index("/* 2. Section nav")
-    ]
-    assert "applySidebarCollapsed(" not in peek_section
-    assert "localStorage.setItem" not in peek_section
+    # Hover no longer drives a peek — the toggle click owns collapse/expand.
+    assert 'sidebarEl.addEventListener("mouseenter"' not in module
+    assert 'sidebarEl.addEventListener("mouseleave"' not in module
+    assert "1b. Sidebar — no hover-peek; toggle click owns collapse/expand" in module
+    # admin.js owns applySidebarCollapsed/localStorage; the 1b section
+    # captures the elements and never mutates the pin state itself.
+    section = module[module.index("1b. Sidebar") : module.index("/* 2. Section nav")]
+    assert "const sidebarEl" in section
+    assert "const sidebarToggleEl" in section
+    assert "const sidebarCollapseBtn" in section
+    assert "applySidebarCollapsed(" not in section
+    assert "localStorage.setItem" not in section
+    # The exposed toggle delegates state changes to admin.js.
+    assert "onSidebarToggleClick" in module
+    assert "window.applySidebarCollapsed" in module
+    assert "window.__sidebarTweenToggle" in module
     # Mid-tween reversals stay supported; a same-target tween is not
     # restarted so hover and clicks cannot fight each other.
     assert "sidebarTweenTarget" in module
     assert "sidebarTweenTarget === targetCollapsed && sidebarTweenId !== null" in module
     assert "sidebarTweenTarget = null" in module
     assert "parseFloat(sidebar.style.width)" in module
-    # Reduced motion and viewport changes cancel the peek and reset aria.
+    # Reduced motion and viewport changes cancel the tween and reset aria.
     assert "restoreSidebarAria" in module
     assert "cancelSidebarTween" in module
     # Regression: an expand tween/snap must keep the final inline
-    # width — the transient peek leaves body.sidebar-collapsed in
-    # place, and its CSS width would snap the sidebar back to 64px
-    # if the inline width were cleared at tween completion.
+    # width — the collapsed-state CSS width would snap the sidebar
+    # back to 64px if the inline width were cleared at tween completion.
     assert "would snap the sidebar back to" in module
     assert module.count("sidebar.style.width = `${SIDEBAR_W.expanded}px`") >= 2
 
@@ -1670,9 +1692,9 @@ def test_admin_static_preserves_accessibility_attributes():
     assert 'aria-hidden="true"' in html
     # Pills are decorative and invisible to assistive tech.
     assert 'setAttribute("aria-hidden", "true")' in module
-    # The module mirrors the visually expanded state into
-    # aria-expanded during hover-peek only (admin.js owns the rest).
-    assert 'sidebarToggleEl.setAttribute("aria-expanded", String(expanded))' in module
+    # The module mirrors the persistent collapsed state into
+    # aria-expanded on media-query changes; admin.js owns the rest.
+    assert 'sidebarToggleEl.setAttribute("aria-expanded", String(!collapsed))' in module
     assert "restoreSidebarAria" in module
     # Focus-visible outlines and live regions stay untouched.
     assert "focus-visible" in styles
@@ -1689,8 +1711,16 @@ def test_admin_dashboard_endpoint_loopback_and_shape(monkeypatch, tmp_path):
     assert response.status_code == 200
     assert response.headers["cache-control"] == "no-store"
     payload = response.json()
-    assert set(payload) == {"commits", "stats", "usd_to_idr"}
+    assert set(payload) == {
+        "commits",
+        "stats",
+        "usd_to_idr",
+        "monthly_spend_usd",
+        "monthly_limit_usd",
+    }
     assert payload["usd_to_idr"] == 18000.0
+    assert isinstance(payload["monthly_spend_usd"], (int, float))
+    assert payload["monthly_limit_usd"] == 100.0
     assert payload["stats"] == {"agents": 0, "skills": 0}
     # Commits come from the real repo; only the shape is asserted.
     for commit in payload["commits"]:
@@ -2019,7 +2049,7 @@ def test_admin_static_usage_view_markup(monkeypatch, tmp_path):
     assert 'data-view="usage"' in page
     assert 'id="usageSections"' in page
 
-    js = _local_client(create_test_app()).get("/admin/assets/admin.js?v=5.13.0").text
+    js = _local_client(create_test_app()).get("/admin/assets/admin.js?v=5.16.0").text
     assert 'id: "usage"' in js
     assert 'containerId: "usageSections"' in js
     assert 'api("/admin/api/usage")' in js
@@ -2036,7 +2066,7 @@ def test_admin_static_usage_view_markup(monkeypatch, tmp_path):
     assert "usage-period-tab" in js
     assert "heat-cell heat-" in js
 
-    css = _local_client(create_test_app()).get("/admin/assets/admin.css?v=5.13.0").text
+    css = _local_client(create_test_app()).get("/admin/assets/admin.css?v=5.16.0").text
     assert ".usage-grid" in css
     assert ".usage-heatmap" in css
     assert ".heat-cell" in css
@@ -2055,4 +2085,4 @@ def test_admin_static_usage_view_markup(monkeypatch, tmp_path):
         "admin.css",
         "admin-animations.css",
     ):
-        assert f"{asset}?v=5.13.0" in page
+        assert f"{asset}?v=5.16.0" in page

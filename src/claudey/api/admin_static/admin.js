@@ -20,6 +20,14 @@ const VIEW_GROUPS = [
     icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg>`,
   },
   {
+    id: "usage",
+    label: "Usage",
+    title: "Usage",
+    sections: [],
+    containerId: "usageSections",
+    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 20v-8"/><path d="M12 20V5"/><path d="M19 20v-11"/><path d="M3 20h18"/></svg>`,
+  },
+  {
     id: "model_config",
     label: "Model Config",
     title: "Model Config",
@@ -34,14 +42,6 @@ const VIEW_GROUPS = [
     sections: ["messaging", "voice"],
     containerId: "messagingSections",
     icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>`,
-  },
-  {
-    id: "usage",
-    label: "Usage",
-    title: "Usage",
-    sections: [],
-    containerId: "usageSections",
-    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 20v-8"/><path d="M12 20V5"/><path d="M19 20v-11"/><path d="M3 20h18"/></svg>`,
   },
 ];
 
@@ -280,6 +280,7 @@ function renderNav() {
 function setActiveView(viewId, { scroll = false } = {}) {
   const activeView =
     VIEW_GROUPS.find((view) => view.id === viewId) || VIEW_GROUPS[0];
+
   state.activeView = activeView.id;
   byId("pageTitle").textContent = activeView.title;
 
@@ -298,6 +299,11 @@ function setActiveView(viewId, { scroll = false } = {}) {
     view.classList.toggle("active", selected);
     view.hidden = !selected;
   });
+
+  // Ensure tooltip is hidden when not on usage page
+  if (activeView.id !== "usage" && usageTooltipEl) {
+    usageTooltipEl.hidden = true;
+  }
 
   if (activeView.id === "usage") {
     loadUsage();
@@ -412,21 +418,10 @@ function renderProviders(providerStatus) {
     if (isConfigured) {
       const badge = document.createElement("span");
       badge.className = "configured-badge";
-      const check = document.createElement("span");
-      check.className = "configured-check";
-      check.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>`;
-      badge.append(check, "Configured");
+      const dot = document.createElement("span");
+      dot.className = "configured-dot";
+      badge.append(dot, "Configured");
       actions.appendChild(badge);
-    } else {
-      const configure = document.createElement("button");
-      configure.type = "button";
-      configure.className = "secondary-button card-configure";
-      configure.textContent = "Configure";
-      configure.addEventListener("click", () => scrollToField(primaryField));
-      actions.appendChild(configure);
-    }
-
-    if (isConfigured) {
       const switchBtn = document.createElement("button");
       switchBtn.type = "button";
       switchBtn.className = "secondary-button";
@@ -434,6 +429,12 @@ function renderProviders(providerStatus) {
       switchBtn.addEventListener("click", () => scrollToField(primaryField));
       actions.appendChild(switchBtn);
     } else {
+      const configure = document.createElement("button");
+      configure.type = "button";
+      configure.className = "secondary-button card-configure";
+      configure.textContent = "Configure";
+      configure.addEventListener("click", () => scrollToField(primaryField));
+      actions.appendChild(configure);
       const about = document.createElement("button");
       about.type = "button";
       about.className = "secondary-button about-tooltip";
@@ -521,34 +522,29 @@ function renderConnectedAccountCard(provider, status = provider) {
 
 function connectedAccountLabel(status) {
   const labels = {
-    disconnected: "Not connected",
+    disconnected: "",
     connecting: "Connecting",
-    connected: "Connected",
-    error: "Needs attention",
+    connected: "",
+    error: "Error",
   };
-  return labels[status.state] || status.label || "Not connected";
+  return labels[status.state] || status.label || "";
 }
 
 function connectedAccountMeta(status) {
   if (status.connected) {
-    const identity = status.email || "ChatGPT subscription connected";
-    const models = Number.isInteger(status.model_count)
-      ? `${status.model_count} model${status.model_count === 1 ? "" : "s"} available. `
-      : "";
-    const error = status.message ? `${status.message} ` : "";
-    return `${identity}. ${models}${error}Restart your agent to refresh its model picker.`;
+    return status.email ? `Connected as ${status.email}` : "Subscription connected";
   }
   if (status.mode === "device" && status.user_code) {
-    return `Enter code ${status.user_code} at ${status.verification_url}`;
+    return status.message || "";
   }
   if (status.state === "connecting") {
-    return "Finish signing in, then return to this page.";
+    return status.message || "";
   }
   if (status.state === "error") {
     const detail = status.message ? ` - ${status.message}` : "";
-    return `Something went wrong${detail}. Try disconnecting, then connect again.`;
+    return `Error${detail}`;
   }
-  return status.message || "Connect a ChatGPT account to discover subscription models.";
+  return status.message || "Connect a ChatGPT account.";
 }
 
 function populateConnectedAccountActions(provider, status, actions) {
@@ -576,10 +572,9 @@ function populateConnectedAccountActions(provider, status, actions) {
     if (providerId === "anthropic") {
       const badge = document.createElement("span");
       badge.className = "configured-badge";
-      const check = document.createElement("span");
-      check.className = "configured-check";
-      check.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>`;
-      badge.append(check, "Configured");
+      const dot = document.createElement("span");
+      dot.className = "configured-dot";
+      badge.append(dot, "Configured");
       actions.appendChild(badge);
       actions.appendChild(
         authButton("Switch key", () => scrollToField("ANTHROPIC_AUTH_TOKEN"), "secondary-button"),
@@ -704,7 +699,7 @@ async function disconnectConnectedAccount(providerId) {
   await hydrateModelOptions();
 }
 
-function pollConnectedAccount(provider) {
+async function pollConnectedAccount(provider) {
   clearConnectedAccountPoll(provider.provider_id);
   const poll = async () => {
     try {
@@ -1699,6 +1694,58 @@ function formatUsd(value) {
   })}`;
 }
 
+const IDR_FALLBACK_RATE = 18000;
+
+function formatIdr(usd, rate = IDR_FALLBACK_RATE) {
+  if (usd === null || usd === undefined || Number.isNaN(Number(usd))) return "—";
+  const idr = Number(usd) * rate;
+  if (idr >= 1_000_000) return `Rp ${(idr / 1_000_000).toFixed(1)}M`;
+  return `Rp ${Math.round(idr).toLocaleString("en-US")}`;
+}
+
+function renderSidebarBudget(dashboard) {
+  const widget = byId("sidebarBudget");
+  if (!widget || !dashboard) return;
+  const spend = Number(dashboard.monthly_spend_usd) || 0;
+  const limit = Number(dashboard.monthly_limit_usd) || 0;
+  const remaining = Math.max(0, limit - spend);
+  const ratio = limit > 0 ? Math.min(spend / limit, 1) : 0;
+
+  widget.hidden = false;
+
+  // Get first day of next month for reset date
+  const now = new Date();
+  const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+  const options = { month: "short", day: "numeric" };
+  const resetDateText = nextMonth.toLocaleDateString("en-US", options);
+
+  byId("sidebarBudgetLeft").textContent = formatUsd(remaining) + " left";
+  byId("sidebarBudgetFill").style.width = `${(ratio * 100).toFixed(1)}%`;
+  byId("sidebarBudgetReset").textContent = "Resets " + resetDateText;
+  const bar = byId("sidebarBudgetBar");
+  if (bar) {
+    bar.setAttribute("aria-valuenow", String(Math.round(ratio * 100)));
+  }
+}
+
+function goToUsageView(event) {
+  event.preventDefault();
+  setActiveView("usage", { scroll: true });
+}
+
+const sidebarBudgetStat = byId("sidebarBudgetStat");
+const sidebarBudgetUpgrade = byId("sidebarBudgetUpgrade");
+if (sidebarBudgetStat) {
+  sidebarBudgetStat.addEventListener("click", goToUsageView);
+}
+if (sidebarBudgetUpgrade) {
+  sidebarBudgetUpgrade.addEventListener("click", goToUsageView);
+}
+
+api("/admin/api/dashboard")
+  .then(renderSidebarBudget)
+  .catch(() => {});
+
 function countUp(el, final) {
   if (REDUCED_MOTION) {
     el.textContent = formatTokens(final);
@@ -1746,8 +1793,13 @@ function usageProviderColor(provider, index) {
   return USAGE_PROVIDER_COLORS[provider] || `hsl(${150 + index * 40}, 60%, 45%)`;
 }
 
-function usageHeroValue(payload) {
-  if (usagePeriod === "Total") return payload.totals.total_tokens || 0;
+function usageHeroValue(payload, billing) {
+  if (usagePeriod === "Total") {
+    // Integrate DeepSeek billing tokens into total
+    const native = payload.totals.total_tokens || 0;
+    const deepseek = billing?.total_tokens || 0;
+    return native + deepseek;
+  }
   const windows = payload.windows || {};
   return windows[usagePeriod] || 0;
 }
@@ -1789,6 +1841,12 @@ function positionUsageTooltip(event) {
   }
 }
 
+function hideUsageTooltip() {
+  if (usageTooltipEl) {
+    usageTooltipEl.hidden = true;
+  }
+}
+
 function showUsageTooltip(event, cell) {
   const tip = getUsageTooltip();
   const date = new Date(`${cell.dataset.date}T00:00:00Z`);
@@ -1798,10 +1856,6 @@ function showUsageTooltip(event, cell) {
     formatTokens(Number(cell.dataset.value) || 0);
   tip.hidden = false;
   positionUsageTooltip(event);
-}
-
-function hideUsageTooltip() {
-  if (usageTooltipEl) usageTooltipEl.hidden = true;
 }
 
 // Heat levels via quantiles over positive day values only; when fewer than
@@ -1863,6 +1917,14 @@ function renderUsageHeatmapCard(heatmap) {
   grid.className = "usage-heatmap-grid";
   grid.setAttribute("role", "img");
   grid.setAttribute("aria-label", "Token usage heatmap over the last 52 weeks");
+
+  // Attach mouseleave to the entire grid to handle fast mouse movements
+  grid.addEventListener("mouseleave", (e) => {
+    if (!e.relatedTarget || !grid.contains(e.relatedTarget)) {
+      hideUsageTooltip();
+    }
+  });
+
   const levelFor = usageHeatLevels(weeks);
   weeks.forEach((week) => {
     const weekStart = new Date(`${week.start}T00:00:00Z`);
@@ -1944,26 +2006,40 @@ function renderUsageTrendCard(daily) {
   return card;
 }
 
-function renderUsageStatCells(payload) {
-  const windows = payload.windows || {};
+function renderUsageProvidersStats(providers, limit = 4) {
+  if (!providers || !providers.length) {
+    const grid = document.createElement("div");
+    grid.className = "usage-stat-grid";
+    const empty = document.createElement("p");
+    empty.className = "usage-empty-note";
+    empty.textContent = "No provider data yet.";
+    grid.appendChild(empty);
+    return grid;
+  }
+  const sorted = [...providers].sort((a, b) => (b.total_tokens || 0) - (a.total_tokens || 0)).slice(0, limit);
   const grid = document.createElement("div");
-  grid.className = "usage-stat-grid";
-  [
-    ["24h tokens", windows["24h"] || 0],
-    ["7d tokens", windows["7d"] || 0],
-    ["30d tokens", windows["30d"] || 0],
-    ["Conversations", payload.totals.conversations || 0],
-  ].forEach(([label, value]) => {
+  grid.className = "usage-provider-stats-grid";
+  sorted.forEach((provider, index) => {
     const cell = document.createElement("div");
-    cell.className = "usage-stat-cell";
-    const labelEl = document.createElement("span");
-    labelEl.className = "usage-stat-cell-label";
-    labelEl.textContent = label;
-    const valueEl = document.createElement("strong");
-    valueEl.className = "usage-stat-cell-value";
-    cell.append(labelEl, valueEl);
-    countUp(valueEl, value);
+    cell.className = "usage-provider-stat-cell";
+    const color = usageProviderColor(provider.provider, index);
+    const dot = document.createElement("span");
+    dot.className = "usage-provider-stat-dot";
+    dot.style.background = color;
+    const name = document.createElement("span");
+    name.className = "usage-provider-stat-name";
+    name.textContent = provider.provider;
+    const tokens = document.createElement("span");
+    tokens.className = "usage-provider-stat-tokens";
+    const final = provider.total_tokens || 0;
+    tokens.dataset.final = final;
+    tokens.textContent = formatTokens(final);
+    cell.append(dot, name, tokens);
     grid.appendChild(cell);
+    // Tween on mount
+    requestAnimationFrame(() => {
+      tokens.textContent = formatTokens(Number(tokens.dataset.final));
+    });
   });
   return grid;
 }
@@ -2057,7 +2133,7 @@ function renderUsageEmpty(kind) {
   return card;
 }
 
-function renderUsageHero(payload) {
+function renderUsageHero(payload, billing) {
   const card = document.createElement("article");
   card.className = "usage-card usage-hero";
 
@@ -2079,10 +2155,15 @@ function renderUsageHero(payload) {
         other.classList.toggle("active", other === tab);
         other.setAttribute("aria-selected", String(other === tab));
       });
+      // Tween animation for all tabs
+      tabs.querySelectorAll(".usage-period-tab").forEach((t) => {
+        t.style.transform = "scale(0.95)";
+        setTimeout(() => { t.style.transform = ""; }, 100);
+      });
       if (usageFullNumbers) {
-        heroNumber.textContent = usageNumberText(usageHeroValue(payload));
+        heroNumber.textContent = usageNumberText(usageHeroValue(payload, billing));
       } else {
-        countUp(heroNumber, usageHeroValue(payload));
+        countUp(heroNumber, usageHeroValue(payload, billing));
       }
     });
     tabs.appendChild(tab);
@@ -2097,15 +2178,23 @@ function renderUsageHero(payload) {
   heroNumber.addEventListener("click", () => {
     usageFullNumbers = !usageFullNumbers;
     heroNumber.setAttribute("aria-pressed", String(usageFullNumbers));
-    heroNumber.textContent = usageNumberText(usageHeroValue(payload));
+    heroNumber.textContent = usageNumberText(usageHeroValue(payload, billing));
   });
-  countUp(heroNumber, usageHeroValue(payload));
+  countUp(heroNumber, usageHeroValue(payload, billing));
   card.appendChild(heroNumber);
 
-  const conversations = document.createElement("p");
-  conversations.className = "usage-hero-conversations";
-  conversations.textContent = `${payload.totals.conversations || 0} conversations`;
-  card.appendChild(conversations);
+  const costRow = document.createElement("div");
+  costRow.className = "usage-hero-costs";
+  const usdCost = billing?.total_cost_usd !== undefined ? formatUsd(billing.total_cost_usd) : "—";
+  const idrCost = billing?.total_cost_usd !== undefined ? formatIdr(billing.total_cost_usd) : "—";
+  const usdEl = document.createElement("span");
+  usdEl.className = "usage-hero-cost-item";
+  usdEl.innerHTML = `<strong>Total cost:</strong> ${usdCost}`;
+  const idrEl = document.createElement("span");
+  idrEl.className = "usage-hero-cost-item";
+  idrEl.innerHTML = `<strong>IDR:</strong> ${idrCost}`;
+  costRow.append(usdEl, idrEl);
+  card.appendChild(costRow);
 
   return card;
 }
@@ -2230,6 +2319,45 @@ function renderUsageDailyTable(daily, billing) {
   });
   thead.appendChild(headRow);
   const tbody = document.createElement("tbody");
+
+  const totals = rows.reduce(
+    (acc, row) => ({
+      total_tokens: acc.total_tokens + (row.total_tokens || 0),
+      input_tokens: acc.input_tokens + (row.input_tokens || 0),
+      output_tokens: acc.output_tokens + (row.output_tokens || 0),
+      cached_input_tokens: acc.cached_input_tokens + (row.cached_input_tokens || 0),
+      reasoning_output_tokens: acc.reasoning_output_tokens + (row.reasoning_output_tokens || 0),
+      conversations: acc.conversations + (row.conversations || 0),
+      cost_usd: acc.cost_usd + (costByDate.get(row.date) || 0),
+    }),
+    {
+      total_tokens: 0,
+      input_tokens: 0,
+      output_tokens: 0,
+      cached_input_tokens: 0,
+      reasoning_output_tokens: 0,
+      conversations: 0,
+      cost_usd: 0,
+    }
+  );
+  const totalRow = document.createElement("tr");
+  totalRow.className = "usage-table-total";
+  [
+    "Total",
+    formatTokens(totals.total_tokens),
+    formatTokens(totals.input_tokens),
+    formatTokens(totals.output_tokens),
+    formatTokens(totals.cached_input_tokens),
+    formatTokens(totals.reasoning_output_tokens),
+    String(totals.conversations),
+    formatUsd(totals.cost_usd),
+  ].forEach((text) => {
+    const td = document.createElement("td");
+    td.textContent = text;
+    totalRow.appendChild(td);
+  });
+  tbody.appendChild(totalRow);
+
   [...rows].reverse().forEach((row) => {
     const tr = document.createElement("tr");
     if (!(row.total_tokens || 0)) tr.className = "zero";
@@ -2315,12 +2443,13 @@ function renderUsage(payload) {
   left.className = "usage-col";
   const right = document.createElement("div");
   right.className = "usage-col";
+  // Use top providers in left column instead of stat cells
   left.append(
-    renderUsageStatCells(payload),
+    renderUsageProvidersStats(payload.providers),
     renderUsageHeatmapCard(payload.heatmap),
     renderUsageTrendCard(payload.daily),
   );
-  right.append(renderUsageHero(payload));
+  right.append(renderUsageHero(payload, payload.billing));
   const billingCard = renderUsageBillingCard(payload.billing);
   if (billingCard) right.appendChild(billingCard);
   right.append(
@@ -2366,7 +2495,6 @@ document.addEventListener("keydown", (event) => {
   }
 });
 
-
 byId("validateButton").addEventListener("click", () => validate(true));
 byId("applyButton").addEventListener("click", apply);
 byId("restartButton").addEventListener("click", restartServer);
@@ -2393,6 +2521,18 @@ sidebarToggle.addEventListener("click", () => {
   applySidebarCollapsed(!document.body.classList.contains("sidebar-collapsed"));
 });
 
+const sidebarCollapseBtn = byId("sidebarCollapseBtn");
+if (sidebarCollapseBtn) {
+  sidebarCollapseBtn.addEventListener("click", (event) => {
+    event.preventDefault();
+    if (window.__sidebarTweenToggle) {
+      window.__sidebarTweenToggle();
+      return;
+    }
+    applySidebarCollapsed(true);
+  });
+}
+
 mobileQuery.addEventListener("change", (event) => {
   sectionNav.inert = event.matches && document.body.classList.contains("sidebar-collapsed");
 });
@@ -2404,6 +2544,76 @@ document.addEventListener("pointerdown", (event) => {
   state.modelComboboxes.forEach((combobox) => {
     if (combobox.isOpen && !combobox.element.contains(event.target)) combobox.close();
   });
+});
+
+// Custom provider dialogs
+function showCustomProviderDialog(providerType) {
+  const dialog = document.createElement("dialog");
+  dialog.className = "custom-provider-dialog";
+  dialog.innerHTML = `
+    <form method="dialog">
+      <h3>Add ${providerType === 'openai' ? 'OpenAI-compatible' : 'Anthropic-compatible'} Provider</h3>
+      <div class="field">
+        <label for="providerName">Provider Name</label>
+        <input type="text" id="providerName" placeholder="e.g. My Custom Provider" required />
+      </div>
+      <div class="field">
+        <label for="baseUrl">Base URL</label>
+        <input type="url" id="baseUrl" placeholder="https://api.example.com/v1" required />
+      </div>
+      <div class="field">
+        <label for="apiKey">API Key</label>
+        <input type="password" id="apiKey" placeholder="sk-xxxxx" />
+      </div>
+      <div class="dialog-actions">
+        <button type="button" class="secondary-button" onclick="this.closest('dialog').close()">Cancel</button>
+        <button type="submit" class="primary-button">Add Provider</button>
+      </div>
+    </form>
+  `;
+
+  dialog.querySelector("form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const name = dialog.querySelector("#providerName").value;
+    const baseUrl = dialog.querySelector("#baseUrl").value;
+    const apiKey = dialog.querySelector("#apiKey").value;
+
+    try {
+      const response = await fetch("/admin/api/providers/custom", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          type: providerType,
+          name: name,
+          base_url: baseUrl,
+          api_key: apiKey,
+        }),
+      });
+
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.detail || "Failed to create provider");
+
+      showMessage(result.message || `Provider ${name} added successfully`, "success");
+      // TODO: Refresh provider list to show new provider
+      dialog.close();
+    } catch (error) {
+      showMessage(`Failed to create provider: ${error.message}`, "error");
+    }
+  });
+
+  document.body.appendChild(dialog);
+  dialog.showModal();
+}
+
+// Add provider buttons
+byId("addOpenAIProviderBtn").addEventListener("click", () => {
+  showCustomProviderDialog('openai');
+});
+
+byId("addAnthropicProviderBtn").addEventListener("click", () => {
+  showCustomProviderDialog('anthropic');
 });
 
 load().catch((error) => {
