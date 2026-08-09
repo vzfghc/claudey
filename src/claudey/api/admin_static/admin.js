@@ -231,10 +231,12 @@ async function load() {
   const config = await api("/admin/api/config");
   state.config = config;
   state.fields = new Map(config.fields.map((field) => [field.key, field]));
+  // Render the greeting immediately (blinking cursor placeholder) so the
+  // topbar always has a component from first paint — nothing else waits on it.
+  renderGreeting();
   renderNav();
   renderProviders(config.provider_status);
   renderOnboarding(config.provider_status);
-  renderGreeting();
   renderSections(config.sections, config.fields);
   renderServerStatus();
   byId("configPath").textContent = config.paths.managed;
@@ -244,14 +246,89 @@ async function load() {
   await refreshLocalStatus();
   updateDirtyState();
   showMessage("");
+  // After the dashboard has loaded and settled, fill in the greeting text over
+  // the blinking-cursor placeholder that was rendered on first paint.
+  animateGreeting();
 }
 
+const GREETING_TYPE_MS = 35;
+const GREETING_START_DELAY_MS = 120;
+
+// Greeting text is resolved once and reused by both the placeholder and the
+// typing phase, so the same greeting is always picked for a given hour.
+let greetingText = "";
+
+function pickGreetingText() {
+  if (greetingText) return greetingText;
+  const seed = Math.floor(Date.now() / 3600000);
+  const index = (seed + WELCOME_GREETINGS.length) % WELCOME_GREETINGS.length;
+  greetingText = WELCOME_GREETINGS[Math.abs(index)];
+  return greetingText;
+}
+
+// Phase 1 — render a stable component immediately on first paint: the full text
+// for assistive tech plus a blinking cursor placeholder. Nothing else on the
+// page waits on the greeting, so the typing can never shift the rest of the UI.
 function renderGreeting() {
   const el = byId("welcomeGreeting");
   if (!el) return;
-  const seed = Math.floor(Date.now() / 3600000);
-  const index = (seed + WELCOME_GREETINGS.length) % WELCOME_GREETINGS.length;
-  el.textContent = WELCOME_GREETINGS[Math.abs(index)];
+  const text = pickGreetingText();
+  el.textContent = "";
+
+  const sr = document.createElement("span");
+  sr.className = "sr-only";
+  sr.textContent = text;
+  el.appendChild(sr);
+
+  const visual = document.createElement("span");
+  visual.className = "welcome-greeting-visual";
+  visual.setAttribute("aria-hidden", "true");
+  el.appendChild(visual);
+
+  if (REDUCED_MOTION || text.length === 0) {
+    visual.textContent = text;
+    return;
+  }
+
+  const cursor = document.createElement("span");
+  cursor.className = "typing-cursor";
+  cursor.textContent = "|";
+  visual.appendChild(cursor);
+}
+
+// Phase 2 — type the greeting text into the placeholder after the dashboard has
+// settled, keeping the blinking cursor until the text is complete.
+function animateGreeting() {
+  const el = byId("welcomeGreeting");
+  const visual = el && el.querySelector(".welcome-greeting-visual");
+  if (!el || !visual) return;
+  const text = pickGreetingText();
+  if (REDUCED_MOTION || text.length === 0) {
+    const settled = visual.querySelector(".typing-cursor");
+    if (settled) settled.remove();
+    visual.textContent = text;
+    return;
+  }
+  visual.textContent = "";
+  const chars = Array.from(text);
+
+  const typed = document.createElement("span");
+  typed.className = "welcome-greeting-typed";
+  const cursor = document.createElement("span");
+  cursor.className = "typing-cursor";
+  cursor.textContent = "|";
+  visual.append(typed, cursor);
+
+  let index = 0;
+  window.setTimeout(function typeNext() {
+    if (index < chars.length) {
+      typed.textContent = chars.slice(0, index + 1).join("");
+      index += 1;
+      window.setTimeout(typeNext, GREETING_TYPE_MS);
+      return;
+    }
+    cursor.remove();
+  }, GREETING_START_DELAY_MS);
 }
 
 function renderNav() {
@@ -1700,7 +1777,7 @@ async function renderServerStatus() {
     const status = await api("/admin/api/status");
     if (status.status === "running") {
       const version = status.version ? ` v${status.version}` : "";
-      pill.className = "server-status ok";
+      pill.className = "server-status ok rainbow";
       pill.innerHTML = `<span class="status-dot"></span><span class="status-text">Running on :${status.port ?? ""}${version}</span>`;
     } else {
       pill.className = "server-status stopped";
@@ -2277,6 +2354,22 @@ function renderUsageEmpty(kind) {
 function renderUsageHero(payload, billing) {
   const card = document.createElement("article");
   card.className = "usage-card usage-hero";
+
+  // MagicUI-style concentric ripple rings behind the total number.
+  const ripple = document.createElement("div");
+  ripple.className = "usage-hero-ripple";
+  ripple.setAttribute("aria-hidden", "true");
+  for (let i = 0; i < 8; i += 1) {
+    const circle = document.createElement("div");
+    circle.className = "usage-hero-ripple-circle";
+    const size = 140 + i * 70;
+    circle.style.width = `${size}px`;
+    circle.style.height = `${size}px`;
+    circle.style.opacity = String(Math.max(0.08, 0.4 - i * 0.045));
+    circle.style.animationDelay = `${i * 0.06}s`;
+    ripple.appendChild(circle);
+  }
+  card.appendChild(ripple);
 
   const tabs = document.createElement("div");
   tabs.className = "usage-period-tabs";

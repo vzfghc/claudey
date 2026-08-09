@@ -20,6 +20,7 @@ from claudey.application.model_metadata import (
 from claudey.config.admin.values import MASKED_SECRET
 from claudey.config.server_urls import local_admin_url
 from claudey.config.settings import Settings
+from claudey.core.version import package_version
 from tests.api.support import create_test_app, provider_manager_for_app
 
 
@@ -2066,7 +2067,12 @@ def test_admin_static_usage_view_markup(monkeypatch, tmp_path):
     assert 'data-view="usage"' in page
     assert 'id="usageSections"' in page
 
-    js = _local_client(create_test_app()).get("/admin/assets/admin.js?v=5.18.1").text
+    asset_version = package_version()
+    js = (
+        _local_client(create_test_app())
+        .get(f"/admin/assets/admin.js?v={asset_version}")
+        .text
+    )
     assert 'id: "usage"' in js
     assert 'containerId: "usageSections"' in js
     assert 'api("/admin/api/usage")' in js
@@ -2083,7 +2089,11 @@ def test_admin_static_usage_view_markup(monkeypatch, tmp_path):
     assert "usage-period-tab" in js
     assert "heat-cell heat-" in js
 
-    css = _local_client(create_test_app()).get("/admin/assets/admin.css?v=5.18.1").text
+    css = (
+        _local_client(create_test_app())
+        .get(f"/admin/assets/admin.css?v={asset_version}")
+        .text
+    )
     assert ".usage-grid" in css
     assert ".usage-heatmap" in css
     assert ".heat-cell" in css
@@ -2102,7 +2112,7 @@ def test_admin_static_usage_view_markup(monkeypatch, tmp_path):
         "admin.css",
         "admin-animations.css",
     ):
-        assert f"{asset}?v=5.18.1" in page
+        assert f"{asset}?v={asset_version}" in page
 
 
 @pytest.fixture

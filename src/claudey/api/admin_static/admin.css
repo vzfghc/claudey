@@ -481,6 +481,43 @@ textarea:focus-visible,
   animation-delay: 0.05s;
 }
 
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.typing-cursor {
+  display: inline-block;
+  margin-left: 1px;
+  font-weight: 700;
+  color: #ff4d00;
+  animation: typing-blink 1s step-end infinite;
+}
+
+@keyframes typing-blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .typing-cursor {
+    animation: none;
+  }
+}
+
 .topbar h2 {
   font-family: var(--font-rounded);
   font-size: 30px;
@@ -1370,6 +1407,50 @@ textarea:focus-visible,
   background: var(--ok);
 }
 
+.server-status.rainbow {
+  --rainbow-1: #ff7170;
+  --rainbow-2: #ffe57f;
+  --rainbow-3: #00e991;
+  --rainbow-4: #00b5e2;
+  --rainbow-5: #9e63ff;
+  position: relative;
+  border: 2px solid transparent;
+  /* Solid interior over the padding box; animated rainbow as the border. */
+  background:
+    linear-gradient(var(--panel), var(--panel)) padding-box,
+    linear-gradient(
+        90deg,
+        var(--rainbow-1),
+        var(--rainbow-5),
+        var(--rainbow-3),
+        var(--rainbow-4),
+        var(--rainbow-2)
+      )
+      border-box;
+  background-size: 100% 100%, 200% 100%;
+  background-position: 0 0, 0% 50%;
+  animation: rainbow-pill 6s linear infinite;
+  color: var(--text-strong);
+  box-shadow: 0 0 12px rgba(255, 113, 112, 0.35), var(--shadow-sm);
+}
+
+.server-status.rainbow .status-text {
+  font-weight: 700;
+}
+
+@keyframes rainbow-pill {
+  to {
+    background-position: 0 0, 200% 50%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .server-status.rainbow {
+    animation: none;
+    background-position: 0 0, 0% 50%;
+  }
+}
+
 .server-status.stopped {
   border-color: var(--error-border);
   background: var(--error-bg);
@@ -2099,10 +2180,51 @@ textarea:focus-visible,
 
 /* Hero stat */
 .usage-hero {
+  position: relative;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   align-items: center;
   text-align: center;
+}
+
+/* MagicUI-style ripple rings behind the total number (light heat tint). */
+.usage-hero-ripple {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  mask-image: linear-gradient(to bottom, black 35%, transparent 92%);
+  -webkit-mask-image: linear-gradient(to bottom, black 35%, transparent 92%);
+}
+
+.usage-hero-ripple-circle {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 77, 0, 0.38);
+  background: rgba(255, 77, 0, 0.09);
+  box-shadow: 0 0 10px 2px rgba(255, 77, 0, 0.05);
+  transform: translate(-50%, -50%) scale(1);
+  animation: usage-hero-ripple 3.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  will-change: transform;
+}
+
+@keyframes usage-hero-ripple {
+  0%, 100% {
+    transform: translate(-50%, -50%) scale(1);
+  }
+  50% {
+    transform: translate(-50%, -50%) scale(0.78);
+  }
+}
+
+.usage-period-tabs,
+.usage-hero-number,
+.usage-hero-costs {
+  position: relative;
+  z-index: 1;
 }
 
 .usage-hero-number {
@@ -2113,7 +2235,7 @@ textarea:focus-visible,
   font-size: clamp(2.5rem, 6vw, 4rem);
   font-weight: 500;
   line-height: 1.1;
-  color: var(--text-strong);
+  color: #ff4d00;
   font-variant-numeric: tabular-nums;
   cursor: pointer;
 }
@@ -2124,7 +2246,7 @@ textarea:focus-visible,
   gap: 16px;
   margin: 12px 0 0 0;
   font-size: 13px;
-  color: #ff4d00;
+  color: var(--text-secondary);
 }
 
 .usage-hero-cost-item {
@@ -2135,7 +2257,7 @@ textarea:focus-visible,
 
 .usage-hero-cost-item strong {
   font-weight: 600;
-  color: #ff4d00;
+  color: var(--text-strong);
 }
 
 /* Stat cells */
