@@ -12,6 +12,7 @@ from .env_files import (
     env_file_override,
     settings_env_files,
 )
+from .model_refs import is_combo_ref, parse_chain_refs
 from .nim import NimSettings
 from .provider_catalog import BEDROCK_DEFAULT_BASE, SUPPORTED_PROVIDER_IDS
 from .reasoning import ReasoningPreference
@@ -177,6 +178,12 @@ class Settings(BaseSettings):
     model_opus: str | None = Field(default=None, validation_alias="MODEL_OPUS")
     model_sonnet: str | None = Field(default=None, validation_alias="MODEL_SONNET")
     model_haiku: str | None = Field(default=None, validation_alias="MODEL_HAIKU")
+
+    # Terminal hop appended to every failover chain (optional, falls back to none)
+    # Format: provider_type/model/name
+    global_fallback_model: str | None = Field(
+        default=None, validation_alias="GLOBAL_FALLBACK_MODEL"
+    )
 
     # ==================== Per-Provider Proxy ====================
     openai_proxy: str = Field(default="", validation_alias="OPENAI_PROXY")
@@ -441,22 +448,36 @@ class Settings(BaseSettings):
         return ",".join(schemes)
 
     @field_validator(
-        "model", "model_fable", "model_opus", "model_sonnet", "model_haiku"
+        "model",
+        "model_fable",
+        "model_opus",
+        "model_sonnet",
+        "model_haiku",
+        "global_fallback_model",
     )
     @classmethod
     def validate_model_format(cls, v: str | None) -> str | None:
         if v is None:
             return None
-        if "/" not in v:
-            raise ValueError(
-                f"Model must be prefixed with provider type. "
-                f"Valid providers: {', '.join(SUPPORTED_PROVIDER_IDS)}. "
-                f"Format: provider_type/model/name"
-            )
-        provider = v.split("/", 1)[0]
-        if provider not in SUPPORTED_PROVIDER_IDS:
-            supported = ", ".join(f"'{p}'" for p in SUPPORTED_PROVIDER_IDS)
-            raise ValueError(f"Invalid provider: '{provider}'. Supported: {supported}")
+        if is_combo_ref(v):
+            # Combo references trust the store's already-validated nodes, which may
+            # be custom_* providers that are not in SUPPORTED_PROVIDER_IDS. Unknown
+            # or disabled combos raise here (day-0 failure) via parse_chain_refs.
+            parse_chain_refs(v)
+            return v
+        for ref in parse_chain_refs(v):
+            if "/" not in ref:
+                raise ValueError(
+                    f"Model must be prefixed with provider type. "
+                    f"Valid providers: {', '.join(SUPPORTED_PROVIDER_IDS)}. "
+                    f"Format: provider_type/model/name"
+                )
+            provider = ref.split("/", 1)[0]
+            if provider not in SUPPORTED_PROVIDER_IDS:
+                supported = ", ".join(f"'{p}'" for p in SUPPORTED_PROVIDER_IDS)
+                raise ValueError(
+                    f"Invalid provider: '{provider}'. Supported: {supported}"
+                )
         return v
 
     @model_validator(mode="after")
