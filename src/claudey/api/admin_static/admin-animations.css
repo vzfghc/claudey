@@ -471,3 +471,37 @@
   transform: scale(0.98);
   transition-duration: 0.05s;
 }
+
+/* ============================================
+   6. Load cascade — refresh-time flow
+   The async /config load populates the provider grid and
+   strips in one paint, shifting the content below by a few
+   thousand pixels. Instead of a hard pop, stagger each card
+   off its stamped --card-index, then let the strips and
+   sections rise behind them. The reduced-motion block in
+   admin.css zeroes *durations* but not *delays*, and the
+   `backwards` fill holds opacity:0 for the whole delay —
+   so delays must be zeroed here too, or reduce-motion users
+   would stare at an empty grid as long as the cascade takes.
+   ============================================ */
+
+.admin-view.active .provider-card {
+  animation: card-in 0.38s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+  animation-delay: min(calc(var(--card-index, 0) * 24ms), 720ms);
+}
+
+.provider-strip:not([hidden]) {
+  animation: rise-in 0.35s ease backwards;
+}
+
+.settings-section {
+  animation: rise-in 0.4s ease backwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .admin-view.active .provider-card,
+  .provider-strip:not([hidden]),
+  .settings-section {
+    animation-delay: 0ms;
+  }
+}

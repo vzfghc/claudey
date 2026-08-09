@@ -20,7 +20,7 @@ from claudey.application.model_metadata import (
 from claudey.config.admin.values import MASKED_SECRET
 from claudey.config.server_urls import local_admin_url
 from claudey.config.settings import Settings
-from claudey.core.version import package_version
+from claudey.core.version import asset_version
 from tests.api.support import create_test_app, provider_manager_for_app
 
 
@@ -2067,10 +2067,10 @@ def test_admin_static_usage_view_markup(monkeypatch, tmp_path):
     assert 'data-view="usage"' in page
     assert 'id="usageSections"' in page
 
-    asset_version = package_version()
+    cache_buster = asset_version()
     js = (
         _local_client(create_test_app())
-        .get(f"/admin/assets/admin.js?v={asset_version}")
+        .get(f"/admin/assets/admin.js?v={cache_buster}")
         .text
     )
     assert 'id: "usage"' in js
@@ -2091,7 +2091,7 @@ def test_admin_static_usage_view_markup(monkeypatch, tmp_path):
 
     css = (
         _local_client(create_test_app())
-        .get(f"/admin/assets/admin.css?v={asset_version}")
+        .get(f"/admin/assets/admin.css?v={cache_buster}")
         .text
     )
     assert ".usage-grid" in css
@@ -2112,7 +2112,7 @@ def test_admin_static_usage_view_markup(monkeypatch, tmp_path):
         "admin.css",
         "admin-animations.css",
     ):
-        assert f"{asset}?v={asset_version}" in page
+        assert f"{asset}?v={cache_buster}" in page
 
 
 @pytest.fixture
@@ -2295,6 +2295,155 @@ def test_admin_custom_provider_appears_in_config_provider_status(
     assert custom[0]["compatible"] == "anthropic"
     assert custom[0]["status"] == "configured"
     assert "api_key" not in custom[0]
+
+
+def test_admin_custom_provider_validate_returns_result(
+    monkeypatch, tmp_path, custom_store_path
+):
+    _set_home(monkeypatch, tmp_path)
+    from claudey.config import custom_provider_check
+
+    async def fake_check(base_url, api_key, compatible, model_id=None, **kwargs):
+        assert compatible == "openai"
+        assert model_id == "gpt-4o-mini"
+        return {"valid": True, "method": "models", "error": None}
+
+    monkeypatch.setattr(
+        custom_provider_check, "check_compatible_connection", fake_check
+    )
+    client = _custom_client(create_test_app())
+
+    response = client.post(
+        "/admin/api/providers/custom/validate",
+        json={
+            "base_url": "https://api.acme.example/v1",
+            "api_key": "sk-key",
+            "type": "openai",
+            "model_id": "gpt-4o-mini",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.headers["cache-control"] == "no-store"
+    assert response.json() == {"valid": True, "method": "models", "error": None}
+
+
+def test_admin_custom_provider_validate_invalid_type(
+    monkeypatch, tmp_path, custom_store_path
+):
+    _set_home(monkeypatch, tmp_path)
+    from claudey.config import custom_provider_check
+
+    called = False
+
+    async def fake_check(*args, **kwargs):
+        nonlocal called
+        called = True
+        return {"valid": False, "method": None, "error": "unused"}
+
+    monkeypatch.setattr(
+        custom_provider_check, "check_compatible_connection", fake_check
+    )
+    client = _custom_client(create_test_app())
+
+    response = client.post(
+        "/admin/api/providers/custom/validate",
+        json={"base_url": "https://api.acme.example/v1", "type": "garbage"},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["valid"] is False
+    assert body["error"] == "Invalid provider type."
+    assert called is False
+
+
+def test_admin_custom_provider_validate_bad_type_upper_ok(monkeypatch, tmp_path):
+    _set_home(monkeypatch, tmp_path)
+    from claudey.config import custom_provider_check
+
+    async def fake_check(base_url, api_key, compatible, model_id=None, **kwargs):
+        assert compatible == "anthropic"
+        return {"valid": True, "method": "chat", "error": None}
+
+    monkeypatch.setattr(
+        custom_provider_check, "check_compatible_connection", fake_check
+    )
+    client = _custom_client(create_test_app())
+
+    response = client.post(
+        "/admin/api/providers/custom/validate",
+        json={
+            "base_url": "https://api.acme.example",
+            "api_key": "k",
+            "type": "ANTHROPIC",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json()["valid"] is True
+
+
+def test_admin_custom_provider_validate_bad_base_url_fails_closed(
+    monkeypatch, tmp_path, custom_store_path
+):
+    """A blank base URL must fail closed in the probe without any network."""
+
+    _set_home(monkeypatch, tmp_path)
+    client = _custom_client(create_test_app())
+
+    response = client.post(
+        "/admin/api/providers/custom/validate",
+        json={"base_url": "", "api_key": "sk-key", "type": "openai"},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["valid"] is False
+    assert body["method"] is None
+    assert "Base URL" in body["error"]
+
+
+def test_admin_custom_provider_validate_returns_chat_method(
+    monkeypatch, tmp_path, custom_store_path
+):
+    _set_home(monkeypatch, tmp_path)
+    from claudey.config import custom_provider_check
+
+    async def fake_check(base_url, api_key, compatible, model_id=None, **kwargs):
+        return {"valid": True, "method": "chat", "error": None}
+
+    monkeypatch.setattr(
+        custom_provider_check, "check_compatible_connection", fake_check
+    )
+    client = _custom_client(create_test_app())
+
+    response = client.post(
+        "/admin/api/providers/custom/validate",
+        json={
+            "base_url": "https://api.acme.example",
+            "api_key": "sk-key",
+            "type": "openai",
+            "model_id": "custom-model",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {"valid": True, "method": "chat", "error": None}
+
+
+def test_admin_custom_provider_validate_is_loopback_only(
+    monkeypatch, tmp_path, custom_store_path
+):
+    _set_home(monkeypatch, tmp_path)
+    remote = _custom_client(create_test_app(), remote=True)
+
+    response = remote.post(
+        "/admin/api/providers/custom/validate",
+        json={"base_url": "https://api.acme.example", "type": "openai"},
+    )
+
+    assert response.status_code == 403
 
 
 def test_admin_custom_provider_status_missing_key(

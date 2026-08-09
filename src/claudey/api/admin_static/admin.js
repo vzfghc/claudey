@@ -2822,15 +2822,82 @@ function showCustomProviderDialog(providerType) {
         <label for="apiKey">API Key</label>
         <input type="password" id="apiKey" placeholder="sk-xxxxx" />
       </div>
+      <div class="field">
+        <label for="modelId">Model ID (optional)</label>
+        <input type="text" id="modelId" placeholder="e.g. gpt-4o-mini" />
+        <p class="field-hint">If the provider has no /models endpoint, add a model ID to validate via a chat request.</p>
+      </div>
+      <div class="check-row">
+        <button type="button" id="checkProviderBtn" class="secondary-button">Check</button>
+        <div id="checkResult" class="custom-provider-check-result" hidden></div>
+      </div>
       <div class="dialog-actions">
         <button type="button" class="secondary-button" onclick="this.closest('dialog').close()">Cancel</button>
-        <button type="submit" class="primary-button">Add Provider</button>
+        <button type="button" id="addProviderBtn" class="primary-button">Add Provider</button>
       </div>
     </form>
   `;
 
-  dialog.querySelector("form").addEventListener("submit", async (e) => {
-    e.preventDefault();
+  let checkPassed = false;
+
+  const resetCheck = () => {
+    checkPassed = false;
+    const result = dialog.querySelector("#checkResult");
+    result.hidden = true;
+    result.textContent = "";
+    result.className = "custom-provider-check-result";
+  };
+  ["#providerName", "#baseUrl", "#apiKey", "#modelId"].forEach((selector) => {
+    dialog.querySelector(selector).addEventListener("input", resetCheck);
+  });
+
+  const checkBtn = dialog.querySelector("#checkProviderBtn");
+  checkBtn.addEventListener("click", async () => {
+    const baseUrl = dialog.querySelector("#baseUrl").value.trim();
+    const apiKey = dialog.querySelector("#apiKey").value;
+    const modelId = dialog.querySelector("#modelId").value.trim();
+    const result = dialog.querySelector("#checkResult");
+
+    result.hidden = true;
+    result.className = "custom-provider-check-result";
+    checkBtn.disabled = true;
+    try {
+      const response = await fetch("/admin/api/providers/custom/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          base_url: baseUrl,
+          api_key: apiKey,
+          type: providerType,
+          model_id: modelId || null,
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.detail || "Check failed");
+
+      result.hidden = false;
+      if (data.valid) {
+        checkPassed = true;
+        result.textContent = `Valid — ${data.method === "chat" ? "chat request OK" : "models endpoint OK"}`;
+        result.classList.add("valid");
+      } else {
+        result.textContent = `Invalid — ${data.error || "could not connect"}`;
+        result.classList.add("invalid");
+      }
+    } catch (error) {
+      result.hidden = false;
+      result.textContent = `Invalid — ${error.message}`;
+      result.classList.add("invalid");
+    } finally {
+      checkBtn.disabled = false;
+    }
+  });
+
+  dialog.querySelector("#addProviderBtn").addEventListener("click", async () => {
+    if (!checkPassed) {
+      showMessage("Run Check first to verify the provider connection", "error");
+      return;
+    }
     const name = dialog.querySelector("#providerName").value;
     const baseUrl = dialog.querySelector("#baseUrl").value;
     const apiKey = dialog.querySelector("#apiKey").value;

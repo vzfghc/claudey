@@ -2791,6 +2791,40 @@ textarea:focus-visible,
   box-shadow: 0 0 0 2px rgba(255, 77, 0, 0.2);
 }
 
+.custom-provider-dialog .field-hint {
+  margin: 6px 0 0 0;
+  font-size: 12px;
+  color: var(--muted, #9ca3af);
+}
+
+.custom-provider-dialog .check-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.custom-provider-dialog #checkProviderBtn {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.custom-provider-dialog .custom-provider-check-result {
+  font-size: 13px;
+  font-weight: 500;
+  padding: 6px 10px;
+  border-radius: 6px;
+}
+
+.custom-provider-dialog .custom-provider-check-result.valid {
+  color: #16a34a;
+  background: rgba(22, 163, 74, 0.1);
+}
+
+.custom-provider-dialog .custom-provider-check-result.invalid {
+  color: #dc2626;
+  background: rgba(220, 38, 38, 0.1);
+}
+
 .custom-provider-dialog .dialog-actions {
   display: flex;
   justify-content: flex-end;

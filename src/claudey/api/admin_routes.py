@@ -8,13 +8,14 @@ from urllib.parse import urlsplit
 
 import httpx
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from pydantic import BaseModel, Field
 
 from claudey.application.connected_accounts import (
     ConnectedAccountLoginMode,
 )
 from claudey.application.model_metadata import ProviderModelRefreshResult
+from claudey.config import custom_provider_check
 from claudey.config.admin.manifest import FIELD_BY_KEY
 from claudey.config.admin.persistence import validate_updates
 from claudey.config.admin.values import load_config_response
@@ -31,6 +32,7 @@ from claudey.config.provider_catalog import (
     PROVIDER_CATALOG,
     ProviderAuthKind,
 )
+from claudey.core.version import asset_version
 
 from .admin_dashboard import dashboard_payload
 from .deepseek_billing import billing_payload
@@ -67,6 +69,15 @@ class CustomProviderPayload(BaseModel):
     name: str = Field(default="", min_length=1)
     base_url: str = Field(default="")
     api_key: str = Field(default="")
+
+
+class ProviderValidatePayload(BaseModel):
+    """Probe payload for the custom-provider "Check" button (persists nothing)."""
+
+    base_url: str = Field(default="")
+    api_key: str = Field(default="")
+    type: str = Field(default="openai", description="wire type: openai | anthropic")
+    model_id: str | None = Field(default=None)
 
 
 def _is_loopback_host(host: str | None) -> bool:
@@ -110,7 +121,9 @@ def _asset_response(filename: str) -> FileResponse:
 @router.get("/admin", include_in_schema=False)
 async def admin_page(request: Request):
     require_loopback_admin(request)
-    return _asset_response("index.html")
+    template = (STATIC_DIR / "index.html").read_text("utf-8")
+    rendered = template.replace("__ASSET_VERSION__", asset_version())
+    return HTMLResponse(rendered, media_type="text/html")
 
 
 @router.get("/admin/assets/{filename}", include_in_schema=False)
@@ -424,6 +437,27 @@ async def create_custom_provider(
             "message": f"Custom {provider_type} provider '{name}' created",
         }
     )
+
+
+@router.post("/admin/api/providers/custom/validate")
+async def validate_custom_provider(
+    payload: ProviderValidatePayload,
+    request: Request,
+) -> JSONResponse:
+    """Live-probe a custom provider's base URL + key without registering it."""
+    require_loopback_admin(request)
+    compatible = payload.type.strip().lower()
+    if not is_valid_compatible_type(compatible):
+        return _no_store(
+            {"valid": False, "method": None, "error": "Invalid provider type."}
+        )
+    result = await custom_provider_check.check_compatible_connection(
+        payload.base_url,
+        payload.api_key,
+        compatible,
+        payload.model_id,
+    )
+    return _no_store(result)
 
 
 @router.delete("/admin/api/providers/custom/{provider_id}")

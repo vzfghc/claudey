@@ -121,8 +121,15 @@ class MessagingRateLimiter:
                                     parts = error_msg.split("after ")
                                     if len(parts) > 1:
                                         seconds = int(parts[1].split()[0])
-                            except Exception:
-                                pass
+                            except TypeError, ValueError:
+                                # Malformed "retry after X" value; keep the 30s
+                                # fallback but surface it at DEBUG so a bad
+                                # upstream string is not invisible.
+                                logger.debug(
+                                    "FloodWait retry-after parse failed for {}; using {}s",
+                                    dedup_key,
+                                    seconds,
+                                )
 
                             logger.error(
                                 f"FloodWait detected! Pausing worker for {seconds}s"
