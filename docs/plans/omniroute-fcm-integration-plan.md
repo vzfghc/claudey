@@ -256,7 +256,7 @@ Per-provider state machine (**Healthy / down / recovery / auth-err / locked**, r
 - [x] P0-B7 Combos admin CRUD endpoints + Admin UI panel + tests
 - [ ] P0-B8 Integration/contract tests + README docs
 - [x] P1-C1 Auth-failure quarantine latch
-- [ ] P1-C2 FCM normalizer audit + regression tests
+- [x] P1-C2 FCM normalizer audit + regression tests
 - [ ] P2-C3 Token-budget / cost-aware routing design doc (after Phase B)
 - [ ] P3-C4 Background credential-health scheduler (deferred)
 - [ ] P3-C5 Guard-only truncation slice (opt-in, non-default)
