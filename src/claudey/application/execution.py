@@ -54,13 +54,15 @@ class ProviderExecutor:
         raw_log_label: str,
         raw_log_payload: object,
         request_id: str,
+        preflight: bool = True,
     ) -> AsyncIterator[str]:
-        """Preflight synchronously, then return the traced provider stream."""
+        """Preflight synchronously (unless skipped), then return the traced stream."""
         provider = self._provider_resolver(routed.resolved.provider_id)
-        provider.preflight_stream(
-            routed.request,
-            reasoning=routed.reasoning,
-        )
+        if preflight:
+            provider.preflight_stream(
+                routed.request,
+                reasoning=routed.reasoning,
+            )
 
         gateway_model = routed.resolved.original_model
         route_trace: dict[str, object] = {

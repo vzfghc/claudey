@@ -29,6 +29,16 @@ def _isolate_from_dotenv(monkeypatch):
     )
 
 
+@pytest.fixture(autouse=True)
+def _reset_health_registry():
+    """Keep the process-wide health registry clean across tests."""
+    from claudey.providers.health import reset_health_registry
+
+    reset_health_registry()
+    yield
+    reset_health_registry()
+
+
 @pytest.fixture
 def provider_config():
     from claudey.providers.base import ProviderConfig

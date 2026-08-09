@@ -116,6 +116,12 @@ class HealthRegistry:
 
     # === feedback recording ===
 
+    def reset(self) -> None:
+        """Clear all marks, locks, and LKG-P entries (test isolation)."""
+        self._provider_marks.clear()
+        self._model_locks.clear()
+        self._lkgp.clear()
+
     def record_success(self, ref: str) -> None:
         """Clear degradation marks for a node that just succeeded."""
         provider, _ = self._split(ref)
@@ -244,3 +250,8 @@ _registry = HealthRegistry()
 def health_registry() -> HealthRegistry:
     """Return the process-wide health registry."""
     return _registry
+
+
+def reset_health_registry() -> None:
+    """Reset the process-wide health registry (used by tests for isolation)."""
+    _registry.reset()

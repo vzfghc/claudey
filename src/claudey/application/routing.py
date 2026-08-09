@@ -203,6 +203,13 @@ class ModelRouter:
                 return model
         return self._settings.model
 
+    def chain_identity(self, claude_model_name: str) -> str:
+        """Return a stable identity for a tier's failover chain (for LKG-P)."""
+        route = self._matched_route(claude_model_name)
+        if route is None:
+            return "tier:default"
+        return f"tier:{route[0]}"
+
     def resolve_chain(
         self,
         claude_model_name: str,

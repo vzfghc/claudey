@@ -93,20 +93,29 @@ class FallbackExecutor:
         raw_log_payload: object,
         request_id: str,
         chain_identity: str | None = None,
+        reasoning: ReasoningPolicy | None = None,
     ) -> AsyncIterator[str]:
-        """Stream the first healthy chain node, failing over before content."""
+        """Stream the first healthy chain node, failing over before content.
+
+        ``reasoning`` lets callers override every node's policy after inbound
+        routing policies have been applied (e.g. safety-classifier no-thinking).
+        When omitted, each node derives its policy from the chain's primary.
+        """
+        nodes = self._ordered_nodes(resolution, chain_identity)
+        self._preflight_first(nodes, request, reasoning)
 
         async def _stream() -> AsyncIterator[str]:
-            nodes = self._ordered_nodes(resolution, chain_identity)
             content_emitted = False
-            node_count = len(nodes)
+            tried_any = False
 
             for attempt, node in enumerate(nodes, start=1):
                 if self._health.should_skip(node.provider_model_ref):
                     self._trace_skip(node, attempt, request_id)
                     continue
 
-                routed = self._routed_node(request, node, resolution.reasoning)
+                tried_any = True
+                node_reasoning = reasoning or resolution.reasoning
+                routed = self._routed_node(request, node, node_reasoning)
                 try:
                     async for chunk in self._provider_executor.stream(
                         routed,
@@ -114,6 +123,7 @@ class FallbackExecutor:
                         raw_log_label=raw_log_label,
                         raw_log_payload=raw_log_payload,
                         request_id=request_id,
+                        preflight=False,
                     ):
                         if is_content_start(chunk):
                             content_emitted = True
@@ -127,23 +137,35 @@ class FallbackExecutor:
                     self._health.record_failure(node.provider_model_ref, failure.kind)
                     if not _failover_eligible(failure) or content_emitted:
                         raise
+                    if self._next_tryable_index(nodes, attempt) is None:
+                        # Eligible, but nothing left to try: surface the failure.
+                        raise
                     self._trace_failover(node, failure.kind, attempt, request_id)
                     logger.warning(
-                        "FAILOVER: node '{}' failed ({}) -> next of {} (attempt {})",
+                        "FAILOVER: node '{}' failed ({}) -> advancing (attempt {})",
                         node.provider_model_ref,
                         failure.kind.value,
-                        node_count - 1,
                         attempt,
                     )
 
-            raise ExecutionFailure(
-                kind=NO_USABLE_NODE_KIND,
-                status_code=NO_USABLE_NODE_STATUS,
-                message="No usable failover node for the request chain.",
-                retryable=False,
-            )
+            if not tried_any:
+                raise ExecutionFailure(
+                    kind=NO_USABLE_NODE_KIND,
+                    status_code=NO_USABLE_NODE_STATUS,
+                    message="No usable failover node for the request chain.",
+                    retryable=False,
+                )
 
         return _stream()
+
+    def _next_tryable_index(
+        self, nodes: tuple[ResolvedModel, ...], start: int
+    ) -> int | None:
+        """Index of the next node after ``start`` that health says is usable."""
+        for index in range(start, len(nodes)):
+            if not self._health.should_skip(nodes[index].provider_model_ref):
+                return index
+        return None
 
     def _ordered_nodes(
         self, resolution: ChainResolution, chain_identity: str | None
@@ -158,6 +180,36 @@ class FallbackExecutor:
                         nodes.insert(0, nodes.pop(index))
                         break
         return tuple(nodes)
+
+    def _preflight_first(
+        self,
+        nodes: tuple[ResolvedModel, ...],
+        request: MessagesRequest,
+        reasoning: ReasoningPolicy | None,
+    ) -> None:
+        """Preflight the first usable node synchronously.
+
+        Mirrors :meth:`ProviderExecutor.stream`, which preflights before returning
+        its iterator, so application-level validation errors (e.g. invalid
+        requests) surface to the caller synchronously rather than lazily inside
+        the stream.
+        """
+        for node in nodes:
+            if self._health.should_skip(node.provider_model_ref):
+                continue
+            node_reasoning = reasoning or self._resolve_policy(node, request)
+            routed = self._routed_node(request, node, node_reasoning)
+            provider = self._provider_resolver(node.provider_id)
+            provider.preflight_stream(routed.request, reasoning=routed.reasoning)
+            return
+
+    def _resolve_policy(
+        self, node: ResolvedModel, request: MessagesRequest
+    ) -> ReasoningPolicy:
+        routed_request = request.model_copy(
+            update={"model": node.provider_model}, deep=True
+        )
+        return resolve_reasoning_policy(routed_request, node.reasoning_preference)
 
     def _routed_node(
         self,

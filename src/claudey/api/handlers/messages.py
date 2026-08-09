@@ -32,7 +32,8 @@ from claudey.api.web_tools.request import (
 )
 from claudey.api.web_tools.streaming import stream_web_server_tool_response
 from claudey.application.errors import ApplicationError, InvalidRequestError
-from claudey.application.execution import ProviderExecutor, TokenCounter
+from claudey.application.execution import TokenCounter
+from claudey.application.failover import FallbackExecutor
 from claudey.application.ports import ProviderResolver
 from claudey.application.routing import ModelRouter, RoutedMessagesRequest
 from claudey.config.settings import Settings
@@ -75,13 +76,13 @@ class MessagesHandler:
         *,
         model_router: ModelRouter | None = None,
         token_counter: TokenCounter = get_token_count,
-        provider_executor: ProviderExecutor | None = None,
+        provider_executor: FallbackExecutor | None = None,
         generation_id: int | None = None,
     ) -> None:
         self._settings = settings
         self._model_router = model_router or ModelRouter(settings)
         self._token_counter = token_counter
-        self._provider_executor = provider_executor or ProviderExecutor(
+        self._provider_executor = provider_executor or FallbackExecutor(
             provider_resolver,
             token_counter=token_counter,
             generation_id=generation_id,
@@ -106,13 +107,19 @@ class MessagesHandler:
             result = self._run_message_intercepts(routed)
             if result is None:
                 logger.debug("No optimization matched, routing to provider")
+                resolution = self._model_router.resolve_chain(request_data.model)
                 result = _MessagesStreamResult(
                     self._provider_executor.stream(
-                        routed,
+                        resolution,
+                        request_data,
                         wire_api="messages",
                         raw_log_label="FULL_PAYLOAD",
-                        raw_log_payload=routed.request.model_dump(),
+                        raw_log_payload=request_data.model_dump(),
                         request_id=request_id,
+                        chain_identity=self._model_router.chain_identity(
+                            request_data.model
+                        ),
+                        reasoning=routed.reasoning,
                     )
                 )
             return await self._to_public_response(

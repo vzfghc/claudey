@@ -14,7 +14,7 @@ from claudey.api.response_streams import (
     trace_terminal_execution_error,
 )
 from claudey.application.errors import ApplicationError, InvalidRequestError
-from claudey.application.execution import ProviderExecutor
+from claudey.application.failover import FallbackExecutor
 from claudey.application.ports import ProviderResolver
 from claudey.application.routing import ModelRouter
 from claudey.config.settings import Settings
@@ -39,13 +39,13 @@ class ResponsesHandler:
         *,
         model_router: ModelRouter | None = None,
         responses_adapter: OpenAIResponsesAdapter | None = None,
-        provider_executor: ProviderExecutor | None = None,
+        provider_executor: FallbackExecutor | None = None,
         generation_id: int | None = None,
     ) -> None:
         self._settings = settings
         self._model_router = model_router or ModelRouter(settings)
         self._responses_adapter = responses_adapter or OpenAIResponsesAdapter()
-        self._provider_executor = provider_executor or ProviderExecutor(
+        self._provider_executor = provider_executor or FallbackExecutor(
             provider_resolver,
             generation_id=generation_id,
             log_raw_payloads=settings.log_raw_api_payloads,
@@ -69,13 +69,19 @@ class ResponsesHandler:
             response_request = MessagesRequest(**anthropic_payload)
             require_non_empty_messages(response_request.messages)
             routed = self._model_router.resolve_messages_request(response_request)
+            resolution = self._model_router.resolve_chain(response_request.model)
 
             streamed = self._provider_executor.stream(
-                routed,
+                resolution,
+                response_request,
                 wire_api="responses",
                 raw_log_label="FULL_RESPONSES_PAYLOAD",
                 raw_log_payload=request_payload,
                 request_id=request_id,
+                chain_identity=self._model_router.chain_identity(
+                    response_request.model
+                ),
+                reasoning=routed.reasoning,
             )
             return await openai_responses_sse_streaming_response(
                 self._responses_adapter.iter_sse_from_anthropic(
