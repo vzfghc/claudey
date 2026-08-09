@@ -3,12 +3,19 @@
 integration tests.
 """
 
-from collections.abc import Iterable
+import asyncio
+from collections.abc import AsyncIterator, Iterable
+from typing import Any
 
+from claudey.application.failover import FallbackExecutor
+from claudey.application.routing import ChainResolution, ResolvedModel
+from claudey.config.reasoning import ReasoningPreference
 from claudey.core.anthropic import (
     AnthropicStreamLedger,
     ContentType,
     HeuristicToolParser,
+    Message,
+    MessagesRequest,
     ThinkTagParser,
 )
 from claudey.core.anthropic.stream_contracts import (
@@ -19,6 +26,7 @@ from claudey.core.anthropic.stream_contracts import (
     thinking_content,
 )
 from claudey.core.anthropic.streaming import format_sse_event
+from claudey.core.failures import ExecutionFailure, FailureKind
 
 
 def test_interleaved_thinking_text_blocks_are_valid() -> None:
@@ -129,6 +137,158 @@ def test_task_tool_arguments_force_foreground_execution() -> None:
     if isinstance(task.get("input"), dict):
         task["input"]["run_in_background"] = False
     assert task["input"]["run_in_background"] is False
+
+
+_GATEWAY_MODEL = "claude-3-opus"
+_NODE_A = ("provider_a", "model-a")
+_NODE_B = ("provider_b", "model-b")
+
+
+class _FailingThenServingProvider:
+    """Provider double: yields a failure (or a full SSE transcript)."""
+
+    def __init__(
+        self, *, kind: FailureKind | None = None, chunks: list[str] | None = None
+    ) -> None:
+        self._kind = kind
+        self._transcript = chunks
+        self.calls: list[dict[str, Any]] = []
+
+    def preflight_stream(self, _request: object, **kwargs: Any) -> None:
+        return None
+
+    async def stream_response(
+        self, _request: object, **kwargs: Any
+    ) -> AsyncIterator[str]:
+        self.calls.append(kwargs)
+        if self._kind is not None:
+            raise ExecutionFailure(
+                kind=self._kind,
+                status_code=100,
+                message=f"{self._kind.value} failure",
+                retryable=True,
+            )
+        if self._transcript is not None:
+            for chunk in self._transcript:
+                yield chunk
+            return
+        response_model = kwargs.get("response_model", _GATEWAY_MODEL)
+        ledger = AnthropicStreamLedger("msg_fallback", response_model)
+        yield ledger.message_start()
+        for chunk in ledger.ensure_text_block():
+            yield chunk
+        yield ledger.emit_text_delta("served by fallback")
+        for chunk in ledger.close_all_blocks():
+            yield chunk
+        yield ledger.message_delta("end_turn", 6)
+        yield ledger.message_stop()
+
+
+def _contracted_nodes() -> ChainResolution:
+    chain = tuple(
+        ResolvedModel(
+            original_model=_GATEWAY_MODEL,
+            provider_id=provider,
+            provider_model=model,
+            provider_model_ref=f"{provider}/{model}",
+            reasoning_preference=ReasoningPreference.CLIENT,
+        )
+        for provider, model in (_NODE_A, _NODE_B)
+    )
+    return ChainResolution(chain=chain, reasoning=None)
+
+
+def _provider_factory(providers: dict[str, _FailingThenServingProvider]):
+    def resolve(provider_id: str):
+        return providers[provider_id]
+
+    return resolve
+
+
+async def _drain_failover_transcript(
+    providers: dict[str, _FailingThenServingProvider],
+) -> list[str]:
+    executor = FallbackExecutor(_provider_factory(providers))
+    return [
+        chunk
+        async for chunk in executor.stream(
+            _contracted_nodes(),
+            MessagesRequest(
+                model=_GATEWAY_MODEL,
+                max_tokens=32,
+                messages=[Message(role="user", content="hi")],
+            ),
+            wire_api="messages",
+            raw_log_label="FULL_PAYLOAD",
+            raw_log_payload={},
+            request_id="req-contract",
+            chain_identity="combo_flagship",
+        )
+    ]
+
+
+def test_failover_transcript_model_stays_gateway_across_nodes() -> None:
+    """After a pre-content failover, the served transcript keeps the gateway
+    model in every event, never the failing provider's model."""
+    primary = _FailingThenServingProvider(kind=FailureKind.RATE_LIMIT)
+    secondary = _FailingThenServingProvider()
+
+    transcript = asyncio.run(
+        _drain_failover_transcript({"provider_a": primary, "provider_b": secondary})
+    )
+
+    events = parse_sse_text("".join(transcript))
+    assert_anthropic_stream_contract(events)
+    start = next(event for event in events if event.event == "message_start")
+    assert start.data["message"]["model"] == _GATEWAY_MODEL
+    assert text_content(events) == "served by fallback"
+    # The primary handled zero (it failed before content); the secondary served.
+    assert primary.calls, "primary was attempted"
+    assert secondary.calls, "secondary must serve after failover"
+    for call in secondary.calls:
+        assert call["response_model"] == _GATEWAY_MODEL
+
+
+def test_failover_transcript_is_still_valid_with_thinking() -> None:
+    """Southern nodes may emit thinking blocks; the gateway transcript stays
+    contract-valid and the model remains the gateway model."""
+    ledger = AnthropicStreamLedger("msg_fallback", _GATEWAY_MODEL)
+    thinking_transcript = [
+        ledger.message_start(),
+        *ledger.ensure_thinking_block(),
+        ledger.emit_thinking_delta("analysis"),
+        *ledger.ensure_text_block(),
+        ledger.emit_text_delta("result"),
+        *ledger.close_all_blocks(),
+        ledger.message_delta("end_turn", 9),
+        ledger.message_stop(),
+    ]
+    primary = _FailingThenServingProvider(kind=FailureKind.OVERLOADED)
+    secondary = _FailingThenServingProvider(chunks=thinking_transcript)
+
+    transcript = asyncio.run(
+        _drain_failover_transcript({"provider_a": primary, "provider_b": secondary})
+    )
+
+    events = parse_sse_text("".join(transcript))
+    assert_anthropic_stream_contract(events)
+    assert thinking_content(events) == "analysis"
+    assert text_content(events) == "result"
+    start = next(event for event in events if event.event == "message_start")
+    assert start.data["message"]["model"] == _GATEWAY_MODEL
+
+
+def test_failover_trace_emits_failover_event(caplog) -> None:
+    """A chain advance emits the ``claudey.api.route.failover`` trace row."""
+    caplog.set_level("DEBUG")
+    primary = _FailingThenServingProvider(kind=FailureKind.RATE_LIMIT)
+    secondary = _FailingThenServingProvider()
+
+    asyncio.run(
+        _drain_failover_transcript({"provider_a": primary, "provider_b": secondary})
+    )
+
+    assert "claudey.api.route.failover" in caplog.text
 
 
 def _interleaved_thinking_text_events(

@@ -263,9 +263,27 @@ Use the tag shown by `ollama list` with the `ollama/` prefix. `OLLAMA_BASE_URL` 
 
 ### Optional Model-Tier Routing
 
-`MODEL` is the fallback for every request. Select a model for `MODEL_FABLE`, `MODEL_OPUS`, `MODEL_SONNET`, or `MODEL_HAIKU` to override an individual Claude Code tier; select **None** to use `MODEL`.
+`MODEL` — `GLOBAL_FALLBACK_MODEL` — is the fallback for every request. Select a model for `MODEL_FABLE`, `MODEL_OPUS`, `MODEL_SONNET`, or `MODEL_HAIKU` to override an individual Claude Code tier; select **None** to use `MODEL`. `GLOBAL_FALLBACK_MODEL` is always appended last to every tier chain.
 
 For example, route Opus to `nvidia_nim/nvidia/nemotron-3-super-120b-a12b`, Sonnet to `open_router/openrouter/free`, Haiku to `lmstudio/qwen3.5-coder`, and keep `MODEL` on `zai/glm-5.2`.
+
+#### Fallback chains and combos
+
+A tier can hold an **ordered fallback chain** — a comma-separated list of `provider/model` references tried in order. The first healthy node serves; if it exhausts with a *retryable* runtime failure (rate limit, overload, timeout, upstream, unavailable) **before any content is sent**, the gateway advances to the next node. Auth, permission, invalid-request, and context-window failures never fall back — they surface immediately.
+
+```env
+MODEL_OPUS="llm7/meta-llama/llama-3.1-70b,novita/deepseek/deepseek-r1"
+```
+
+Long or shared chains can be saved as **combos** and referenced from any tier:
+
+```env
+MODEL_OPUS="@combo:flagship"
+```
+
+Manage combos in the **Admin UI → Providers → Fallback combos** panel: group models into an ordered chain, toggle each node's `enabled` and `priority` (lower priority is tried first), then reference the combo by id from a tier setting — with immediate effect, no restart. Combos are routing metadata only; no credentials are ever stored there.
+
+Failover is health-aware: providers marked down, currently in recovery, or locked out for a failing model are skipped, and the last-known-good path for a chain is preferred on subsequent requests.
 
 ### Reasoning Control
 
