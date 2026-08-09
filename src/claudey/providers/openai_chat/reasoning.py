@@ -3,6 +3,7 @@
 from dataclasses import dataclass
 from typing import Any, Protocol
 
+from claudey.core.anthropic.models import MessagesRequest
 from claudey.core.reasoning import (
     ReasoningControl,
     ReasoningEffort,
@@ -125,6 +126,40 @@ class SplitReasoningOutput:
 
     def encode(self, body: dict[str, Any], policy: ReasoningPolicy) -> None:
         _extra_body(body)["reasoning_split"] = True
+
+
+def ensure_deepseek_replayable_thinking(
+    body: dict[str, Any],
+    _request: MessagesRequest,
+    policy: ReasoningPolicy,
+) -> None:
+    """Keep DeepSeek thinking-mode gateways replaying conversation history.
+
+    DeepSeek's OpenAI-compatible thinking mode rejects a chat request whose
+    assistant history lacks a ``reasoning_content`` field on a turn that precedes
+    further user input ("reasoning_content must be passed back"). The wire field
+    must therefore be present even when there is no cached reasoning to echo.
+
+    - When the client turns thinking off, keep the gateway out of thinking mode
+      entirely so it never demands a pass-back the client cannot fulfill.
+    - Otherwise, give every assistant message a present (possibly empty)
+      ``reasoning_content`` so a non-replayable turn reads as a non-thinking
+      turn instead of a truncated one.
+    """
+    if policy.control is ReasoningControl.OFF:
+        _extra_body(body)["thinking"] = {"type": "disabled"}
+        return
+    messages = body.get("messages")
+    if not isinstance(messages, list):
+        return
+    for message in messages:
+        if not isinstance(message, dict):
+            continue
+        if message.get("role") != "assistant":
+            continue
+        if isinstance(message.get("reasoning_content"), str):
+            continue
+        message["reasoning_content"] = ""
 
 
 def _extra_body(body: dict[str, Any]) -> dict[str, Any]:

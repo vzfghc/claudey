@@ -24,6 +24,7 @@ from .reasoning import (
     ReasoningEncoder,
     ReasoningObject,
     ThinkingObjectReasoning,
+    ensure_deepseek_replayable_thinking,
 )
 from .request_policy import OpenAIChatPostprocessor, OpenAIChatRequestPolicy
 
@@ -178,6 +179,7 @@ OPENAI_CHAT_PROFILES: dict[str, OpenAIChatProfile] = {
     "opencode": OpenAIChatProfile(
         _policy("OPENCODE", ReasoningReplayMode.REASONING_CONTENT),
         NO_REASONING,
+        postprocessors=(ensure_deepseek_replayable_thinking,),
     ),
     "pecut": OpenAIChatProfile(
         _policy(
@@ -186,10 +188,12 @@ OPENAI_CHAT_PROFILES: dict[str, OpenAIChatProfile] = {
             default_max_tokens=ANTHROPIC_DEFAULT_MAX_OUTPUT_TOKENS,
         ),
         NO_REASONING,
+        postprocessors=(ensure_deepseek_replayable_thinking,),
     ),
     "opencode_go": OpenAIChatProfile(
         _policy("OPENCODE_GO", ReasoningReplayMode.REASONING_CONTENT),
         NO_REASONING,
+        postprocessors=(ensure_deepseek_replayable_thinking,),
     ),
     "vercel": OpenAIChatProfile(
         _policy(
