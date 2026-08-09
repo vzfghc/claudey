@@ -520,6 +520,10 @@ def test_create_provider_instantiates_each_builtin():
         provider_rate_window=11,
         provider_max_concurrency=3,
         sambanova_api_key="test_sambanova_key",
+        scaleway_api_key="test_scaleway_key",
+        qwen_api_key="test_qwen_key",
+        routeway_api_key="test_routeway_key",
+        novita_api_key="test_novita_key",
     )
     cases = {
         "nvidia_nim": NvidiaNimProvider,
@@ -549,6 +553,12 @@ def test_create_provider_instantiates_each_builtin():
         "github_models": GitHubModelsProvider,
         "zai": OpenAIChatProvider,
         "pecut": OpenAIChatProvider,
+        "ovhcloud": OpenAIChatProvider,
+        "scaleway": OpenAIChatProvider,
+        "qwen": OpenAIChatProvider,
+        "llm7": OpenAIChatProvider,
+        "routeway": OpenAIChatProvider,
+        "novita": OpenAIChatProvider,
         "gemini": GeminiProvider,
         "vertex": VertexProvider,
         "groq": OpenAIChatProvider,

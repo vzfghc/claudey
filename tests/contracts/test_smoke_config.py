@@ -121,7 +121,8 @@ def test_ollama_cloud_provider_configuration_uses_api_key(monkeypatch) -> None:
             model="ollama/llama3.1",
             ollama_base_url="",
             ollama_api_key="ollama-cloud-key",
-        )
+        ),
+        provider_matrix=frozenset({"ollama_cloud"}),
     )
 
     assert config.has_provider_configuration("ollama_cloud")
@@ -140,7 +141,8 @@ def test_pecut_smoke_model_env_is_normalized_with_provider_prefix(
             model="ollama/llama3.1",
             pecut_api_key="pecut-key",
             ollama_base_url="",
-        )
+        ),
+        provider_matrix=frozenset({"pecut"}),
     )
 
     models = config.provider_smoke_models()
@@ -157,7 +159,8 @@ def test_pecut_smoke_model_defaults_to_catalog_fallback(monkeypatch) -> None:
             model="ollama/llama3.1",
             pecut_api_key="pecut-key",
             ollama_base_url="",
-        )
+        ),
+        provider_matrix=frozenset({"pecut"}),
     )
 
     models = config.provider_smoke_models()
@@ -176,7 +179,8 @@ def test_provider_smoke_models_cover_configured_providers_independent_of_model_m
             model="ollama/llama3.1",
             deepseek_api_key="deepseek-key",
             ollama_base_url="",
-        )
+        ),
+        provider_matrix=frozenset({"deepseek"}),
     )
 
     models = config.provider_smoke_models()
@@ -213,7 +217,8 @@ def test_connected_account_provider_smoke_requires_explicit_model(
 def test_openrouter_provider_smoke_uses_concrete_free_model(monkeypatch) -> None:
     monkeypatch.delenv("HANS_SMOKE_MODEL_OPEN_ROUTER", raising=False)
     config = _smoke_config(
-        settings=_settings(open_router_api_key="openrouter-key", ollama_base_url="")
+        settings=_settings(open_router_api_key="openrouter-key", ollama_base_url=""),
+        provider_matrix=frozenset({"open_router"}),
     )
 
     models = config.provider_smoke_models()
@@ -226,7 +231,8 @@ def test_openrouter_provider_smoke_uses_concrete_free_model(monkeypatch) -> None
 def test_kilo_provider_smoke_uses_concrete_free_model(monkeypatch) -> None:
     monkeypatch.delenv("HANS_SMOKE_MODEL_KILO", raising=False)
     config = _smoke_config(
-        settings=_settings(kilo_api_key="anonymous", ollama_base_url="")
+        settings=_settings(kilo_api_key="anonymous", ollama_base_url=""),
+        provider_matrix=frozenset({"kilo"}),
     )
 
     models = config.provider_smoke_models()
@@ -243,7 +249,8 @@ def test_bedrock_provider_configuration_uses_official_api_key(monkeypatch) -> No
             model="ollama/llama3.1",
             ollama_base_url="",
             bedrock_api_key="bedrock-key",
-        )
+        ),
+        provider_matrix=frozenset({"bedrock"}),
     )
 
     assert config.has_provider_configuration("bedrock")
@@ -263,7 +270,8 @@ def test_azure_openai_provider_configuration_requires_key_and_resource_url(
             ollama_base_url="",
             azure_openai_api_key="azure-key",
             azure_openai_base_url=("https://resource.openai.azure.com/openai/v1/"),
-        )
+        ),
+        provider_matrix=frozenset({"azure_openai"}),
     )
 
     assert config.has_provider_configuration("azure_openai")
@@ -283,7 +291,8 @@ def test_vertex_provider_configuration_uses_project_id(monkeypatch) -> None:
             model="ollama/llama3.1",
             ollama_base_url="",
             vertex_project_id="vertex-project",
-        )
+        ),
+        provider_matrix=frozenset({"vertex"}),
     )
 
     assert config.has_provider_configuration("vertex")
@@ -316,7 +325,8 @@ def test_kimi_code_provider_configuration_uses_subscription_key(monkeypatch) -> 
             model="ollama/llama3.1",
             ollama_base_url="",
             kimi_code_api_key="subscription-key",
-        )
+        ),
+        provider_matrix=frozenset({"kimi_code"}),
     )
 
     assert config.has_provider_configuration("kimi_code")
@@ -575,6 +585,7 @@ def test_provider_smoke_collection_params_are_grouped_by_provider(
             nvidia_nim_api_key="nim-key",
             ollama_base_url="",
         ),
+        provider_matrix=frozenset({"nvidia_nim", "deepseek"}),
     )
 
     params = provider_model_params(config)
@@ -602,7 +613,7 @@ def test_provider_smoke_includes_local_provider_when_model_mapping_uses_it(
     monkeypatch,
 ) -> None:
     monkeypatch.delenv("HANS_SMOKE_MODEL_OLLAMA", raising=False)
-    config = _smoke_config()
+    config = _smoke_config(provider_matrix=frozenset({"ollama"}))
 
     assert [model.provider for model in config.provider_smoke_models()] == ["ollama"]
 
@@ -611,7 +622,12 @@ def test_provider_smoke_does_not_include_default_local_urls_when_unmapped(
     monkeypatch,
 ) -> None:
     monkeypatch.delenv("HANS_SMOKE_MODEL_OLLAMA", raising=False)
-    config = _smoke_config(settings=_settings(model="nvidia_nim/test"))
+    config = _smoke_config(
+        settings=_settings(model="nvidia_nim/test"),
+        # Unconfigured keyless-scope keeps local providers on their default
+        # URLs out of smoke unless the model mapping references them.
+        provider_matrix=frozenset({"nvidia_nim"}),
+    )
 
     assert config.provider_smoke_models() == []
 

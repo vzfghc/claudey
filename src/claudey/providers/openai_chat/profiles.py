@@ -390,6 +390,55 @@ OPENAI_CHAT_PROFILES: dict[str, OpenAIChatProfile] = {
         ),
         reasoning_delta_field="reasoning",
     ),
+    # === Phase A free OpenAI-compatible gateways ===
+    "ovhcloud": OpenAIChatProfile(
+        _policy(
+            "OVHCLOUD",
+            ReasoningReplayMode.REASONING_CONTENT,
+            default_max_tokens=ANTHROPIC_DEFAULT_MAX_OUTPUT_TOKENS,
+        ),
+        NO_REASONING,
+    ),
+    "scaleway": OpenAIChatProfile(
+        _policy(
+            "SCALEWAY",
+            ReasoningReplayMode.REASONING_CONTENT,
+            default_max_tokens=ANTHROPIC_DEFAULT_MAX_OUTPUT_TOKENS,
+        ),
+        NO_REASONING,
+    ),
+    "qwen": OpenAIChatProfile(
+        _policy(
+            "QWEN",
+            ReasoningReplayMode.REASONING_CONTENT,
+            default_max_tokens=ANTHROPIC_DEFAULT_MAX_OUTPUT_TOKENS,
+        ),
+        NO_REASONING,
+    ),
+    "llm7": OpenAIChatProfile(
+        _policy(
+            "LLM7",
+            ReasoningReplayMode.REASONING_CONTENT,
+            default_max_tokens=ANTHROPIC_DEFAULT_MAX_OUTPUT_TOKENS,
+        ),
+        NO_REASONING,
+    ),
+    "routeway": OpenAIChatProfile(
+        _policy(
+            "ROUTEWAY",
+            ReasoningReplayMode.REASONING_CONTENT,
+            default_max_tokens=ANTHROPIC_DEFAULT_MAX_OUTPUT_TOKENS,
+        ),
+        NO_REASONING,
+    ),
+    "novita": OpenAIChatProfile(
+        _policy(
+            "NOVITA",
+            ReasoningReplayMode.REASONING_CONTENT,
+            default_max_tokens=ANTHROPIC_DEFAULT_MAX_OUTPUT_TOKENS,
+        ),
+        NO_REASONING,
+    ),
     "llamacpp": OpenAIChatProfile(
         _policy(
             "LLAMACPP",

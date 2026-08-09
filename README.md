@@ -49,7 +49,7 @@ Run your coding agents with free, paid, or local models. Choose and validate pro
 
 - Launch Claude Code with `hans-claude`, Codex with `hans-codex`, or Pi with `hans-pi`.
 - Run Claudey in the background from a desktop launcher on Windows or macOS.
-- Switch among 33 cloud and local providers from the Admin UI.
+- Switch among 39 cloud and local providers from the Admin UI.
 - Use each coding agent's native model picker.
 - Route Fable, Opus, Sonnet, Haiku, and fallback traffic to different models.
 - Keep streaming, tool use, reasoning, and image input across compatible models.
@@ -197,6 +197,12 @@ hans-codex exec "hello"
 | [Z.ai](https://z.ai/manage-apikey/apikey-list) | `ZAI_API_KEY` | `zai/glm-5.2` |
 | [Pecut](https://api.pecutopus.web.id/v1) | `PECUT_API_KEY` | `pecut/claude-opus-4-8` |
 | [Ollama Cloud](https://ollama.com/settings/keys) | `OLLAMA_API_KEY` | `ollama_cloud/qwen3-coder:480b` |
+| [OVHcloud AI Endpoints](https://www.ovhcloud.com/en/ai-endpoints/) | Free tier, no key | `ovhcloud/<model-id>` |
+| [Scaleway AI](https://console.scaleway.com/project/iam/api-keys) | `SCALEWAY_API_KEY` | `scaleway/<model-id>` |
+| [Qwen (DashScope)](https://bailian.console.aliyun.com/?tabModel=API-KEY) | `DASHSCOPE_API_KEY` | `qwen/<model-id>` |
+| [LLM7](https://llm7.io) | Free tier, no key | `llm7/<model-id>` |
+| [Routeway](https://routeway.ai) | `ROUTEWAY_API_KEY` | `routeway/<model-id>` |
+| [Novita AI](https://novita.ai/settings/key-management) | `NOVITA_API_KEY` | `novita/<model-id>` |
 | [LM Studio](https://lmstudio.ai/) | `LM_STUDIO_BASE_URL` | `lmstudio/<model-id>` |
 | [llama.cpp](https://github.com/ggml-org/llama.cpp) | `LLAMACPP_BASE_URL` | `llamacpp/<model-id>` |
 | [Ollama](https://ollama.com/) | `OLLAMA_BASE_URL` | `ollama/<model-tag>` |

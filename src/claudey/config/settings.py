@@ -121,6 +121,18 @@ class Settings(BaseSettings):
     # ==================== Ollama Cloud ====================
     ollama_api_key: str = Field(default="", validation_alias="OLLAMA_API_KEY")
 
+    # ==================== Scaleway AI ====================
+    scaleway_api_key: str = Field(default="", validation_alias="SCALEWAY_API_KEY")
+
+    # ==================== Qwen (Alibaba DashScope) ====================
+    qwen_api_key: str = Field(default="", validation_alias="DASHSCOPE_API_KEY")
+
+    # ==================== Routeway ====================
+    routeway_api_key: str = Field(default="", validation_alias="ROUTEWAY_API_KEY")
+
+    # ==================== Novita AI ====================
+    novita_api_key: str = Field(default="", validation_alias="NOVITA_API_KEY")
+
     # ==================== Messaging Platform Selection ====================
     # Valid: "telegram" | "discord" | "none"
     messaging_platform: str = Field(

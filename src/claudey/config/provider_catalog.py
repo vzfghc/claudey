@@ -51,6 +51,17 @@ SAMBANOVA_DEFAULT_BASE = "https://api.sambanova.ai/v1"
 # Kilo.ai gateway OpenAI-compatible Chat Completions API.
 KILO_DEFAULT_BASE = "https://api.kilo.ai/api/gateway"
 OPENAI_CODEX_DEFAULT_BASE = "https://chatgpt.com/backend-api/codex"
+# Free/cheap OpenAI-compatible gateways (Phase A: free-coding-models ingestion).
+# OVHcloud AI Endpoints sandbox is keyless (static credential sent verbatim).
+OVHCLOUD_DEFAULT_BASE = "https://oai.endpoints.kepler.ai.cloud.ovh.net/v1"
+OVHCLOUD_STATIC_CREDENTIAL = "ovh-sandbox"
+SCALEWAY_DEFAULT_BASE = "https://api.scaleway.ai/v1"
+# Alibaba DashScope international OpenAI-compatible layer.
+QWEN_DEFAULT_BASE = "https://dashscope-intl.aliyuncs.com/compatible-mode/v1"
+LLM7_DEFAULT_BASE = "https://api.llm7.io/v1"
+LLM7_STATIC_CREDENTIAL = "llm7"
+ROUTEWAY_DEFAULT_BASE = "https://api.routeway.ai/v1"
+NOVITA_DEFAULT_BASE = "https://api.novita.ai/openai/v1"
 
 
 class ProviderAuthKind(StrEnum):
@@ -363,6 +374,53 @@ PROVIDER_CATALOG: dict[str, ProviderDescriptor] = {
         default_base_url=OLLAMA_CLOUD_DEFAULT_BASE,
         proxy_attr="ollama_cloud_proxy",
     ),
+    # === Phase A free OpenAI-compatible gateways ===
+    "ovhcloud": ProviderDescriptor(
+        provider_id="ovhcloud",
+        display_name="OVHcloud AI Endpoints",
+        static_credential=OVHCLOUD_STATIC_CREDENTIAL,
+        default_base_url=OVHCLOUD_DEFAULT_BASE,
+        credential_url="https://www.ovhcloud.com/en/ai-endpoints/",
+    ),
+    "scaleway": ProviderDescriptor(
+        provider_id="scaleway",
+        display_name="Scaleway AI",
+        credential_env="SCALEWAY_API_KEY",
+        credential_url="https://console.scaleway.com/project/iam/api-keys",
+        credential_attr="scaleway_api_key",
+        default_base_url=SCALEWAY_DEFAULT_BASE,
+    ),
+    "qwen": ProviderDescriptor(
+        provider_id="qwen",
+        display_name="Qwen (DashScope)",
+        credential_env="DASHSCOPE_API_KEY",
+        credential_url="https://bailian.console.aliyun.com/?tabModel=API-KEY",
+        credential_attr="qwen_api_key",
+        default_base_url=QWEN_DEFAULT_BASE,
+    ),
+    "llm7": ProviderDescriptor(
+        provider_id="llm7",
+        display_name="LLM7",
+        static_credential=LLM7_STATIC_CREDENTIAL,
+        default_base_url=LLM7_DEFAULT_BASE,
+        credential_url="https://llm7.io",
+    ),
+    "routeway": ProviderDescriptor(
+        provider_id="routeway",
+        display_name="Routeway",
+        credential_env="ROUTEWAY_API_KEY",
+        credential_url="https://routeway.ai",
+        credential_attr="routeway_api_key",
+        default_base_url=ROUTEWAY_DEFAULT_BASE,
+    ),
+    "novita": ProviderDescriptor(
+        provider_id="novita",
+        display_name="Novita AI",
+        credential_env="NOVITA_API_KEY",
+        credential_url="https://novita.ai/settings/key-management",
+        credential_attr="novita_api_key",
+        default_base_url=NOVITA_DEFAULT_BASE,
+    ),
     "lmstudio": ProviderDescriptor(
         provider_id="lmstudio",
         display_name="LM Studio",
@@ -394,9 +452,10 @@ PROVIDER_CATALOG: dict[str, ProviderDescriptor] = {
 # Key order:
 # NVIDIA NIM first (README default), DeepSeek fourth, OpenCode gateways adjacent,
 # Vercel / Hugging Face / Cohere / GitHub Models follow gateway-style remotes,
-# then cloud gateways, Ollama Cloud, and local providers per project plan
-# (github.com/cheahjs/free-llm-api-resources Free Providers TOC as rough guide
-# beyond fixed slots).
+# then cloud gateways, Ollama Cloud, the free OpenAI-compatible gateways
+# (OVHcloud, Scaleway, Qwen/DashScope, LLM7, Routeway, Novita), then local
+# providers per project plan (github.com/cheahjs/free-llm-api-resources Free
+# Providers TOC as rough guide beyond fixed slots).
 # ``SUPPORTED_PROVIDER_IDS`` inherits this insertion order for UI and error-message listing.
 SUPPORTED_PROVIDER_IDS: tuple[str, ...] = tuple(PROVIDER_CATALOG.keys())
 

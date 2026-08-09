@@ -12,6 +12,7 @@ from claudey.config.provider_catalog import (
     DEEPSEEK_DEFAULT_BASE,
     NVIDIA_NIM_DEFAULT_BASE,
     OPENROUTER_DEFAULT_BASE,
+    PROVIDER_CATALOG,
     WAFER_DEFAULT_BASE,
 )
 from claudey.config.settings import Settings
@@ -73,6 +74,42 @@ def _manager(
 
 def _infos(*model_ids: str) -> frozenset[ProviderModelInfo]:
     return frozenset(ProviderModelInfo(model_id) for model_id in model_ids)
+
+
+_ALWAYS_ON_REMOTE_IDS = frozenset(
+    provider_id
+    for provider_id, descriptor in PROVIDER_CATALOG.items()
+    if descriptor.static_credential and not descriptor.local
+)
+
+
+@pytest.fixture(autouse=True)
+def _exclude_keyless_remote_providers_from_discovery(monkeypatch):
+    """Keep keyless remote providers out of manager discovery in unit tests.
+
+    Built-in free gateways (e.g. OVHcloud, LLM7) need no credential, so
+    ``model_cache_provider_ids_for_settings`` marks them configured and the
+    runtime would construct live ``AsyncOpenAI`` clients for them. These tests
+    inject fake providers for an explicit universe, so strip the always-on
+    remote ids from every enumeration the manager consults.
+    """
+
+    import claudey.providers.runtime.discovery as discovery
+    import claudey.runtime.provider_manager as provider_manager
+
+    original = discovery.model_cache_provider_ids_for_settings
+
+    def _scoped(settings, connected_provider_ids=()):
+        return tuple(
+            provider_id
+            for provider_id in original(settings, connected_provider_ids)
+            if provider_id not in _ALWAYS_ON_REMOTE_IDS
+        )
+
+    monkeypatch.setattr(discovery, "model_cache_provider_ids_for_settings", _scoped)
+    monkeypatch.setattr(
+        provider_manager, "model_cache_provider_ids_for_settings", _scoped
+    )
 
 
 def test_provider_catalog_contract_is_metadata_only() -> None:
