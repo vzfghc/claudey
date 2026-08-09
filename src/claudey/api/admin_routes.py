@@ -1,7 +1,7 @@
 """Local admin UI routes and APIs."""
 
 import ipaddress
-import time
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlsplit
@@ -18,6 +18,14 @@ from claudey.application.model_metadata import ProviderModelRefreshResult
 from claudey.config.admin.manifest import FIELD_BY_KEY
 from claudey.config.admin.persistence import validate_updates
 from claudey.config.admin.values import load_config_response
+from claudey.config.custom_providers import (
+    CustomProviderRecord,
+    custom_provider_ids,
+    custom_provider_store,
+    is_valid_compatible_type,
+    make_unique_provider_id,
+    validate_base_url,
+)
 from claudey.config.model_refs import configured_chat_model_refs
 from claudey.config.provider_catalog import (
     PROVIDER_CATALOG,
@@ -50,6 +58,15 @@ class ConnectedAccountLoginPayload(BaseModel):
     """Interactive connected-account login selection."""
 
     mode: ConnectedAccountLoginMode = ConnectedAccountLoginMode.BROWSER
+
+
+class CustomProviderPayload(BaseModel):
+    """Registration payload for an admin-defined custom provider."""
+
+    type: str = Field(default="openai", description="wire type: openai | anthropic")
+    name: str = Field(default="", min_length=1)
+    base_url: str = Field(default="")
+    api_key: str = Field(default="")
 
 
 def _is_loopback_host(host: str | None) -> bool:
@@ -359,35 +376,68 @@ def _require_connected_account_provider(provider_id: str) -> None:
         )
 
 
+@router.get("/admin/api/providers/custom")
+async def list_custom_providers(request: Request) -> JSONResponse:
+    """List admin-defined custom providers with secrets masked."""
+    require_loopback_admin(request)
+    records = custom_provider_store().all_records()
+    return _no_store({"providers": [record.secret_payload() for record in records]})
+
+
 @router.post("/admin/api/providers/custom")
 async def create_custom_provider(
+    payload: CustomProviderPayload,
     request: Request,
-    services: ApiServices = Depends(get_services),
 ) -> JSONResponse:
-    """Create a new custom provider."""
-    payload = await request.json()
-    provider_type = payload.get("type")
-    name = payload.get("name")
-    base_url = payload.get("base_url")
-    _api_key = payload.get(
-        "api_key"
-    )  # TODO: Implement actual provider creation and persistence
-
-    if not provider_type or provider_type not in ["openai", "anthropic"]:
+    """Register a real admin-defined custom provider and persist it."""
+    require_loopback_admin(request)
+    provider_type = payload.type.strip().lower()
+    if not is_valid_compatible_type(provider_type):
         raise HTTPException(status_code=400, detail="Invalid provider type")
+    name = payload.name.strip()
     if not name:
         raise HTTPException(status_code=400, detail="Name is required")
-    if not base_url:
+    if not payload.base_url.strip():
         raise HTTPException(status_code=400, detail="Base URL is required")
+    try:
+        base_url = validate_base_url(payload.base_url)
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from None
 
-    # TODO: Implement actual provider creation and persistence
-    # For now, just return a mock response
+    store = custom_provider_store()
+    provider_id = make_unique_provider_id(name, set(custom_provider_ids()))
+    record = CustomProviderRecord(
+        provider_id=provider_id,
+        display_name=name,
+        compatible=provider_type,
+        base_url=base_url,
+        api_key=payload.api_key.strip(),
+        created_at=datetime.now(UTC).isoformat(),
+    )
+    store.upsert(record)
     return _no_store(
         {
             "success": True,
-            "provider_id": f"custom_{provider_type}_{int(time.time())}",
-            "message": f"Custom {provider_type} provider '{name}' created (backend integration pending)",
+            "provider_id": provider_id,
+            "display_name": name,
+            **record.secret_payload(),
+            "message": f"Custom {provider_type} provider '{name}' created",
         }
+    )
+
+
+@router.delete("/admin/api/providers/custom/{provider_id}")
+async def delete_custom_provider(
+    provider_id: str,
+    request: Request,
+) -> JSONResponse:
+    """Delete an admin-defined custom provider and persist the removal."""
+    require_loopback_admin(request)
+    removed = custom_provider_store().remove(provider_id)
+    if not removed:
+        raise HTTPException(status_code=404, detail="Custom provider not found")
+    return _no_store(
+        {"success": True, "message": f"Custom provider '{provider_id}' deleted"}
     )
 
 

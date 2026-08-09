@@ -436,6 +436,23 @@ def test_admin_static_model_combobox_preserves_custom_slugs_and_none_semantics()
     assert '"warn"' in script
 
 
+def test_admin_static_usage_period_pill_defaults_to_total():
+    script = Path("src/claudey/api/admin_static/admin.js").read_text(encoding="utf-8")
+    styles = Path("src/claudey/api/admin_static/admin.css").read_text(encoding="utf-8")
+
+    # Total is the first option and the default selection.
+    assert 'const USAGE_PERIODS = ["Total", "24h", "7d", "30d"];' in script
+    assert 'let usagePeriod = "Total";' in script
+    # Total is the first rendered button.
+    assert script.index('"Total"') < script.index('"24h"')
+
+    # Firecrawl-style segmented pill with a sliding highlight.
+    assert 'indicator.className = "usage-period-pill-indicator"' in script
+    assert "positionIndicator(tab)" in script
+    assert ".usage-period-pill-indicator" in styles
+    assert "transition: left" in styles
+
+
 def test_admin_config_masks_secrets_and_exposes_manifest(monkeypatch, tmp_path):
     _set_home(monkeypatch, tmp_path)
     _clear_process_config(monkeypatch)
@@ -2049,7 +2066,7 @@ def test_admin_static_usage_view_markup(monkeypatch, tmp_path):
     assert 'data-view="usage"' in page
     assert 'id="usageSections"' in page
 
-    js = _local_client(create_test_app()).get("/admin/assets/admin.js?v=5.16.0").text
+    js = _local_client(create_test_app()).get("/admin/assets/admin.js?v=5.18.1").text
     assert 'id: "usage"' in js
     assert 'containerId: "usageSections"' in js
     assert 'api("/admin/api/usage")' in js
@@ -2066,7 +2083,7 @@ def test_admin_static_usage_view_markup(monkeypatch, tmp_path):
     assert "usage-period-tab" in js
     assert "heat-cell heat-" in js
 
-    css = _local_client(create_test_app()).get("/admin/assets/admin.css?v=5.16.0").text
+    css = _local_client(create_test_app()).get("/admin/assets/admin.css?v=5.18.1").text
     assert ".usage-grid" in css
     assert ".usage-heatmap" in css
     assert ".heat-cell" in css
@@ -2085,4 +2102,213 @@ def test_admin_static_usage_view_markup(monkeypatch, tmp_path):
         "admin.css",
         "admin-animations.css",
     ):
-        assert f"{asset}?v=5.16.0" in page
+        assert f"{asset}?v=5.18.1" in page
+
+
+@pytest.fixture
+def custom_store_path(monkeypatch, tmp_path):
+    """Isolate the process-wide custom-provider store for an admin test."""
+    store_path = tmp_path / "custom-providers.json"
+    monkeypatch.setenv("CLAUDEY_CUSTOM_PROVIDERS_PATH", str(store_path))
+    return store_path
+
+
+def _custom_client(app, *, remote=False):
+    if remote:
+        return TestClient(app, client=("203.0.113.10", 50000))
+    return TestClient(app, client=("127.0.0.1", 50000))
+
+
+def test_admin_custom_providers_crud(monkeypatch, tmp_path, custom_store_path):
+    _set_home(monkeypatch, tmp_path)
+    client = _custom_client(create_test_app())
+
+    created = client.post(
+        "/admin/api/providers/custom",
+        json={
+            "type": "openai",
+            "name": "Acme",
+            "base_url": "https://api.acme.example/v1",
+            "api_key": "sk-acme-secret",
+        },
+    )
+    assert created.status_code == 200
+    payload = created.json()
+    assert payload["success"] is True
+    assert payload["provider_id"].startswith("custom_acme")
+    assert payload["has_api_key"] is True
+    assert "api_key" not in payload
+
+    listed = client.get("/admin/api/providers/custom")
+    assert listed.status_code == 200
+    providers = listed.json()["providers"]
+    assert len(providers) == 1
+    assert providers[0]["provider_id"] == payload["provider_id"]
+    assert "api_key" not in providers[0]
+
+    deleted = client.delete(f"/admin/api/providers/custom/{payload['provider_id']}")
+    assert deleted.status_code == 200
+    assert deleted.json()["success"] is True
+
+    assert client.get("/admin/api/providers/custom").json()["providers"] == []
+
+
+def test_admin_custom_provider_generates_unique_id_on_duplicate_name(
+    monkeypatch, tmp_path, custom_store_path
+):
+    _set_home(monkeypatch, tmp_path)
+    client = _custom_client(create_test_app())
+    body = {
+        "type": "openai",
+        "name": "Acme",
+        "base_url": "https://api.acme.example/v1",
+        "api_key": "sk-acme",
+    }
+    first = client.post("/admin/api/providers/custom", json=body).json()
+    second = client.post("/admin/api/providers/custom", json=body).json()
+
+    assert first["provider_id"] == "custom_acme"
+    assert second["provider_id"] == "custom_acme_2"
+
+
+def test_admin_custom_provider_rejects_invalid_type(
+    monkeypatch, tmp_path, custom_store_path
+):
+    _set_home(monkeypatch, tmp_path)
+    client = _custom_client(create_test_app())
+
+    response = client.post(
+        "/admin/api/providers/custom",
+        json={
+            "type": "garbage",
+            "name": "Acme",
+            "base_url": "https://api.acme.example/v1",
+        },
+    )
+
+    assert response.status_code == 400
+    assert "provider type" in response.json()["detail"].lower()
+
+
+def test_admin_custom_provider_rejects_bad_base_url(
+    monkeypatch, tmp_path, custom_store_path
+):
+    _set_home(monkeypatch, tmp_path)
+    client = _custom_client(create_test_app())
+
+    response = client.post(
+        "/admin/api/providers/custom",
+        json={"type": "openai", "name": "Acme", "base_url": "not-a-url"},
+    )
+
+    assert response.status_code == 400
+    assert "url" in response.json()["detail"].lower()
+
+
+def test_admin_custom_provider_rejects_missing_name(
+    monkeypatch, tmp_path, custom_store_path
+):
+    _set_home(monkeypatch, tmp_path)
+    client = _custom_client(create_test_app())
+
+    response = client.post(
+        "/admin/api/providers/custom",
+        json={
+            "type": "openai",
+            "name": "   ",
+            "base_url": "https://api.acme.example/v1",
+        },
+    )
+
+    assert response.status_code == 400
+
+
+def test_admin_custom_provider_delete_missing_returns_404(
+    monkeypatch, tmp_path, custom_store_path
+):
+    _set_home(monkeypatch, tmp_path)
+    client = _custom_client(create_test_app())
+
+    response = client.delete("/admin/api/providers/custom/custom_nope")
+
+    assert response.status_code == 404
+
+
+def test_admin_custom_providers_are_loopback_only(
+    monkeypatch, tmp_path, custom_store_path
+):
+    _set_home(monkeypatch, tmp_path)
+    remote = _custom_client(create_test_app(), remote=True)
+
+    assert remote.get("/admin/api/providers/custom").status_code == 403
+    assert (
+        remote.post(
+            "/admin/api/providers/custom",
+            json={
+                "type": "openai",
+                "name": "Acme",
+                "base_url": "https://api.acme.example/v1",
+            },
+        ).status_code
+        == 403
+    )
+    assert remote.delete("/admin/api/providers/custom/custom_acme").status_code == 403
+
+
+def test_admin_custom_provider_appears_in_config_provider_status(
+    monkeypatch, tmp_path, custom_store_path
+):
+    _set_home(monkeypatch, tmp_path)
+    from claudey.config.custom_providers import (
+        CustomProviderRecord,
+        custom_provider_store,
+    )
+
+    custom_provider_store().upsert(
+        CustomProviderRecord(
+            provider_id="custom_acme",
+            display_name="Acme",
+            compatible="anthropic",
+            base_url="https://api.acme.example/anthropic",
+            api_key="sk-acme",
+            created_at="2026-01-01T00:00:00+00:00",
+        )
+    )
+    client = _custom_client(create_test_app())
+
+    response = client.get("/admin/api/config")
+    assert response.status_code == 200
+    statuses = response.json()["provider_status"]
+    custom = [s for s in statuses if s["provider_id"] == "custom_acme"]
+    assert len(custom) == 1
+    assert custom[0]["kind"] == "custom"
+    assert custom[0]["compatible"] == "anthropic"
+    assert custom[0]["status"] == "configured"
+    assert "api_key" not in custom[0]
+
+
+def test_admin_custom_provider_status_missing_key(
+    monkeypatch, tmp_path, custom_store_path
+):
+    _set_home(monkeypatch, tmp_path)
+    from claudey.config.custom_providers import (
+        CustomProviderRecord,
+        custom_provider_store,
+    )
+
+    custom_provider_store().upsert(
+        CustomProviderRecord(
+            provider_id="custom_keyless",
+            display_name="Keyless",
+            compatible="openai",
+            base_url="https://api.keyless.example/v1",
+            api_key="",
+            created_at="2026-01-01T00:00:00+00:00",
+        )
+    )
+    client = _custom_client(create_test_app())
+
+    response = client.get("/admin/api/config")
+    statuses = response.json()["provider_status"]
+    custom = next(s for s in statuses if s["provider_id"] == "custom_keyless")
+    assert custom["status"] == "missing_key"

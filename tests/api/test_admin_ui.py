@@ -1,7 +1,30 @@
 """Playwright tests for Claudey admin UI."""
 
+import socket
+from importlib.util import find_spec
+
 import pytest
 from playwright.sync_api import Page, expect
+
+_ADMIN_PORT = 8082
+
+
+def _admin_server_running() -> bool:
+    """Return whether the admin server is listening on the loopback."""
+    try:
+        with socket.create_connection(("127.0.0.1", _ADMIN_PORT), timeout=0.5):
+            return True
+    except OSError:
+        return False
+
+
+# The ``page`` fixture is provided by pytest-playwright, which is not part of
+# the locked test environment; these live-server checks only run when the
+# plugin is available AND the admin server is actually up.
+pytestmark = pytest.mark.skipif(
+    find_spec("pytest_playwright") is None or not _admin_server_running(),
+    reason="requires pytest-playwright and the admin server on 127.0.0.1:8082",
+)
 
 
 @pytest.fixture

@@ -6,13 +6,19 @@ from claudey.application.errors import (
     ApplicationUnavailableError,
     UnknownProviderError,
 )
+from claudey.config.custom_providers import (
+    CustomProviderRecord,
+    find_custom_provider,
+)
 from claudey.config.provider_catalog import PROVIDER_CATALOG, ProviderAuthKind
 from claudey.config.settings import Settings
 from claudey.providers.admission import ProviderAdmissionController
 from claudey.providers.base import BaseProvider, ProviderConfig
 from claudey.providers.openai_chat import (
     OPENAI_CHAT_PROFILES,
+    OpenAIChatProvider,
     create_openai_chat_provider,
+    custom_openai_chat_profile,
 )
 
 from .config import build_provider_config
@@ -180,6 +186,10 @@ def create_provider(
     injected_factories: Mapping[str, ProviderFactory] | None = None,
 ) -> BaseProvider:
     """Create a provider instance for a supported provider id."""
+    custom = find_custom_provider(provider_id)
+    if custom is not None:
+        return _create_custom_provider(custom, settings)
+
     descriptor = PROVIDER_CATALOG.get(provider_id)
     if descriptor is None:
         raise UnknownProviderError.for_provider(provider_id, PROVIDER_CATALOG)
@@ -200,3 +210,45 @@ def create_provider(
     if factory is not None:
         return factory(config, settings, admission)
     return create_openai_chat_provider(provider_id, config, admission)
+
+
+def _create_custom_provider(
+    record: CustomProviderRecord,
+    settings: Settings,
+) -> BaseProvider:
+    """Construct a provider for an admin-defined custom provider record.
+
+    The record's base URL and API key come from the user, so the provider config
+    is built directly from the record rather than from the static catalog.
+    ``openai`` records reuse the generic ``OpenAIChatProvider`` (the same
+    transport Pecut uses); ``anthropic`` records forward the Anthropic wire
+    protocol to the compatible endpoint.
+    """
+    config = ProviderConfig(
+        api_key=record.api_key,
+        base_url=record.base_url,
+        rate_limit=settings.provider_rate_limit,
+        rate_window=settings.provider_rate_window,
+        max_concurrency=settings.provider_max_concurrency,
+        http_read_timeout=settings.http_read_timeout,
+        http_write_timeout=settings.http_write_timeout,
+        http_connect_timeout=settings.http_connect_timeout,
+        proxy="",
+        log_raw_sse_events=settings.log_raw_sse_events,
+        log_api_error_tracebacks=settings.log_api_error_tracebacks,
+    )
+    admission = ProviderAdmissionController(
+        provider_name=record.provider_id,
+        rate_limit=config.rate_limit or 40,
+        rate_window=config.rate_window or 60.0,
+        max_concurrency=config.max_concurrency,
+    )
+    if record.compatible == "anthropic":
+        from claudey.providers.anthropic.messages import AnthropicMessagesProvider
+
+        return AnthropicMessagesProvider(config, admission=admission)
+    return OpenAIChatProvider(
+        config,
+        profile=custom_openai_chat_profile(record.provider_id),
+        admission=admission,
+    )

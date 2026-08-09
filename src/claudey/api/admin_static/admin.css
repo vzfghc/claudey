@@ -603,6 +603,39 @@ textarea:focus-visible,
   text-overflow: ellipsis;
 }
 
+.provider-logo-placeholder {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--neutral-bg);
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1;
+}
+
+.custom-compatible-badge {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  min-height: 20px;
+  border: 1px solid var(--neutral-border);
+  border-radius: var(--radius-full);
+  padding: 2px 10px;
+  background: var(--neutral-bg);
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+
+.custom-provider-status {
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
 /* Modern status pills with color indicators */
 .status-pill {
   display: inline-flex;
@@ -2000,25 +2033,53 @@ textarea:focus-visible,
   margin: 0 0 16px 0;
 }
 
-/* Period tabs */
+/* Period pill (Firecrawl-style segmented control) */
 .usage-period-tabs {
+  position: relative;
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-bottom: 18px;
+  align-items: center;
+  width: fit-content;
+  margin: 0 auto 18px auto;
+  padding: 4px;
+  border-radius: var(--radius-10);
+  background: var(--neutral-bg);
+  box-shadow:
+    inset 0 6px 12px rgba(0, 0, 0, 0.02),
+    inset 0 0.75px 0.75px rgba(0, 0, 0, 0.02),
+    inset 0 0.25px 0.25px rgba(0, 0, 0, 0.04);
+}
+
+.usage-period-pill-indicator {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  height: calc(100% - 8px);
+  background: var(--card);
+  border-radius: var(--radius-8);
+  box-shadow:
+    0 6px 12px -3px rgba(0, 0, 0, 0.04),
+    0 3px 6px -1px rgba(0, 0, 0, 0.04),
+    0 1px 2px rgba(0, 0, 0, 0.04),
+    0 0.5px 0.5px rgba(0, 0, 0, 0.06);
+  transition: left var(--transition-fast), width var(--transition-fast);
+  pointer-events: none;
+  z-index: 0;
 }
 
 .usage-period-tab {
-  border: 1px solid var(--line);
-  border-radius: var(--radius-full);
+  position: relative;
+  z-index: 1;
+  border: none;
   background: transparent;
   color: var(--muted);
   font-family: inherit;
   font-size: 12px;
   font-weight: 600;
-  padding: 4px 12px;
+  line-height: 1;
+  padding: 7px 14px;
   cursor: pointer;
-  transition: background var(--transition-fast), color var(--transition-fast), transform 0.1s ease;
+  border-radius: var(--radius-8);
+  transition: color var(--transition-fast), transform 0.1s ease;
 }
 
 .usage-period-tab:hover {
@@ -2026,9 +2087,14 @@ textarea:focus-visible,
 }
 
 .usage-period-tab.active {
-  background: var(--neutral-bg);
-  color: var(--text-strong);
-  border-color: var(--line-strong);
+  color: var(--text-primary);
+}
+
+.usage-period-sep {
+  width: 1px;
+  height: 16px;
+  background: var(--line);
+  margin: 0 6px;
 }
 
 /* Hero stat */
@@ -2243,60 +2309,57 @@ textarea:focus-visible,
 .heat-cell.heat-3 { background: rgba(255, 77, 0, 0.62); }
 .heat-cell.heat-4 { background: #ff4d00; }
 
-/* Trend chart */
-.usage-trend-chart {
-  position: relative;
-  height: 160px;
-  padding-right: 48px;
+/* Trend chart — Firecrawl-style area chart */
+.usage-trend-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
 }
 
-.usage-trend-gridlines {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 0;
-  right: 48px;
-  pointer-events: none;
+.usage-trend-total {
+  font-family: var(--font-rounded);
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-strong);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
-.usage-trend-gridline {
-  position: absolute;
-  left: 0;
-  right: 0;
-  border-top: 1px solid var(--line);
+.usage-trend-svg {
+  display: block;
+  width: 100%;
+  height: auto;
 }
 
-.usage-trend-gridline-label {
-  position: absolute;
-  top: -6px;
-  right: -50px;
+.usage-trend-grid {
+  stroke: var(--line);
+  stroke-width: 1;
+}
+
+.usage-trend-axis {
+  fill: var(--muted);
   font-size: 10px;
-  color: var(--muted);
   font-variant-numeric: tabular-nums;
 }
 
-.usage-trend-cols {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 0;
-  right: 48px;
-  display: flex;
-  gap: 3px;
+.usage-trend-area {
+  fill: url(#trendAreaFill);
 }
 
-.usage-trend-col {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column-reverse;
-  gap: 1px;
+.usage-trend-line {
+  fill: none;
+  stroke: #ff4d00;
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
 }
 
-.usage-trend-seg {
-  width: 100%;
-  min-height: 1px;
-  border-radius: 1px;
+.usage-trend-dot {
+  fill: #ff4d00;
+  stroke: var(--card);
+  stroke-width: 1.5;
 }
 
 /* Provider distribution */

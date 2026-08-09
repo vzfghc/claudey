@@ -167,6 +167,12 @@ const LOBEHUB_ID_MAP = {
 const LOBEHUB_CDN = "https://cdn.jsdelivr.net/npm/@lobehub/icons-static-svg@1.94.0/icons";
 
 function providerLogo(providerId) {
+  if (providerId.startsWith("custom_")) {
+    const placeholder = document.createElement("span");
+    placeholder.className = "provider-logo provider-logo-placeholder";
+    placeholder.textContent = "●";
+    return placeholder;
+  }
   const lobeSlug = LOBEHUB_ID_MAP[providerId];
   const logo = document.createElement("img");
   logo.className = "provider-logo";
@@ -406,6 +412,33 @@ function renderProviders(providerStatus) {
     const name = document.createElement("strong");
     name.textContent = provider.display_name || provider.provider_id;
     title.append(logo, name);
+
+    if (provider.kind === "custom") {
+      const compatible = document.createElement("span");
+      compatible.className = "custom-compatible-badge";
+      compatible.textContent =
+        provider.compatible === "anthropic" ? "Anthropic" : "OpenAI";
+      name.after(compatible);
+
+      const actions = document.createElement("div");
+      actions.className = "provider-actions";
+      const status = document.createElement("span");
+      status.className = "custom-provider-status";
+      status.textContent = provider.label || "Configured";
+      actions.appendChild(status);
+      const remove = document.createElement("button");
+      remove.type = "button";
+      remove.className = "secondary-button";
+      remove.textContent = "Delete";
+      remove.addEventListener("click", () => removeCustomProvider(provider));
+      actions.appendChild(remove);
+
+      card.append(title, actions);
+      card.style.setProperty("--card-index", grid.children.length);
+      _attachDrag(card, provider.provider_id);
+      grid.appendChild(card);
+      return;
+    }
 
     const actions = document.createElement("div");
     actions.className = "provider-actions";
@@ -1761,7 +1794,7 @@ function countUp(el, final) {
   requestAnimationFrame(step);
 }
 
-const USAGE_PERIODS = ["24h", "7d", "30d", "Total"];
+const USAGE_PERIODS = ["Total", "24h", "7d", "30d"];
 const USAGE_MONTHS = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
 const USAGE_WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const USAGE_TREND_SEGMENTS = [
@@ -1785,7 +1818,7 @@ const USAGE_PROVIDER_COLORS = {
   groq: "#f55036",
 };
 
-let usagePeriod = "7d";
+let usagePeriod = "Total";
 let usageFullNumbers = false;
 let usageTooltipEl = null;
 
@@ -1944,17 +1977,163 @@ function renderUsageHeatmapCard(heatmap) {
 
   wrap.append(months, grid);
   card.appendChild(wrap);
+  // Anchor the heatmap on the current (rightmost) week so the most recent
+  // activity is visible immediately; scroll left to reach older weeks.
+  requestAnimationFrame(() => {
+    wrap.scrollLeft = wrap.scrollWidth;
+  });
   return card;
+}
+
+const TREND_FRACTIONS = [0, 1 / 3, 2 / 3, 1];
+
+function trendShortDate(iso) {
+  const date = new Date(`${iso}T00:00:00Z`);
+  return `${USAGE_MONTHS[date.getUTCMonth()]} ${date.getUTCDate()}`;
+}
+
+function trendTooltipLines(row) {
+  const lines = [`${row.date} · ${formatTokens(row.total_tokens || 0)} total`];
+  USAGE_TREND_SEGMENTS.forEach(([key]) => {
+    const value = row[key] || 0;
+    if (value > 0) lines.push(`${key}: ${formatTokens(value)}`);
+  });
+  return lines.join("\n");
+}
+
+function buildTrendAreaChart(rows) {
+  // Firecrawl-style single-line area chart built as an inline SVG.
+  const SVG_NS = "http://www.w3.org/2000/svg";
+  const W = 600;
+  const H = 180;
+  const PAD_LEFT = 48;
+  const PAD_RIGHT = 10;
+  const PAD_TOP = 10;
+  const PAD_BOTTOM = 22;
+  const PLOT_W = W - PAD_LEFT - PAD_RIGHT;
+  const PLOT_H = H - PAD_TOP - PAD_BOTTOM;
+
+  const maxTotal = Math.max(1, ...rows.map((row) => row.total_tokens || 0));
+  const xFor = (index) =>
+    PAD_LEFT + (rows.length === 1 ? PLOT_W / 2 : (index / (rows.length - 1)) * PLOT_W);
+  const yFor = (value) => PAD_TOP + PLOT_H - (value / maxTotal) * PLOT_H;
+  const plotBottom = PAD_TOP + PLOT_H;
+
+  const points = rows.map((row, index) => ({
+    x: xFor(index),
+    y: yFor(row.total_tokens || 0),
+    row,
+  }));
+
+  const linePath = points
+    .map((point, index) => `${index === 0 ? "M" : "L"}${point.x.toFixed(1)},${point.y.toFixed(1)}`)
+    .join(" ");
+  const areaPath =
+    `${linePath} L${(PAD_LEFT + PLOT_W).toFixed(1)},${plotBottom} L${PAD_LEFT},${plotBottom} Z`;
+
+  const svg = document.createElementNS(SVG_NS, "svg");
+  svg.setAttribute("class", "usage-trend-svg");
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  svg.setAttribute("role", "img");
+  svg.setAttribute("aria-label", "Daily token usage over the last 30 days");
+
+  const defs = document.createElementNS(SVG_NS, "defs");
+  const gradient = document.createElementNS(SVG_NS, "linearGradient");
+  gradient.id = "trendAreaFill";
+  gradient.setAttribute("x1", "0");
+  gradient.setAttribute("y1", "0");
+  gradient.setAttribute("x2", "0");
+  gradient.setAttribute("y2", "1");
+  const stops = [
+    { offset: "0%", opacity: "0.28" },
+    { offset: "100%", opacity: "0" },
+  ];
+  stops.forEach((stop) => {
+    const el = document.createElementNS(SVG_NS, "stop");
+    el.setAttribute("offset", stop.offset);
+    el.setAttribute("stop-color", "#ff4d00");
+    el.setAttribute("stop-opacity", stop.opacity);
+    gradient.appendChild(el);
+  });
+  defs.appendChild(gradient);
+  svg.appendChild(defs);
+
+  // Horizontal gridlines with left token labels.
+  TREND_FRACTIONS.forEach((fraction) => {
+    const y = PAD_TOP + PLOT_H * (1 - fraction);
+    const line = document.createElementNS(SVG_NS, "line");
+    line.setAttribute("class", "usage-trend-grid");
+    line.setAttribute("x1", String(PAD_LEFT));
+    line.setAttribute("x2", String(PAD_LEFT + PLOT_W));
+    line.setAttribute("y1", y.toFixed(1));
+    line.setAttribute("y2", y.toFixed(1));
+    svg.appendChild(line);
+    const label = document.createElementNS(SVG_NS, "text");
+    label.setAttribute("class", "usage-trend-axis");
+    label.setAttribute("x", String(PAD_LEFT - 6));
+    label.setAttribute("y", (y + 3).toFixed(1));
+    label.textContent = fraction === 0 ? "0" : formatTokens(Math.round(maxTotal * fraction));
+    svg.appendChild(label);
+  });
+
+  // X-axis date labels on a few evenly spaced days plus the latest.
+  const labelIndices = [];
+  rows.forEach((_, index) => {
+    if (index % Math.max(1, Math.floor(rows.length / 6)) === 0) labelIndices.push(index);
+  });
+  labelIndices.push(rows.length - 1);
+  [...new Set(labelIndices)].forEach((index) => {
+    const point = points[index];
+    const label = document.createElementNS(SVG_NS, "text");
+    label.setAttribute("class", "usage-trend-axis");
+    label.setAttribute("text-anchor", "middle");
+    label.setAttribute("x", point.x.toFixed(1));
+    label.setAttribute("y", String(H - 6));
+    label.textContent = trendShortDate(point.row.date);
+    svg.appendChild(label);
+  });
+
+  const area = document.createElementNS(SVG_NS, "path");
+  area.setAttribute("class", "usage-trend-area");
+  area.setAttribute("d", areaPath);
+  svg.appendChild(area);
+
+  const line = document.createElementNS(SVG_NS, "path");
+  line.setAttribute("class", "usage-trend-line");
+  line.setAttribute("d", linePath);
+  svg.appendChild(line);
+
+  // One point per day, each exposing a per-segment tooltip.
+  points.forEach((point) => {
+    const dot = document.createElementNS(SVG_NS, "circle");
+    dot.setAttribute("class", "usage-trend-dot");
+    dot.setAttribute("cx", point.x.toFixed(1));
+    dot.setAttribute("cy", point.y.toFixed(1));
+    dot.setAttribute("r", "2.5");
+    const tip = document.createElementNS(SVG_NS, "title");
+    tip.textContent = trendTooltipLines(point.row);
+    dot.appendChild(tip);
+    svg.appendChild(dot);
+  });
+
+  return svg;
 }
 
 function renderUsageTrendCard(daily) {
   const rows = daily || [];
   const card = document.createElement("article");
   card.className = "usage-card";
+
+  const head = document.createElement("div");
+  head.className = "usage-trend-head";
   const title = document.createElement("h4");
   title.className = "usage-card-title";
   title.textContent = "Last 30 days";
-  card.appendChild(title);
+  const headTotal = document.createElement("span");
+  headTotal.className = "usage-trend-total";
+  headTotal.textContent = formatTokens(rows.reduce((sum, row) => sum + (row.total_tokens || 0), 0));
+  head.append(title, headTotal);
+  card.appendChild(head);
 
   if (!rows.length) {
     const note = document.createElement("p");
@@ -1964,45 +2143,7 @@ function renderUsageTrendCard(daily) {
     return card;
   }
 
-  const chart = document.createElement("div");
-  chart.className = "usage-trend-chart";
-
-  const gridlines = document.createElement("div");
-  gridlines.className = "usage-trend-gridlines";
-  const maxTotal = Math.max(1, ...rows.map((row) => row.total_tokens || 0));
-  [0, 25, 50, 75, 100].forEach((percent) => {
-    const line = document.createElement("div");
-    line.className = "usage-trend-gridline";
-    line.style.bottom = `${percent}%`;
-    const label = document.createElement("span");
-    label.className = "usage-trend-gridline-label";
-    label.textContent = percent === 0 ? "0" : formatTokens(Math.round((maxTotal * percent) / 100));
-    line.appendChild(label);
-    gridlines.appendChild(line);
-  });
-
-  const cols = document.createElement("div");
-  cols.className = "usage-trend-cols";
-  rows.forEach((row) => {
-    const column = document.createElement("div");
-    column.className = "usage-trend-col";
-    const titleLines = [`${row.date} · ${formatTokens(row.total_tokens || 0)} total`];
-    USAGE_TREND_SEGMENTS.forEach(([key, color]) => {
-      const value = row[key] || 0;
-      titleLines.push(`${key}: ${formatTokens(value)}`);
-      if (value <= 0) return;
-      const segment = document.createElement("div");
-      segment.className = "usage-trend-seg";
-      segment.style.background = color;
-      segment.style.height = `${Math.min((value / maxTotal) * 100, 100)}%`;
-      column.appendChild(segment);
-    });
-    column.title = titleLines.join("\n");
-    cols.appendChild(column);
-  });
-
-  chart.append(gridlines, cols);
-  card.appendChild(chart);
+  card.appendChild(buildTrendAreaChart(rows));
   return card;
 }
 
@@ -2141,7 +2282,24 @@ function renderUsageHero(payload, billing) {
   tabs.className = "usage-period-tabs";
   tabs.setAttribute("role", "tablist");
   tabs.setAttribute("aria-label", "Period");
-  USAGE_PERIODS.forEach((period) => {
+
+  const indicator = document.createElement("div");
+  indicator.className = "usage-period-pill-indicator";
+  indicator.setAttribute("aria-hidden", "true");
+  tabs.appendChild(indicator);
+
+  const positionIndicator = (active) => {
+    indicator.style.left = `${active.offsetLeft}px`;
+    indicator.style.width = `${active.offsetWidth}px`;
+  };
+
+  USAGE_PERIODS.forEach((period, index) => {
+    if (index > 0) {
+      const sep = document.createElement("div");
+      sep.className = "usage-period-sep";
+      sep.setAttribute("aria-hidden", "true");
+      tabs.appendChild(sep);
+    }
     const tab = document.createElement("button");
     tab.type = "button";
     tab.className = `usage-period-tab${period === usagePeriod ? " active" : ""}`;
@@ -2155,6 +2313,7 @@ function renderUsageHero(payload, billing) {
         other.classList.toggle("active", other === tab);
         other.setAttribute("aria-selected", String(other === tab));
       });
+      positionIndicator(tab);
       // Tween animation for all tabs
       tabs.querySelectorAll(".usage-period-tab").forEach((t) => {
         t.style.transform = "scale(0.95)";
@@ -2169,6 +2328,11 @@ function renderUsageHero(payload, billing) {
     tabs.appendChild(tab);
   });
   card.appendChild(tabs);
+  // Anchor the sliding highlight on the active period after layout.
+  requestAnimationFrame(() => {
+    const active = tabs.querySelector(".usage-period-tab.active");
+    if (active) positionIndicator(active);
+  });
 
   const heroNumber = document.createElement("button");
   heroNumber.type = "button";
@@ -2596,8 +2760,8 @@ function showCustomProviderDialog(providerType) {
       if (!response.ok) throw new Error(result.detail || "Failed to create provider");
 
       showMessage(result.message || `Provider ${name} added successfully`, "success");
-      // TODO: Refresh provider list to show new provider
       dialog.close();
+      await load();
     } catch (error) {
       showMessage(`Failed to create provider: ${error.message}`, "error");
     }
@@ -2607,14 +2771,35 @@ function showCustomProviderDialog(providerType) {
   dialog.showModal();
 }
 
-// Add provider buttons
-byId("addOpenAIProviderBtn").addEventListener("click", () => {
-  showCustomProviderDialog('openai');
-});
+async function removeCustomProvider(provider) {
+  if (!window.confirm(`Delete custom provider "${provider.display_name}"?`)) return;
+  try {
+    const response = await api(`/admin/api/providers/custom/${provider.provider_id}`, {
+      method: "DELETE",
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.detail || "Failed to delete provider");
+    showMessage(result.message || "Custom provider deleted", "success");
+    await load();
+  } catch (error) {
+    showMessage(`Failed to delete provider: ${error.message}`, "error");
+  }
+}
 
-byId("addAnthropicProviderBtn").addEventListener("click", () => {
-  showCustomProviderDialog('anthropic');
-});
+// Add provider buttons
+const addOpenAIProviderBtn = byId("addOpenAIProviderBtn");
+if (addOpenAIProviderBtn) {
+  addOpenAIProviderBtn.addEventListener("click", () => {
+    showCustomProviderDialog('openai');
+  });
+}
+
+const addAnthropicProviderBtn = byId("addAnthropicProviderBtn");
+if (addAnthropicProviderBtn) {
+  addAnthropicProviderBtn.addEventListener("click", () => {
+    showCustomProviderDialog('anthropic');
+  });
+}
 
 load().catch((error) => {
   showMessage(error.message, "error");

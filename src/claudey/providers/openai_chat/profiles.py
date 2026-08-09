@@ -138,6 +138,25 @@ def _policy(
     )
 
 
+def custom_openai_chat_profile(provider_name: str) -> OpenAIChatProfile:
+    """Build the transport profile for an admin-defined OpenAI-compatible endpoint.
+
+    This is the runtime counterpart of a built-in profile (e.g. Pecut): the
+    generic ``OpenAIChatProvider`` needs a profile, but custom provider ids can
+    never join :data:`OPENAI_CHAT_PROFILES` because the runtime factory asserts
+    every profile id is a catalog provider. The custom base URL is used verbatim
+    (``normalize_base_url=False``) since the user supplies a complete base URL.
+    """
+    return OpenAIChatProfile(
+        _policy(
+            provider_name,
+            ReasoningReplayMode.REASONING_CONTENT,
+            default_max_tokens=ANTHROPIC_DEFAULT_MAX_OUTPUT_TOKENS,
+        ),
+        NO_REASONING,
+    )
+
+
 OPENAI_CHAT_PROFILES: dict[str, OpenAIChatProfile] = {
     "azure_openai": OpenAIChatProfile(
         _policy(

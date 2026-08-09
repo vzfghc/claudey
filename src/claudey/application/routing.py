@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from loguru import logger
 
 from claudey.application.errors import UnknownProviderError
+from claudey.config.custom_providers import custom_provider_ids
 from claudey.config.model_refs import parse_model_name, parse_provider_type
 from claudey.config.provider_catalog import (
     PROVIDER_CATALOG,
@@ -27,6 +28,22 @@ _ROUTE_SETTINGS = (
     ("haiku", "model_haiku", "reasoning_haiku"),
     ("sonnet", "model_sonnet", "reasoning_sonnet"),
 )
+
+
+def _runtime_provider_ids() -> frozenset[str]:
+    """Ids considered routable: static catalog plus admin-defined custom providers.
+
+    Custom providers are added and removed at runtime (``custom_providers.json``),
+    never statically, so this must be consulted live rather than folded into
+    ``SUPPORTED_PROVIDER_IDS``.
+    """
+    return frozenset(custom_provider_ids())
+
+
+def _is_runtime_provider_id(provider_id: str) -> bool:
+    return (
+        provider_id in SUPPORTED_PROVIDER_IDS or provider_id in _runtime_provider_ids()
+    )
 
 
 @dataclass(frozen=True, slots=True)
@@ -103,7 +120,10 @@ class ModelRouter:
 
     @staticmethod
     def _validate_provider_id(provider_id: str) -> None:
-        if provider_id not in PROVIDER_CATALOG:
+        if (
+            provider_id not in PROVIDER_CATALOG
+            and provider_id not in _runtime_provider_ids()
+        ):
             raise UnknownProviderError.for_provider(provider_id, PROVIDER_CATALOG)
 
     def _direct_provider_model(
@@ -111,7 +131,7 @@ class ModelRouter:
     ) -> tuple[str | None, str | None, bool]:
         decoded = decode_gateway_model_id(model_name)
         if decoded is not None:
-            if decoded.provider_id not in SUPPORTED_PROVIDER_IDS:
+            if not _is_runtime_provider_id(decoded.provider_id):
                 return None, None, False
             return (
                 decoded.provider_id,
@@ -122,7 +142,7 @@ class ModelRouter:
         provider_id, separator, provider_model = model_name.partition("/")
         if not separator:
             return None, None, False
-        if provider_id not in SUPPORTED_PROVIDER_IDS:
+        if not _is_runtime_provider_id(provider_id):
             return None, None, False
         if not provider_model:
             return None, None, False

@@ -4,6 +4,11 @@ import pytest
 
 from claudey.application.errors import UnknownProviderError
 from claudey.application.routing import ModelRouter
+from claudey.config.custom_providers import (
+    CUSTOM_PROVIDERS_PATH_ENV,
+    CustomProviderRecord,
+    custom_provider_store,
+)
 from claudey.config.provider_catalog import PROVIDER_CATALOG
 from claudey.config.reasoning import ReasoningPreference
 from claudey.config.settings import Settings
@@ -13,6 +18,27 @@ from claudey.core.anthropic.models import (
     TokenCountRequest,
 )
 from claudey.core.reasoning import ReasoningControl, ReasoningEffort
+
+
+@pytest.fixture
+def custom_provider(monkeypatch, tmp_path):
+    """Register one custom provider in an isolated store, then clear it."""
+    monkeypatch.setenv(
+        CUSTOM_PROVIDERS_PATH_ENV, str(tmp_path / "custom-providers.json")
+    )
+    store = custom_provider_store()
+    store.upsert(
+        CustomProviderRecord(
+            provider_id="custom_acme",
+            display_name="Acme",
+            compatible="openai",
+            base_url="https://api.acme.example/v1",
+            api_key="sk-acme",
+            created_at="2026-01-01T00:00:00+00:00",
+        )
+    )
+    yield
+    store.remove("custom_acme")
 
 
 @pytest.fixture
@@ -339,3 +365,37 @@ def test_model_router_strips_suffix_for_token_count_request(settings):
     assert routed.request.model == "deepseek-v4-flash"
     assert routed.resolved.original_model == "anthropic/deepseek/deepseek-v4-flash[1m]"
     assert request.model == "anthropic/deepseek/deepseek-v4-flash[1m]"
+
+
+def test_model_router_resolves_direct_custom_provider_model(settings, custom_provider):
+    resolved = ModelRouter(settings).resolve("custom_acme/acme-model")
+
+    assert resolved.provider_id == "custom_acme"
+    assert resolved.provider_model == "acme-model"
+    assert resolved.provider_model_ref == "custom_acme/acme-model"
+
+
+def test_model_router_resolves_custom_provider_from_settings_ref(
+    settings, custom_provider
+):
+    settings.model = "custom_acme/acme-model"
+    resolved = ModelRouter(settings).resolve("claude-sonnet-4")
+
+    assert resolved.provider_id == "custom_acme"
+    assert resolved.provider_model == "acme-model"
+
+
+def test_model_router_rejects_unknown_custom_provider(settings):
+    settings.model = "custom_nope/acme-model"
+    with pytest.raises(UnknownProviderError):
+        ModelRouter(settings).resolve("claude-sonnet-4")
+
+
+def test_model_router_treats_unregistered_custom_ref_as_client_model(settings):
+    # An unregistered custom_-prefixed ref in the client model name is not a
+    # routable provider id; it maps through the configured fallback model just
+    # like any other unknown prefixed model name.
+    resolved = ModelRouter(settings).resolve("custom_absent/model")
+
+    assert resolved.provider_id == "nvidia_nim"
+    assert resolved.provider_model == "fallback-model"

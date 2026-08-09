@@ -1,15 +1,15 @@
 /* ============================================
    admin-animations.js — firecrawl-style motion layer
    ES module loaded after admin.js. Owns decorative
-   motion: the JS-tweened sidebar collapse (hover-peek
-   expansion plus click pin/unpin), the sliding nav pills,
-   toast swipe-to-dismiss, and the scout activity
+   motion: the JS-tweened sidebar collapse (click
+   pin/unpin), the sliding nav pills, toast
+   swipe-to-dismiss, and the scout activity
    dashboard (typed query, decrypting rows, endless
    marquee, count-up stats). Persistent state, inert, and
    localStorage stay owned by admin.js; this module only
-   mirrors the visually expanded state into aria-expanded
-   while the cursor hovers the sidebar. All loops are gated
-   behind prefers-reduced-motion.
+   mirrors the persistent collapsed state into
+   aria-expanded on media-query changes. All loops are
+   gated behind prefers-reduced-motion.
    ============================================ */
 
 /* 0. Guards & constants */
@@ -26,6 +26,7 @@ const SIDEBAR_W = {
   expandMs: 220,
 };
 const LABEL_FADE_END = 120; // px of sidebar width where labels reach opacity 0
+const BUDGET_FADE_END = 170; // px of sidebar width where the footer budget fades out
 const NAV_ITEM_HEIGHT = 40; // px per nav item
 const NAV_PITCH = NAV_ITEM_HEIGHT + 6; // 40px item + 6px grid gap
 const PILL_GLIDE_MS = 160; // hover-pill glide duration, frame-tweened
@@ -82,6 +83,12 @@ function labelOpacityFor(width) {
   return Math.min(1, Math.max(0, (width - LABEL_FADE_END) / range));
 }
 
+/** @param {number} width - current sidebar width in px */
+function budgetOpacityFor(width) {
+  const range = SIDEBAR_W.expanded - BUDGET_FADE_END;
+  return Math.min(1, Math.max(0, (width - BUDGET_FADE_END) / range));
+}
+
 /** @param {string} opacity - CSS opacity value, or "" to clear */
 function setLabelOpacity(opacity) {
   document.querySelectorAll(".nav-label, .brand-text").forEach((label) => {
@@ -119,6 +126,7 @@ function snapSidebar(collapsed) {
     sidebar.style.paddingRight = `${SIDEBAR_W.padCollapsed}px`;
     document.documentElement.style.setProperty("--sidebar-w", `${SIDEBAR_W.collapsed}px`);
     setLabelOpacity("0");
+    setBudgetOpacity("0");
     document.body.classList.add("sidebar-rail");
   } else {
     // Keep the final inline width. A hover-peek leaves
@@ -130,8 +138,15 @@ function snapSidebar(collapsed) {
     sidebar.style.paddingRight = `${SIDEBAR_W.padExpanded}px`;
     document.documentElement.style.setProperty("--sidebar-w", `${SIDEBAR_W.expanded}px`);
     setLabelOpacity("1");
+    setBudgetOpacity("1");
     document.body.classList.remove("sidebar-rail");
   }
+}
+
+/** @param {string} opacity - CSS opacity value, or "" to clear */
+function setBudgetOpacity(opacity) {
+  const budget = document.querySelector(".sidebar-budget");
+  if (budget) budget.style.opacity = opacity;
 }
 
 /** Tween the sidebar width/padding frame by frame. */
@@ -172,6 +187,9 @@ function tweenSidebar(targetCollapsed) {
   const brand = document.querySelector(".brand");
   const brandText = brand ? brand.querySelector(".brand-text") : null;
   const brandTextW = brandText ? brandText.scrollWidth : 0;
+  // Cache the elements that fade so the frame loop never re-queries.
+  const fadeLabels = Array.from(document.querySelectorAll(".nav-label, .brand-text"));
+  const budget = document.querySelector(".sidebar-budget");
   const startedAt = performance.now();
   if (!targetCollapsed) {
     document.body.classList.remove("sidebar-rail");
@@ -185,7 +203,11 @@ function tweenSidebar(targetCollapsed) {
     sidebar.style.paddingLeft = `${pad}px`;
     sidebar.style.paddingRight = `${pad}px`;
     document.documentElement.style.setProperty("--sidebar-w", `${width}px`);
-    setLabelOpacity(String(labelOpacityFor(width)));
+    const labelOpacity = String(labelOpacityFor(width));
+    fadeLabels.forEach((label) => {
+      label.style.opacity = labelOpacity;
+    });
+    if (budget) budget.style.opacity = String(budgetOpacityFor(width));
     navLinks.forEach(({ link, label, labelW, startGap, endGap, startPadLeft, endPadLeft }) => {
       link.style.gap = `${startGap + (endGap - startGap) * eased}px`;
       link.style.paddingLeft = `${startPadLeft + (endPadLeft - startPadLeft) * eased}px`;
@@ -242,43 +264,13 @@ function onSidebarToggleClick() {
 }
 window.__sidebarTweenToggle = onSidebarToggleClick;
 
-/* 1b. Sidebar hover-peek — the collapsed rail expands on
-      cursor enter and collapses on leave, both with the tween.
-      Transient and purely visual: body.sidebar-collapsed,
-      localStorage, and inert stay owned by admin.js (the
-      toggle click is the pin/unpin override). aria-expanded
-      mirrors the visually expanded state while peeking. */
+/* 1b. Sidebar — no hover-peek; toggle click owns collapse/expand */
 const sidebarEl = document.querySelector(".sidebar");
 const sidebarToggleEl = byId("sidebarToggle");
+const sidebarCollapseBtn = byId("sidebarCollapseBtn");
 
-function isSidebarCollapsed() {
-  return document.body.classList.contains("sidebar-collapsed");
-}
-
-/** Expand/collapse for a peek; instant snap when motion is
-    reduced, tween otherwise. */
-function peekSidebar(expanded) {
-  if (sidebarToggleEl) {
-    sidebarToggleEl.setAttribute("aria-expanded", String(expanded));
-  }
-  if (REDUCED_MOTION || !DESKTOP.matches) {
-    snapSidebar(!expanded);
-    return;
-  }
-  tweenSidebar(!expanded);
-}
-
-if (sidebarEl) {
-  sidebarEl.addEventListener("mouseenter", () => {
-    if (!DESKTOP.matches || !isSidebarCollapsed()) return;
-    peekSidebar(true);
-  });
-  sidebarEl.addEventListener("mouseleave", () => {
-    if (!DESKTOP.matches || !isSidebarCollapsed()) return;
-    // Pinned (class removed) → hover-out must not collapse.
-    peekSidebar(false);
-  });
-}
+// No hover-peek logic anymore; removed mouseenter/mouseleave handlers
+// that would expand/collapse on cursor enter/leave
 
 /* 2. Section nav — one shared active pill + one shared hover
       pill, both absolute and sliding between items. The hover
@@ -462,9 +454,77 @@ if (sectionNav) {
     const link = event.target.closest(".nav-link");
     if (!link) return;
     const index = navLinks().indexOf(link);
-    if (index >= 0) glidePillTo(index);
+    if (index < 0) return;
+    // The active item already carries its own orange pill — gliding
+    // the grey hover tint onto it would paint over that highlight.
+    if (index === activeNavIndex()) {
+      hoverPill.style.opacity = "0";
+      return;
+    }
+    hoverPill.style.opacity = "";
+    glidePillTo(index);
   });
 }
+
+/* 2b. Usage daily table — per-row hover tint, tweened with the
+      same easing/duration as the sidebar hover pill. Rows are
+      re-rendered on every usage load (unlike the fixed nav list),
+      so this delegates from the scroll container instead of
+      tracking individual row elements. */
+const ROW_TINT_MS = PILL_GLIDE_MS;
+const rowTweens = new WeakMap(); // tr -> { id, from, to, start }
+
+function tickRowTint(tr) {
+  const tween = rowTweens.get(tr);
+  if (!tween) return;
+  const progress = Math.max(0, Math.min(1, (performance.now() - tween.start) / ROW_TINT_MS));
+  const eased = easeOutQuart(progress);
+  const alpha = tween.from + (tween.to - tween.from) * eased;
+  tr.style.backgroundColor = alpha <= 0.001 ? "" : `rgba(28, 25, 23, ${alpha.toFixed(4)})`;
+  if (progress < 1) {
+    tween.id = requestAnimationFrame(() => tickRowTint(tr));
+    rowTweens.set(tr, tween);
+  } else {
+    rowTweens.delete(tr);
+    if (alpha <= 0.001) tr.style.backgroundColor = "";
+  }
+}
+
+function tweenRowTint(tr, to) {
+  const prev = rowTweens.get(tr);
+  if (prev) cancelAnimationFrame(prev.id);
+  if (REDUCED_MOTION) {
+    tr.style.backgroundColor = to <= 0.001 ? "" : `rgba(28, 25, 23, ${to})`;
+    rowTweens.delete(tr);
+    return;
+  }
+  const current = tr.style.backgroundColor
+    ? Number(tr.style.backgroundColor.match(/[\d.]+(?=\))/)?.[0] || 0)
+    : 0;
+  const tween = { id: 0, from: current, to, start: performance.now() };
+  tween.id = requestAnimationFrame(() => tickRowTint(tr));
+  rowTweens.set(tr, tween);
+}
+
+function usageTableRowFromEvent(event) {
+  const tr = event.target.closest("tbody tr");
+  if (!tr || tr.classList.contains("usage-table-total")) return null;
+  return tr;
+}
+
+document.addEventListener("pointerover", (event) => {
+  if (!event.target.closest(".usage-table-scroll")) return;
+  const tr = usageTableRowFromEvent(event);
+  if (!tr || tr.contains(event.relatedTarget)) return;
+  tweenRowTint(tr, 0.045);
+});
+
+document.addEventListener("pointerout", (event) => {
+  if (!event.target.closest(".usage-table-scroll")) return;
+  const tr = usageTableRowFromEvent(event);
+  if (!tr || tr.contains(event.relatedTarget)) return;
+  tweenRowTint(tr, 0);
+});
 
 /* 3. Toasts — swipe-to-dismiss with springy snap-back. */
 const toastContainer = byId("toastContainer");

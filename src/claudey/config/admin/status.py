@@ -3,6 +3,7 @@
 from collections.abc import Mapping
 from typing import Any
 
+from claudey.config.custom_providers import list_custom_providers
 from claudey.config.provider_catalog import (
     PROVIDER_CATALOG,
     ProviderAuthKind,
@@ -76,6 +77,21 @@ def provider_config_status(
                     else "Missing configuration"
                 ),
                 "configuration": configuration,
+            }
+        )
+
+    for record in list_custom_providers():
+        configured = bool(record.api_key.strip())
+        statuses.append(
+            {
+                "provider_id": record.provider_id,
+                "display_name": record.display_name,
+                "kind": "custom",
+                "compatible": record.compatible,
+                "status": "configured" if configured else "missing_key",
+                "label": "Configured" if configured else "Missing key",
+                "base_url": record.base_url,
+                "created_at": record.created_at,
             }
         )
     return statuses

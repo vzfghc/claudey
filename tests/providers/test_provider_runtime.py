@@ -128,8 +128,70 @@ def _make_settings(**overrides):
     return mock
 
 
+def test_create_provider_for_custom_openai_uses_openai_chat_transport(
+    monkeypatch, tmp_path
+):
+    from claudey.config.custom_providers import (
+        CUSTOM_PROVIDERS_PATH_ENV,
+        CustomProviderRecord,
+        custom_provider_store,
+    )
+    from claudey.providers.anthropic.messages import AnthropicMessagesProvider
+
+    monkeypatch.setenv(
+        CUSTOM_PROVIDERS_PATH_ENV,
+        str(tmp_path / "custom-providers.json"),
+    )
+    custom_provider_store().upsert(
+        CustomProviderRecord(
+            provider_id="custom_acme",
+            display_name="Acme",
+            compatible="openai",
+            base_url="https://api.acme.example/v1",
+            api_key="sk-acme",
+            created_at="2026-01-01T00:00:00+00:00",
+        )
+    )
+
+    with patch("claudey.providers.openai_chat.provider.AsyncOpenAI"):
+        provider = create_provider("custom_acme", _make_settings())
+
+    assert isinstance(provider, OpenAIChatProvider)
+    assert not isinstance(provider, AnthropicMessagesProvider)
+
+
+def test_create_provider_for_custom_anthropic_uses_messages_passthrough(
+    monkeypatch, tmp_path
+):
+    from claudey.config.custom_providers import (
+        CUSTOM_PROVIDERS_PATH_ENV,
+        CustomProviderRecord,
+        custom_provider_store,
+    )
+    from claudey.providers.anthropic.messages import AnthropicMessagesProvider
+
+    monkeypatch.setenv(
+        CUSTOM_PROVIDERS_PATH_ENV,
+        str(tmp_path / "custom-providers.json"),
+    )
+    custom_provider_store().upsert(
+        CustomProviderRecord(
+            provider_id="custom_mini",
+            display_name="MiniMax",
+            compatible="anthropic",
+            base_url="https://api.minimax.example/anthropic",
+            api_key="sk-mini",
+            created_at="2026-01-01T00:00:00+00:00",
+        )
+    )
+
+    provider = create_provider("custom_mini", _make_settings())
+
+    assert isinstance(provider, AnthropicMessagesProvider)
+
+
 def test_importing_runtime_does_not_eager_load_other_adapters() -> None:
-    """Runtime metadata must not import every provider adapter up front."""
+    """Runtime import must not import every provider adapter up front."""
     code = (
         "import sys\n"
         "import claudey.providers.runtime\n"
