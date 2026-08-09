@@ -240,13 +240,13 @@ Per-provider state machine (**Healthy / down / recovery / auth-err / locked**, r
 
 ## Task list (draft)
 
-- [ ] P2-A1 Add `ovhcloud` provider (catalog, settings, env, profile, factory, tests)
-- [ ] P2-A2 Add `scaleway` provider (same)
-- [ ] P2-A3 Add `qwen` (DashScope) provider (same)
-- [ ] P2-A4 Add `llm7` keyless provider (same; verify static_credential + optional key)
-- [ ] P2-A5 Add `routeway` provider (same)
-- [ ] P2-A6 Add `novita` provider (same)
-- [ ] P2-A7 Contract/boundary tests + README table + smoke (keyless only)
+- [x] P2-A1 Add `ovhcloud` provider (catalog, settings, env, profile, factory, tests)
+- [x] P2-A2 Add `scaleway` provider (same)
+- [x] P2-A3 Add `qwen` (DashScope) provider (same)
+- [x] P2-A4 Add `llm7` keyless provider (same; verify static_credential + optional key)
+- [x] P2-A5 Add `routeway` provider (same)
+- [x] P2-A6 Add `novita` provider (same)
+- [x] P2-A7 Contract/boundary tests + README table + smoke (keyless only)
 - [ ] P0-B1 `config/combos.py` store + records + validation + `combo_ids()`
 - [ ] P0-B2 Chain grammar: inline + `@combo:` parsing in `model_refs.py` + settings validators
 - [ ] P0-B3 `routing.py` `resolve_chain()` + discovery warming for all nodes
