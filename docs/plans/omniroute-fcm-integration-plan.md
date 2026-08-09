@@ -253,7 +253,7 @@ Per-provider state machine (**Healthy / down / recovery / auth-err / locked**, r
 - [x] P0-B4 `health.py` provider state machine + LKG-P + model-lock TTL + day-0 validation pass
 - [x] P0-B5 `failover.py` executor + eligibility + streaming-window guard
 - [x] P0-B6 Wire Messages/Responses handlers; trace + decision fields
-- [ ] P0-B7 Combos admin CRUD endpoints + Admin UI panel + tests
+- [x] P0-B7 Combos admin CRUD endpoints + Admin UI panel + tests
 - [ ] P0-B8 Integration/contract tests + README docs
 - [ ] P1-C1 Auth-failure quarantine latch
 - [ ] P1-C2 FCM normalizer audit + regression tests

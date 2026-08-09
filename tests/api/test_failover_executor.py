@@ -1,6 +1,6 @@
 """Failover executor chain traversal + eligibility + streaming-window guards."""
 
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Iterable
 from typing import Any
 from unittest.mock import MagicMock
 
@@ -67,7 +67,7 @@ def _request() -> MessagesRequest:
 
 
 def _resolution(
-    nodes: list[tuple[str, str]] = (_NODE_A, _NODE_B),
+    nodes: Iterable[tuple[str, str]] = (_NODE_A, _NODE_B),
 ) -> ChainResolution:
     chain = tuple(
         ResolvedModel(

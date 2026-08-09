@@ -241,6 +241,7 @@ async function load() {
   renderServerStatus();
   byId("configPath").textContent = config.paths.managed;
   await refreshConnectedAccounts();
+  await renderCombos();
   await hydrateModelOptions();
   await validate(false);
   await refreshLocalStatus();
@@ -2946,11 +2947,255 @@ async function removeCustomProvider(provider) {
   }
 }
 
+// Combo (fallback-chain) management
+async function renderCombos() {
+  const grid = byId("comboGrid");
+  if (!grid) return;
+  let combos = [];
+  try {
+    const data = await api("/admin/api/combos");
+    combos = data.combos || [];
+  } catch (error) {
+    grid.innerHTML = "";
+    const msg = document.createElement("p");
+    msg.className = "combo-empty";
+    msg.textContent = `Could not load fallback combos: ${error.message}`;
+    grid.appendChild(msg);
+    return;
+  }
+  grid.innerHTML = "";
+  byId("comboStrip").hidden = false;
+  if (combos.length === 0) {
+    const empty = document.createElement("p");
+    empty.className = "combo-empty";
+    empty.textContent =
+      "No fallback combos yet. Add one to reference it from tier settings with @combo:id.";
+    grid.appendChild(empty);
+    return;
+  }
+  combos.forEach((combo) => {
+    const card = document.createElement("article");
+    card.className = "provider-card combo-card";
+    card.dataset.combo = combo.combo_id;
+
+    const title = document.createElement("div");
+    title.className = "provider-title";
+    const name = document.createElement("strong");
+    name.textContent = combo.display_name;
+    const badge = document.createElement("span");
+    badge.className = "custom-compatible-badge";
+    badge.textContent = combo.enabled ? "Enabled" : "Disabled";
+    name.after(badge);
+    title.appendChild(name);
+
+    const meta = document.createElement("div");
+    meta.className = "combo-nodes";
+    const nodeCount = `${(combo.nodes || []).length} node${combo.nodes.length === 1 ? "" : "s"}`;
+    meta.textContent = `${nodeCount} · ${combo.nodes.map((n) => n.provider_model_ref).join(" → ")}`;
+    meta.setAttribute(
+      "title",
+      (combo.nodes || [])
+        .map(
+          (n) =>
+            `${n.enabled ? "" : "(disabled) "}${n.provider_model_ref}` +
+            (n.priority ? ` [p${n.priority}]` : ""),
+        )
+        .join(", "),
+    );
+    title.appendChild(meta);
+
+    const actions = document.createElement("div");
+    actions.className = "provider-actions";
+    const edit = document.createElement("button");
+    edit.type = "button";
+    edit.className = "secondary-button";
+    edit.textContent = "Edit";
+    edit.addEventListener("click", () => showComboDialog(combo));
+    const remove = document.createElement("button");
+    remove.type = "button";
+    remove.className = "secondary-button";
+    remove.textContent = "Delete";
+    remove.addEventListener("click", () => removeCombo(combo));
+    actions.append(edit, remove);
+
+    card.append(title, actions);
+    card.style.setProperty("--card-index", grid.children.length);
+    grid.appendChild(card);
+  });
+}
+
+function comboNodeRows(combo) {
+  const nodes = (combo && combo.nodes) || [];
+  if (nodes.length > 0) return nodes;
+  return [{ provider_model_ref: "", enabled: true, priority: 0 }];
+}
+
+function addComboNodeRow(rows) {
+  const wrapper = document.createElement("div");
+  wrapper.className = "combo-node-row";
+  wrapper.innerHTML = `
+    <input type="text" class="combo-node-ref" placeholder="provider/model" aria-label="Provider model reference" />
+    <label class="combo-node-toggle">
+      <input type="checkbox" class="combo-node-enabled" checked />
+      enabled
+    </label>
+    <input type="number" class="combo-node-priority" value="0" min="0" aria-label="Priority" />
+    <button type="button" class="combo-node-remove secondary-button" aria-label="Remove node">×</button>
+  `;
+  wrapper.querySelector(".combo-node-remove").addEventListener("click", () => {
+    wrapper.remove();
+  });
+  rows.appendChild(wrapper);
+}
+
+function showComboDialog(combo) {
+  const dialog = document.createElement("dialog");
+  dialog.className = "custom-provider-dialog combo-dialog";
+  const isEdit = Boolean(combo && combo.combo_id);
+  dialog.innerHTML = `
+    <form method="dialog">
+      <h3>${isEdit ? "Edit" : "Add"} Fallback Combo</h3>
+      <div class="field">
+        <label for="comboName">Combo Name</label>
+        <input type="text" id="comboName" placeholder="e.g. Flagship" value="${isEdit ? escapeHtml(combo.display_name) : ""}" required />
+      </div>
+      <div class="field">
+        <label for="comboNodes">Fallback chain (tried in order, lowest priority first)</label>
+        <div id="comboNodeRows" class="combo-node-rows"></div>
+        <button type="button" id="addComboNodeBtn" class="secondary-button">Add node</button>
+      </div>
+      <label class="combo-node-toggle combo-enabled-toggle">
+        <input type="checkbox" id="comboEnabled" ${!isEdit || combo.enabled ? "checked" : ""} />
+        combo enabled
+      </label>
+      <div class="dialog-actions">
+        <button type="button" class="secondary-button" id="comboValidateBtn">Validate nodes</button>
+        <div id="comboValidateResult" class="custom-provider-check-result" hidden></div>
+        <button type="button" class="secondary-button" onclick="this.closest('dialog').close()">Cancel</button>
+        <button type="button" id="comboSaveBtn" class="primary-button">${isEdit ? "Save Changes" : "Add Combo"}</button>
+      </div>
+    </form>
+  `;
+
+  const rows = dialog.querySelector("#comboNodeRows");
+  comboNodeRows(combo).forEach((node) => {
+    addComboNodeRow(rows);
+    const row = rows.lastElementChild;
+    row.querySelector(".combo-node-ref").value = node.provider_model_ref;
+    row.querySelector(".combo-node-enabled").checked = node.enabled;
+    row.querySelector(".combo-node-priority").value = node.priority;
+  });
+  dialog.querySelector("#addComboNodeBtn").addEventListener("click", () => {
+    addComboNodeRow(rows);
+  });
+
+  const collectNodes = () =>
+    Array.from(rows.querySelectorAll(".combo-node-row"))
+      .map((row) => ({
+        provider_model_ref: row.querySelector(".combo-node-ref").value.trim(),
+        enabled: row.querySelector(".combo-node-enabled").checked,
+        priority: Number(row.querySelector(".combo-node-priority").value) || 0,
+      }))
+      .filter((node) => node.provider_model_ref.length > 0);
+
+  const validateResult = dialog.querySelector("#comboValidateResult");
+  const showValidation = (text, className) => {
+    validateResult.hidden = false;
+    validateResult.textContent = text;
+    validateResult.className = `custom-provider-check-result ${className}`;
+  };
+
+  dialog
+    .querySelector("#comboValidateBtn")
+    .addEventListener("click", async () => {
+      const name = dialog.querySelector("#comboName").value.trim();
+      const nodes = collectNodes();
+      validateResult.hidden = true;
+      try {
+        const data = await api("/admin/api/combos/validate", {
+          method: "POST",
+          body: JSON.stringify({ display_name: name, nodes, enabled: true }),
+        });
+        if (data.valid) {
+          showValidation("Valid — nodes are well-formed provider/model refs", "valid");
+        } else {
+          showValidation(`Invalid — ${data.error || "bad node reference"}`, "invalid");
+        }
+      } catch (error) {
+        showValidation(`Invalid — ${error.message}`, "invalid");
+      }
+    });
+
+  dialog.querySelector("#comboSaveBtn").addEventListener("click", async () => {
+    const name = dialog.querySelector("#comboName").value.trim();
+    const nodes = collectNodes();
+    if (!name) {
+      showMessage("A combo name is required", "error");
+      return;
+    }
+    if (nodes.length === 0) {
+      showMessage("Add at least one model node with a provider/model reference", "error");
+      return;
+    }
+    const payload = {
+      display_name: name,
+      nodes,
+      enabled: dialog.querySelector("#comboEnabled").checked,
+    };
+    try {
+      const result = await api(
+        isEdit ? `/admin/api/combos/${combo.combo_id}` : "/admin/api/combos",
+        {
+          method: isEdit ? "PUT" : "POST",
+          body: JSON.stringify(payload),
+        },
+      );
+      showMessage(result.message || `Combo ${name} saved`, "success");
+      dialog.close();
+      await renderCombos();
+    } catch (error) {
+      showMessage(`Failed to save combo: ${error.message}`, "error");
+    }
+  });
+
+  document.body.appendChild(dialog);
+  dialog.showModal();
+}
+
+async function removeCombo(combo) {
+  if (!window.confirm(`Delete fallback combo "${combo.display_name}"?`)) return;
+  try {
+    const result = await api(`/admin/api/combos/${combo.combo_id}`, {
+      method: "DELETE",
+    });
+    showMessage(result.message || "Combo deleted", "success");
+    await renderCombos();
+  } catch (error) {
+    showMessage(`Failed to delete combo: ${error.message}`, "error");
+  }
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 // Add provider buttons
 const addOpenAIProviderBtn = byId("addOpenAIProviderBtn");
 if (addOpenAIProviderBtn) {
   addOpenAIProviderBtn.addEventListener("click", () => {
     showCustomProviderDialog('openai');
+  });
+}
+
+const addComboBtn = byId("addComboBtn");
+if (addComboBtn) {
+  addComboBtn.addEventListener("click", () => {
+    showComboDialog(undefined);
   });
 }
 

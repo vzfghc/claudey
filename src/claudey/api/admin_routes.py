@@ -19,6 +19,14 @@ from claudey.config import custom_provider_check
 from claudey.config.admin.manifest import FIELD_BY_KEY
 from claudey.config.admin.persistence import validate_updates
 from claudey.config.admin.values import load_config_response
+from claudey.config.combos import (
+    ComboNode,
+    ComboRecord,
+    combo_ids,
+    combo_store,
+    make_unique_combo_id,
+    validate_provider_model_ref,
+)
 from claudey.config.custom_providers import (
     CustomProviderRecord,
     custom_provider_ids,
@@ -78,6 +86,42 @@ class ProviderValidatePayload(BaseModel):
     api_key: str = Field(default="")
     type: str = Field(default="openai", description="wire type: openai | anthropic")
     model_id: str | None = Field(default=None)
+
+
+class ComboNodePayload(BaseModel):
+    """One hop of an admin-managed combo (routing metadata; no secrets)."""
+
+    provider_model_ref: str = Field(default="")
+    enabled: bool = True
+    priority: int = Field(default=0, ge=0)
+
+
+class ComboPayload(BaseModel):
+    """Create/update payload for an admin-managed combo (no secrets)."""
+
+    display_name: str = Field(default="", min_length=1)
+    nodes: list[ComboNodePayload] = Field(default_factory=list)
+    enabled: bool = True
+
+
+def _build_combo_nodes(
+    payload_nodes: list[ComboNodePayload],
+) -> tuple[ComboNode, ...]:
+    """Validate and build combo nodes from a payload."""
+    nodes: list[ComboNode] = []
+    for item in payload_nodes:
+        try:
+            provider_model_ref = validate_provider_model_ref(item.provider_model_ref)
+        except ValueError as error:
+            raise HTTPException(status_code=400, detail=str(error)) from None
+        nodes.append(
+            ComboNode(
+                provider_model_ref=provider_model_ref,
+                enabled=item.enabled,
+                priority=item.priority,
+            )
+        )
+    return tuple(nodes)
 
 
 def _is_loopback_host(host: str | None) -> bool:
@@ -473,6 +517,111 @@ async def delete_custom_provider(
     return _no_store(
         {"success": True, "message": f"Custom provider '{provider_id}' deleted"}
     )
+
+
+@router.get("/admin/api/combos")
+async def list_combos(request: Request) -> JSONResponse:
+    """List admin-managed model combos (routing metadata; no secrets)."""
+    require_loopback_admin(request)
+    records = combo_store().all_records()
+    return _no_store({"combos": [record.public_payload() for record in records]})
+
+
+@router.post("/admin/api/combos")
+async def create_combo(payload: ComboPayload, request: Request) -> JSONResponse:
+    """Register a named model combo and persist it (no secrets)."""
+    require_loopback_admin(request)
+    name = payload.display_name.strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Name is required")
+    if not payload.nodes:
+        raise HTTPException(
+            status_code=400, detail="At least one model node is required"
+        )
+    nodes = _build_combo_nodes(payload.nodes)
+    store = combo_store()
+    combo_id = make_unique_combo_id(name, set(combo_ids()))
+    record = ComboRecord(
+        combo_id=combo_id,
+        display_name=name,
+        nodes=nodes,
+        enabled=payload.enabled,
+        created_at=datetime.now(UTC).isoformat(),
+    )
+    store.upsert(record)
+    return _no_store(
+        {
+            "success": True,
+            "combo_id": combo_id,
+            "message": f"Combo '{name}' created",
+            **record.public_payload(),
+        }
+    )
+
+
+@router.put("/admin/api/combos/{combo_id}")
+async def update_combo(
+    combo_id: str,
+    payload: ComboPayload,
+    request: Request,
+) -> JSONResponse:
+    """Replace an existing combo's definition and persist the change."""
+    require_loopback_admin(request)
+    store = combo_store()
+    existing = store.find(combo_id)
+    if existing is None:
+        raise HTTPException(status_code=404, detail="Combo not found")
+    name = payload.display_name.strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Name is required")
+    if not payload.nodes:
+        raise HTTPException(
+            status_code=400, detail="At least one model node is required"
+        )
+    record = ComboRecord(
+        combo_id=combo_id,
+        display_name=name,
+        nodes=_build_combo_nodes(payload.nodes),
+        enabled=payload.enabled,
+        created_at=existing.created_at,
+    )
+    store.upsert(record)
+    return _no_store(
+        {
+            "success": True,
+            "combo_id": combo_id,
+            "message": f"Combo '{name}' updated",
+            **record.public_payload(),
+        }
+    )
+
+
+@router.post("/admin/api/combos/validate")
+async def validate_combo(payload: ComboPayload, request: Request) -> JSONResponse:
+    """Validate a combo definition without persisting it."""
+    require_loopback_admin(request)
+    name = payload.display_name.strip()
+    if not name:
+        return _no_store({"valid": False, "error": "Name is required."})
+    if not payload.nodes:
+        return _no_store(
+            {"valid": False, "error": "At least one model node is required."}
+        )
+    try:
+        _build_combo_nodes(payload.nodes)
+    except HTTPException as error:
+        return _no_store({"valid": False, "error": error.detail})
+    return _no_store({"valid": True, "error": None})
+
+
+@router.delete("/admin/api/combos/{combo_id}")
+async def delete_combo(combo_id: str, request: Request) -> JSONResponse:
+    """Delete an admin-managed combo and persist the removal."""
+    require_loopback_admin(request)
+    removed = combo_store().remove(combo_id)
+    if not removed:
+        raise HTTPException(status_code=404, detail="Combo not found")
+    return _no_store({"success": True, "message": f"Combo '{combo_id}' deleted"})
 
 
 def _no_store(payload: Any) -> JSONResponse:

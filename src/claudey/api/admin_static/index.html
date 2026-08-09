@@ -166,6 +166,28 @@
               </div>
               <div id="providerGrid" class="provider-grid"></div>
             </section>
+            <section
+              id="comboStrip"
+              class="provider-strip"
+              aria-label="Model fallback combos"
+            >
+              <div class="strip-header">
+                <div>
+                  <h3>Fallback combos</h3>
+                  <p>
+                    Group models into ordered fallback chains referenced from
+                    tier settings as <code>@combo:id</code>. Routing metadata
+                    only — no secrets are stored.
+                  </p>
+                </div>
+                <div class="provider-actions">
+                  <button id="addComboBtn" class="secondary-button" type="button">
+                    Add combo
+                  </button>
+                </div>
+              </div>
+              <div id="comboGrid" class="provider-grid"></div>
+            </section>
             <div
               id="providersSections"
               class="form-sections"
