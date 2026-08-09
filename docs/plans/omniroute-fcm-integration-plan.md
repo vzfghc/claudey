@@ -247,7 +247,7 @@ Per-provider state machine (**Healthy / down / recovery / auth-err / locked**, r
 - [x] P2-A5 Add `routeway` provider (same)
 - [x] P2-A6 Add `novita` provider (same)
 - [x] P2-A7 Contract/boundary tests + README table + smoke (keyless only)
-- [ ] P0-B1 `config/combos.py` store + records + validation + `combo_ids()`
+- [x] P0-B1 `config/combos.py` store + records + validation + `combo_ids()`
 - [ ] P0-B2 Chain grammar: inline + `@combo:` parsing in `model_refs.py` + settings validators
 - [ ] P0-B3 `routing.py` `resolve_chain()` + discovery warming for all nodes
 - [ ] P0-B4 `health.py` provider state machine + LKG-P + model-lock TTL + day-0 validation pass
