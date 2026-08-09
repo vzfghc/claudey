@@ -6,7 +6,11 @@ from loguru import logger
 
 from claudey.application.errors import UnknownProviderError
 from claudey.config.custom_providers import custom_provider_ids
-from claudey.config.model_refs import parse_model_name, parse_provider_type
+from claudey.config.model_refs import (
+    parse_chain_refs,
+    parse_model_name,
+    parse_provider_type,
+)
 from claudey.config.provider_catalog import (
     PROVIDER_CATALOG,
     SUPPORTED_PROVIDER_IDS,
@@ -60,6 +64,25 @@ class RoutedMessagesRequest:
     request: MessagesRequest
     resolved: ResolvedModel
     reasoning: ReasoningPolicy
+
+
+@dataclass(frozen=True, slots=True)
+class ChainResolution:
+    """An ordered failover chain for one incoming model name.
+
+    ``chain[0]`` is the primary node, mirroring ``resolve()``. All nodes share the
+    gateway ``original_model`` and the primary node's reasoning preference; the
+    reasoning *policy* is resolved once from the primary (chains are a routing
+    concern, not a reasoning concern).
+    """
+
+    chain: tuple[ResolvedModel, ...]
+    reasoning: ReasoningPolicy | None
+
+    @property
+    def primary(self) -> ResolvedModel:
+        """Return the primary (first) chain node."""
+        return self.chain[0]
 
 
 @dataclass(frozen=True, slots=True)
@@ -149,14 +172,75 @@ class ModelRouter:
         return provider_id, provider_model, False
 
     def _resolve_model_ref(self, claude_model_name: str) -> str:
-        """Resolve a Claude model name to the configured provider/model ref."""
+        """Resolve a Claude model name to the primary configured provider/model ref.
 
+        The primary node is the first item of the tier's chain (a single ref, the
+        first node of an inline chain, or the top-priority combo node).
+        """
+        return self._resolve_chain_refs(claude_model_name)[0]
+
+    def _resolve_chain_refs(self, claude_model_name: str) -> tuple[str, ...]:
+        """Return the ordered provider/model refs for a tier chain.
+
+        Combines the matched route's (or default) tier setting — expanded through
+        the chain grammar — with ``global_fallback_model`` appended last when set
+        and not already present. Direct provider/model overrides are detected by
+        the caller, not here.
+        """
+        value = self._chain_model_setting(claude_model_name)
+        refs = list(parse_chain_refs(value))
+        fallback = getattr(self._settings, "global_fallback_model", None)
+        if fallback and fallback not in refs:
+            refs.append(fallback)
+        return tuple(refs)
+
+    def _chain_model_setting(self, claude_model_name: str) -> str:
+        """Return the raw tier setting value (single ref, chain, or @combo:)."""
         route = self._matched_route(claude_model_name)
         if route is not None:
             model = getattr(self._settings, route[1])
             if isinstance(model, str):
                 return model
         return self._settings.model
+
+    def resolve_chain(
+        self,
+        claude_model_name: str,
+        *,
+        request: MessagesRequest | None = None,
+    ) -> ChainResolution:
+        """Return the ordered failover chain for a Claude model name.
+
+        For explicit provider/model overrides (a direct provider id or gateway-
+        encoded id) the chain is a single node, matching ``resolve()``. Otherwise
+        it is the tier's expanded chain (inline or ``@combo:``) plus the global
+        fallback as a terminal hop. Reasoning is resolved once from the primary
+        node; pass ``request`` to derive the concrete :class:`ReasoningPolicy`.
+        """
+        primary = self.resolve(claude_model_name)
+        if primary.provider_model_ref == claude_model_name:
+            refs = (primary.provider_model_ref,)
+        else:
+            refs = self._resolve_chain_refs(claude_model_name)
+
+        chain = tuple(
+            ResolvedModel(
+                original_model=claude_model_name,
+                provider_id=parse_provider_type(ref),
+                provider_model=strip_context_window_suffix(parse_model_name(ref)),
+                provider_model_ref=ref,
+                reasoning_preference=primary.reasoning_preference,
+            )
+            for ref in refs
+        )
+
+        reasoning: ReasoningPolicy | None = None
+        if request is not None:
+            routed = request.model_copy(
+                update={"model": primary.provider_model}, deep=True
+            )
+            reasoning = resolve_reasoning_policy(routed, primary.reasoning_preference)
+        return ChainResolution(chain=chain, reasoning=reasoning)
 
     def _resolve_reasoning_preference(
         self, claude_model_name: str

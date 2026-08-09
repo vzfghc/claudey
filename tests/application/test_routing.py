@@ -4,6 +4,12 @@ import pytest
 
 from claudey.application.errors import UnknownProviderError
 from claudey.application.routing import ModelRouter
+from claudey.config.combos import (
+    COMBOS_PATH_ENV,
+    ComboNode,
+    ComboRecord,
+    combo_store,
+)
 from claudey.config.custom_providers import (
     CUSTOM_PROVIDERS_PATH_ENV,
     CustomProviderRecord,
@@ -39,6 +45,23 @@ def custom_provider(monkeypatch, tmp_path):
     )
     yield
     store.remove("custom_acme")
+
+
+@pytest.fixture
+def seeded_combo(monkeypatch, tmp_path):
+    """Seed one ``flagship`` combo in an isolated-path store."""
+    monkeypatch.setenv(COMBOS_PATH_ENV, str(tmp_path / "combos.json"))
+    combo_store().upsert(
+        ComboRecord(
+            combo_id="flagship",
+            display_name="Flagship",
+            nodes=(
+                ComboNode("open_router/**/deepseek/deepseek-r1", priority=1),
+                ComboNode("llm7/meta-llama/llama-3.1-70b", priority=0),
+            ),
+        )
+    )
+    yield
 
 
 @pytest.fixture
@@ -399,3 +422,104 @@ def test_model_router_treats_unregistered_custom_ref_as_client_model(settings):
 
     assert resolved.provider_id == "nvidia_nim"
     assert resolved.provider_model == "fallback-model"
+
+
+# --- resolve_chain (failover chains) ---
+
+
+def _chain_refs(settings, model_name):
+    return [
+        node.provider_model_ref
+        for node in ModelRouter(settings).resolve_chain(model_name).chain
+    ]
+
+
+def test_resolve_chain_single_ref_is_single_node(settings):
+    chain = ModelRouter(settings).resolve_chain("claude-3-opus")
+
+    assert [node.provider_model_ref for node in chain.chain] == [
+        "nvidia_nim/fallback-model"
+    ]
+    assert chain.primary is chain.chain[0]
+    assert chain.primary.provider_id == "nvidia_nim"
+    assert chain.primary.original_model == "claude-3-opus"
+
+
+def test_resolve_chain_expands_inline_chain(settings):
+    settings.model_opus = "open_router/a,novita/b"
+
+    assert _chain_refs(settings, "claude-opus-4-20250514") == [
+        "open_router/a",
+        "novita/b",
+    ]
+    chain = ModelRouter(settings).resolve_chain("claude-opus-4-20250514")
+    assert chain.primary.provider_id == "open_router"
+    assert chain.primary.provider_model == "a"
+    assert all(node.original_model == "claude-opus-4-20250514" for node in chain.chain)
+
+
+def test_resolve_chain_appends_global_fallback_last(settings):
+    settings.global_fallback_model = "open_router/openrouter/free"
+
+    assert _chain_refs(settings, "claude-3-opus") == [
+        "nvidia_nim/fallback-model",
+        "open_router/openrouter/free",
+    ]
+
+
+def test_resolve_chain_inline_plus_fallback(settings):
+    settings.model_haiku = "open_router/a,novita/b"
+    settings.global_fallback_model = "deepseek/deepseek-chat"
+
+    assert _chain_refs(settings, "claude-3-haiku-20240307") == [
+        "open_router/a",
+        "novita/b",
+        "deepseek/deepseek-chat",
+    ]
+
+
+def test_resolve_chain_expands_combo(settings, seeded_combo):
+    settings.model_sonnet = "@combo:flagship"
+
+    assert _chain_refs(settings, "claude-sonnet-4-20250514") == [
+        "llm7/meta-llama/llama-3.1-70b",  # priority 0 first
+        "open_router/**/deepseek/deepseek-r1",
+    ]
+
+
+def test_resolve_chain_combo_plus_fallback(settings, seeded_combo):
+    settings.model_sonnet = "@combo:flagship"
+    settings.global_fallback_model = "nvidia_nim/fallback-model"
+
+    assert _chain_refs(settings, "claude-sonnet-4-20250514") == [
+        "llm7/meta-llama/llama-3.1-70b",
+        "open_router/**/deepseek/deepseek-r1",
+        "nvidia_nim/fallback-model",
+    ]
+
+
+def test_resolve_chain_direct_override_is_single_node(settings):
+    assert _chain_refs(settings, "deepseek/deepseek-chat") == ["deepseek/deepseek-chat"]
+
+
+def test_resolve_chain_reasoning_derived_from_primary_when_request_given(settings):
+    settings.reasoning_policy = ReasoningPreference.HIGH
+    request = MessagesRequest(
+        model="claude-opus-4-20250514",
+        max_tokens=100,
+        messages=[Message(role="user", content="hello")],
+    )
+
+    resolution = ModelRouter(settings).resolve_chain(
+        "claude-opus-4-20250514", request=request
+    )
+
+    assert resolution.reasoning is not None
+    assert resolution.reasoning.effort is ReasoningEffort.HIGH
+    assert request.model == "claude-opus-4-20250514"
+
+
+def test_resolve_chain_without_request_has_no_reasoning_policy(settings):
+    resolution = ModelRouter(settings).resolve_chain("claude-3-opus")
+
+    assert resolution.reasoning is None
