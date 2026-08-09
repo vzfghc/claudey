@@ -15,6 +15,7 @@ from claudey.core.failures import ExecutionFailure, FailureKind
 from claudey.providers.failure_policy import (
     ProviderRecoveryExhausted,
     classify_provider_failure,
+    is_auth_lockout_error,
     is_retryable_provider_error,
     retryable_upstream_status,
 )
@@ -453,3 +454,60 @@ def test_shared_recovery_exhaustion_preserves_last_provider_failure() -> None:
     assert "Request ID: req_exhausted" in failure.message
     assert retryable_upstream_status(exhausted) is None
     assert not is_retryable_provider_error(exhausted)
+
+
+@pytest.mark.parametrize(
+    "factory",
+    [
+        lambda: _openai_status_error(
+            openai.AuthenticationError,
+            status_code=401,
+            message="Unauthorized",
+        ),
+        lambda: _openai_status_error(
+            openai.PermissionDeniedError,
+            status_code=403,
+            message="Forbidden",
+        ),
+        lambda: _http_status_error(401, "Unauthorized"),
+        lambda: _http_status_error(403, "Forbidden"),
+        lambda: ExecutionFailure(
+            kind=FailureKind.AUTHENTICATION,
+            status_code=401,
+            message="auth",
+            retryable=False,
+        ),
+        lambda: ExecutionFailure(
+            kind=FailureKind.PERMISSION,
+            status_code=403,
+            message="permission",
+            retryable=False,
+        ),
+    ],
+)
+def test_auth_lockout_error_classifies_permanent_lockouts(factory) -> None:
+    assert is_auth_lockout_error(factory())
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        _http_status_error(400, "Bad request"),
+        _http_status_error(429, "Too many requests"),
+        _http_status_error(503, "Overloaded"),
+        ExecutionFailure(
+            kind=FailureKind.RATE_LIMIT,
+            status_code=429,
+            message="rate limited",
+            retryable=True,
+        ),
+        ExecutionFailure(
+            kind=FailureKind.INVALID_REQUEST,
+            status_code=400,
+            message="invalid",
+            retryable=False,
+        ),
+    ],
+)
+def test_auth_lockout_error_ignores_transient_and_shape_failures(error) -> None:
+    assert not is_auth_lockout_error(error)

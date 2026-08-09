@@ -17,6 +17,7 @@ from claudey.core.trace import trace_event
 from claudey.providers.failure_policy import (
     ProviderFailureOverride,
     ProviderRecoveryExhausted,
+    is_auth_lockout_error,
     is_retryable_provider_error,
     retryable_upstream_status,
 )
@@ -27,6 +28,7 @@ UPSTREAM_TRANSIENT_TOTAL_ATTEMPTS = 5
 DEFAULT_UPSTREAM_BASE_DELAY = 2.0
 DEFAULT_UPSTREAM_MAX_DELAY = 60.0
 DEFAULT_UPSTREAM_JITTER = 1.0
+AUTH_LATCH_TTL_SECONDS = 5.0  # short quarantine so a bad key isn't hammered
 
 
 class ProviderRetrySession:
@@ -152,6 +154,8 @@ class ProviderAttempt:
         retryable = is_retryable_provider_error(effective_error)
         self._failure_retryable = retryable
         if not retryable:
+            if is_auth_lockout_error(effective_error):
+                await self._controller._latch_auth_rejection(effective_error)
             await self._controller._attempt_rejected(self._session, self._permit)
             self._resolved = True
             return False
@@ -198,6 +202,7 @@ class ProviderAdmissionController:
         base_delay: float = DEFAULT_UPSTREAM_BASE_DELAY,
         max_delay: float = DEFAULT_UPSTREAM_MAX_DELAY,
         jitter: float = DEFAULT_UPSTREAM_JITTER,
+        auth_latch_ttl: float = AUTH_LATCH_TTL_SECONDS,
     ) -> None:
         if rate_limit <= 0:
             raise ValueError("rate_limit must be > 0")
@@ -213,12 +218,15 @@ class ProviderAdmissionController:
             raise ValueError("max_delay must be >= base_delay")
         if jitter < 0:
             raise ValueError("jitter must be >= 0")
+        if auth_latch_ttl < 0:
+            raise ValueError("auth_latch_ttl must be >= 0")
 
         self._provider_name = provider_name
         self._max_attempts = max_attempts
         self._base_delay = base_delay
         self._max_delay = max_delay
         self._jitter = jitter
+        self._auth_latch_ttl = auth_latch_ttl
         self._proactive_limiter = StrictSlidingWindowLimiter(
             rate_limit, float(rate_window)
         )
@@ -226,6 +234,8 @@ class ProviderAdmissionController:
         self._condition = asyncio.Condition()
         self._episode: _RecoveryEpisode | None = None
         self._next_generation = 1
+        self._auth_latch_until: float | None = None
+        self._auth_latch_error: Exception | None = None
         logger.info(
             "Provider admission initialized for {} ({} req / {}s, "
             "max_concurrency={}, max_attempts={})",
@@ -309,6 +319,9 @@ class ProviderAdmissionController:
         while True:
             if (terminal_error := session._terminal_failure()) is not None:
                 raise ProviderRecoveryExhausted(terminal_error)
+            auth_error = self._auth_error_in_latch()
+            if auth_error is not None:
+                raise ProviderRecoveryExhausted(auth_error)
             sleep_delay: float | None = None
             claimed_generation: int | None = None
             async with self._condition:
@@ -410,6 +423,32 @@ class ProviderAdmissionController:
             and episode.probe_active
         )
 
+    def _auth_error_in_latch(self) -> Exception | None:
+        """Return the quarantined auth error while the latch is active."""
+        if self._auth_latch_error is None or self._auth_latch_until is None:
+            return None
+        if time.monotonic() < self._auth_latch_until:
+            return self._auth_latch_error
+        self._auth_latch_error = None
+        self._auth_latch_until = None
+        return None
+
+    async def _latch_auth_rejection(self, error: Exception) -> None:
+        """Quarantine the provider for a short TTL after an auth lockout."""
+        async with self._condition:
+            self._auth_latch_until = time.monotonic() + self._auth_latch_ttl
+            self._auth_latch_error = error
+            self._episode = None
+            self._condition.notify_all()
+        trace_event(
+            stage="provider",
+            event="provider.auth.latched",
+            source="provider",
+            provider=self._provider_name,
+            exc_type=type(error).__name__,
+            latch_ttl_s=round(self._auth_latch_ttl, 3),
+        )
+
     async def _attempt_succeeded(
         self,
         session: ProviderRetrySession,
@@ -422,6 +461,8 @@ class ProviderAdmissionController:
             if episode is None:
                 return
             self._episode = None
+            self._auth_latch_error = None
+            self._auth_latch_until = None
             self._condition.notify_all()
         trace_event(
             stage="provider",

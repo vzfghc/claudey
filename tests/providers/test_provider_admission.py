@@ -30,6 +30,7 @@ def _controller(
     max_attempts: int = UPSTREAM_TRANSIENT_TOTAL_ATTEMPTS,
     base_delay: float = 0.0,
     max_delay: float = 0.0,
+    auth_latch_ttl: float = 5.0,
 ) -> ProviderAdmissionController:
     return ProviderAdmissionController(
         provider_name=provider_name,
@@ -40,6 +41,7 @@ def _controller(
         base_delay=base_delay,
         max_delay=max_delay,
         jitter=0.0,
+        auth_latch_ttl=auth_latch_ttl,
     )
 
 
@@ -265,6 +267,63 @@ async def test_direct_exhaustion_trace_keeps_the_logical_request_id() -> None:
         "provider.retry.exhausted",
     }
     assert all(row["request_id"] == "req_terminal" for row in rows)
+
+
+@pytest.mark.asyncio
+async def test_auth_rejection_quarantines_provider_for_ttl() -> None:
+    """A 401 closes the bulkhead to parallel sessions for a short TTL."""
+    controller = _controller(auth_latch_ttl=0.02)
+    attempt = await controller.open_attempt(controller.new_retry_session())
+    await attempt.retry(_status_error(401))
+    assert attempt.failure_retryable is False
+
+    with pytest.raises(ProviderRecoveryExhausted) as exc_info:
+        await controller.open_attempt(controller.new_retry_session())
+    assert isinstance(exc_info.value.last_error, httpx.HTTPStatusError)
+    assert exc_info.value.last_error.response.status_code == 401
+
+    await asyncio.sleep(0.03)
+    recovered = await controller.open_attempt(controller.new_retry_session())
+    await recovered.succeeded()
+
+
+@pytest.mark.asyncio
+async def test_permission_rejection_also_latches_provider() -> None:
+    controller = _controller(auth_latch_ttl=0.02)
+    attempt = await controller.open_attempt(controller.new_retry_session())
+    await attempt.retry(_status_error(403))
+
+    with pytest.raises(ProviderRecoveryExhausted):
+        await controller.open_attempt(controller.new_retry_session())
+
+
+@pytest.mark.asyncio
+async def test_non_auth_rejection_does_not_latch_provider() -> None:
+    """Invalid requests never open the auth quarantine."""
+    controller = _controller(auth_latch_ttl=0.02)
+    attempt = await controller.open_attempt(controller.new_retry_session())
+    await attempt.retry(_status_error(400))
+
+    other = await controller.open_attempt(controller.new_retry_session())
+    await other.succeeded()
+
+
+@pytest.mark.asyncio
+async def test_auth_rejection_latch_clears_on_success() -> None:
+    """A successful probe after the latch lifts clears the quarantine."""
+    controller = _controller(auth_latch_ttl=0.02)
+    attempt = await controller.open_attempt(controller.new_retry_session())
+    await attempt.retry(_status_error(401))
+
+    with pytest.raises(ProviderRecoveryExhausted):
+        await controller.open_attempt(controller.new_retry_session())
+
+    await asyncio.sleep(0.03)
+    successful = await controller.open_attempt(controller.new_retry_session())
+    await successful.succeeded()
+    # The quarantine is cleared; a follow-up session is immediately admitted.
+    follow_up = await controller.open_attempt(controller.new_retry_session())
+    await follow_up.succeeded()
 
 
 @pytest.mark.asyncio

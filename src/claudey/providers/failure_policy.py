@@ -195,6 +195,30 @@ def retryable_upstream_status(exc: BaseException) -> int | None:
     return status if status is not None and _is_retryable_status(status) else None
 
 
+def is_auth_lockout_error(exc: BaseException) -> bool:
+    """Return whether a failure is a permanent auth/permission lockout.
+
+    Only these kinds warrant the admission-level auth latch: a bad key or a
+    missing entitlement will not resolve by retrying, and is hard from
+    parallel sessions. Transient statuses and shape errors never qualify.
+    """
+    if isinstance(exc, Exception):
+        exc = underlying_provider_error(exc)
+    if isinstance(exc, ExecutionFailure):
+        return exc.kind in (
+            FailureKind.AUTHENTICATION,
+            FailureKind.PERMISSION,
+        )
+    if isinstance(exc, openai.AuthenticationError | openai.PermissionDeniedError):
+        return True
+    status = _status_from_exception(exc)
+    if status is None and isinstance(exc, httpx.HTTPStatusError):
+        status = exc.response.status_code
+    if status is None:
+        status = _status_from_body(getattr(exc, "body", None))
+    return status in (401, 403)
+
+
 def provider_error_message(
     exc: BaseException,
     *,
