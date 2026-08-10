@@ -1259,6 +1259,10 @@ class ModelCombobox {
     }
 
     input.addEventListener("click", () => this.open());
+    // Pre-filled values (configured model, "None" for optional fields) would
+    // otherwise get typed characters appended, so filtering could never match.
+    // Select the whole value on focus so the first keystroke replaces it.
+    input.addEventListener("focus", () => this.input.select());
     input.addEventListener("input", () => this.open(input.value));
     input.addEventListener("keydown", (event) => this.handleKeydown(event));
     this.toggle.addEventListener("mousedown", (event) => event.preventDefault());

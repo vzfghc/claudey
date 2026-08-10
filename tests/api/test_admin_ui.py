@@ -89,3 +89,39 @@ def test_provider_dialog_cancellation(admin_page: Page):
     # Click cancel button
     admin_page.click(".custom-provider-dialog .secondary-button")
     expect(dialog).not_to_be_visible()
+
+
+def test_model_combobox_typing_replaces_prefilled_value(admin_page: Page):
+    """Typing into a model combobox must replace the prefilled value.
+
+    A configured model (or the optional-field default "None") pre-fills the
+    combobox input; appending typed characters to it made filtering never
+    match ("No matching models" on every query). The input must select its
+    value on focus so the first keystroke replaces it.
+    """
+    admin_page.click('nav[aria-label="Admin views"] >> text=Model Config')
+    combobox = admin_page.locator(
+        '.model-combobox input[placeholder="Search or enter provider/model"]'
+    )
+    expect(combobox).to_be_visible()
+    combobox.click()
+    combobox.press_sequentially("deep")
+    # Regression: the pre-filled value must be replaced, not appended to.
+    expect(combobox).to_have_value("deep")
+    listbox = combobox.locator(
+        "xpath=ancestor::div[contains(@class, 'model-combobox')]"
+        "//div[contains(@class, 'model-combobox-list')]"
+    )
+    expect(listbox).to_be_visible()
+
+
+def test_optional_model_combobox_typing_replaces_none_default(admin_page: Page):
+    """Optional model comboboxes default to "None"; typing must replace it."""
+    admin_page.click('nav[aria-label="Admin views"] >> text=Model Config')
+    combobox = admin_page.locator(
+        '.model-combobox input[placeholder="Uses provider default"]'
+    ).first
+    expect(combobox).to_be_visible()
+    combobox.click()
+    combobox.press_sequentially("claude")
+    expect(combobox).to_have_value("claude")
