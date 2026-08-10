@@ -260,7 +260,11 @@ Per-provider state machine (**Healthy / down / recovery / auth-err / locked**, r
 - [ ] P2-C3 Token-budget / cost-aware routing design doc (after Phase B)
 - [ ] P3-C4 Background credential-health scheduler (deferred)
 - [ ] P3-C5 Guard-only truncation slice (opt-in, non-default)
-- [ ] P3-D1 Encrypt custom-provider keys at rest (+ migration)
+- [x] P3-D1 Encrypt custom-provider keys at rest (+ migration)
+  - Shipped: `core/secret_crypto.py` `enc:v1:` AES-256-GCM envelope (AES-256 key via
+    scrypt with pinned salt, 16B IV, 16B GCM tag) + opt-in `CLAUDEY_PROVIDER_ENCRYPTION_KEY`;
+    writes encrypt plaintext transparently; reads back-compat with plaintext. Tests in
+    `tests/config/test_secret_crypto.py` + store-level encryption/upgrade/fail-fast coverage.
 - [x] P3-D2 Route explainability telemetry + dashboard column
   - Shipped: `x-claudey-route` header (+ `; why=<reason>` fail-why), route payload extended with
     `chain`/`node_index`, `X_CLAUDEY_ROUTE_HEADER` toggle, `format_route_header` shared by both

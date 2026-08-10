@@ -134,6 +134,13 @@ class Settings(BaseSettings):
     # ==================== Novita AI ====================
     novita_api_key: str = Field(default="", validation_alias="NOVITA_API_KEY")
 
+    # ==================== At-rest provider-key encryption ====================
+    # Optional passphrase for encrypting custom-provider API keys at rest via the
+    # `enc:v1:` AES-256-GCM envelope. Empty (default) keeps plaintext back-compat.
+    provider_encryption_key: str = Field(
+        default="", validation_alias="CLAUDEY_PROVIDER_ENCRYPTION_KEY"
+    )
+
     # ==================== Messaging Platform Selection ====================
     # Valid: "telegram" | "discord" | "none"
     messaging_platform: str = Field(

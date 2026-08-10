@@ -18,10 +18,17 @@ from typing import Any
 from urllib.parse import urlsplit
 
 from claudey.config.paths import config_dir_path
+from claudey.core.secret_crypto import (
+    SecretCryptoError,
+    decrypt_secret,
+    encrypt_secret,
+    is_encrypted,
+)
 
 CUSTOM_PROVIDERS_FILENAME = "custom-providers.json"
 CUSTOM_PROVIDER_ID_PREFIX = "custom_"
 CUSTOM_PROVIDERS_PATH_ENV = "CLAUDEY_CUSTOM_PROVIDERS_PATH"
+PROVIDER_ENCRYPTION_KEY_ENV = "CLAUDEY_PROVIDER_ENCRYPTION_KEY"
 MASKED_SECRET = "********"
 
 _COMPATIBLE_TYPES = frozenset({"openai", "anthropic"})
@@ -124,7 +131,7 @@ def _write_records(path: Path, records: list[dict[str, Any]]) -> None:
     temp_path = path.with_suffix(path.suffix + ".tmp")
     try:
         temp_path.write_text(
-            json.dumps(records, indent=2) + "\n",
+            json.dumps(_encrypt_for_write(records), indent=2) + "\n",
             encoding="utf-8",
         )
         os.replace(temp_path, path)
@@ -260,3 +267,47 @@ def _dump_records(records: list[CustomProviderRecord]) -> list[dict[str, Any]]:
         }
         for record in records
     ]
+
+
+def _configured_key() -> str:
+    """Return the configured at-rest encryption key, or '' when unset."""
+    return (os.getenv(PROVIDER_ENCRYPTION_KEY_ENV) or "").strip()
+
+
+def _encrypt_for_write(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Encrypt plaintext API keys at-rest, leaving ciphertext untouched.
+
+    Opt-in: with no key configured, rows pass through as-is (back-compat and
+    the documented default). When a key is present, any existing plaintext row
+    is transparently upgraded on this write; already-encrypted rows are never
+    double-encrypted.
+    """
+    key_material = _configured_key()
+    if not key_material:
+        return records
+    encrypted: list[dict[str, Any]] = []
+    for entry in records:
+        row = dict(entry)
+        api_key = row.get("api_key")
+        if isinstance(api_key, str) and api_key and not is_encrypted(api_key):
+            row["api_key"] = encrypt_secret(api_key, key_material)
+        encrypted.append(row)
+    return encrypted
+
+
+def effective_api_key(record: CustomProviderRecord) -> str:
+    """Return the usable API key for a record.
+
+    Legacy plaintext and empty keys pass through; ``enc:v1:`` envelopes are
+    decrypted with the configured key. A ciphertext value without a configured
+    key fails fast (the secret cannot be recovered).
+    """
+    if not is_encrypted(record.api_key):
+        return record.api_key
+    key_material = _configured_key()
+    if not key_material:
+        raise SecretCryptoError(
+            f"Custom provider '{record.provider_id}' stores an encrypted key, "
+            f"but {PROVIDER_ENCRYPTION_KEY_ENV} is not set."
+        )
+    return decrypt_secret(record.api_key, key_material)

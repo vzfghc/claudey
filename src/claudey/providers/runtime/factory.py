@@ -8,6 +8,7 @@ from claudey.application.errors import (
 )
 from claudey.config.custom_providers import (
     CustomProviderRecord,
+    effective_api_key,
     find_custom_provider,
 )
 from claudey.config.provider_catalog import PROVIDER_CATALOG, ProviderAuthKind
@@ -225,7 +226,7 @@ def _create_custom_provider(
     protocol to the compatible endpoint.
     """
     config = ProviderConfig(
-        api_key=record.api_key,
+        api_key=effective_api_key(record),
         base_url=record.base_url,
         rate_limit=settings.provider_rate_limit,
         rate_window=settings.provider_rate_window,

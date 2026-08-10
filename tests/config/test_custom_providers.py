@@ -390,3 +390,100 @@ async def test_check_blank_api_key_still_attempts_probe():
     assert result["valid"] is True
     assert "authorization" not in requests[0].headers
     assert "x-api-key" not in requests[0].headers
+
+
+# ---------------------------------------------------------------------------
+# At-rest key encryption (P3-D1)
+# ---------------------------------------------------------------------------
+
+
+def _raw_row(path: Path) -> dict:
+    """Return the first stored JSON row at ``path``."""
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    assert payload, "expected a non-empty store on disk"
+    return payload[0]
+
+
+def test_no_key_keeps_plaintext_back_compat(redirect_store):
+    store = custom_provider_store()
+    store.upsert(_record(api_key="sk-plain"))
+    raw = _raw_row(redirect_store)
+    assert raw["api_key"] == "sk-plain"
+
+
+def test_configured_key_encrypts_on_write(monkeypatch, redirect_store):
+    monkeypatch.setenv("CLAUDEY_PROVIDER_ENCRYPTION_KEY", "test-passphrase")
+    store = custom_provider_store()
+    store.upsert(_record(api_key="sk-to-encrypt"))
+    raw = _raw_row(redirect_store)
+    assert raw["api_key"].startswith("enc:v1:")
+    assert "sk-to-encrypt" not in redirect_store.read_text(encoding="utf-8")
+
+
+def test_configured_key_does_not_double_encrypt(monkeypatch, redirect_store):
+    from claudey.config.custom_providers import encrypt_secret
+    from claudey.core.secret_crypto import is_encrypted
+
+    monkeypatch.setenv("CLAUDEY_PROVIDER_ENCRYPTION_KEY", "test-passphrase")
+    already = encrypt_secret("sk-secret", "test-passphrase")
+    store = custom_provider_store()
+    store.upsert(_record(api_key=already))
+    raw = _raw_row(redirect_store)
+    assert is_encrypted(raw["api_key"])
+    assert raw["api_key"] == already
+
+
+def test_encrypted_round_trip_via_effective_key(monkeypatch, redirect_store):
+    from claudey.config.custom_providers import effective_api_key
+
+    monkeypatch.setenv("CLAUDEY_PROVIDER_ENCRYPTION_KEY", "test-passphrase")
+    custom_provider_store().upsert(_record(api_key="sk-secret"))
+    raw = _raw_row(redirect_store)
+    assert raw["api_key"].startswith("enc:v1:")
+    # Reload from disk (what the next process sees) and recover the secret.
+    reloaded = CustomProviderStore(path=redirect_store).find("custom_acme")
+    assert reloaded is not None
+    assert reloaded.api_key.startswith("enc:v1:")
+    assert effective_api_key(reloaded) == "sk-secret"
+
+
+def test_plaintext_effective_key_passes_through_without_key(redirect_store):
+    from claudey.config.custom_providers import effective_api_key
+
+    store = custom_provider_store()
+    store.upsert(_record(api_key="sk-plain"))
+    record = store.find("custom_acme")
+    assert record is not None
+    assert effective_api_key(record) == "sk-plain"
+
+
+def test_encrypted_read_without_key_fails_fast(monkeypatch, redirect_store):
+    from claudey.config.custom_providers import effective_api_key
+    from claudey.core.secret_crypto import SecretCryptoError
+
+    # Write an encrypted record while the key is configured, then drop the key
+    # and load the ciphertext from disk (a fresh process has no in-memory copy).
+    monkeypatch.setenv("CLAUDEY_PROVIDER_ENCRYPTION_KEY", "secret-key")
+    custom_provider_store().upsert(_record(api_key="sk-secret"))
+    monkeypatch.delenv("CLAUDEY_PROVIDER_ENCRYPTION_KEY")
+    reloaded = CustomProviderStore(path=redirect_store).find("custom_acme")
+    assert reloaded is not None
+    assert reloaded.api_key.startswith("enc:v1:")
+    with pytest.raises(SecretCryptoError):
+        effective_api_key(reloaded)
+
+
+def test_plaintext_read_is_transparently_upgraded_on_next_write(
+    monkeypatch, redirect_store
+):
+    from claudey.core.secret_crypto import is_encrypted
+
+    # Write plaintext with no key...
+    custom_provider_store().upsert(_record(api_key="sk-secret"))
+    assert _raw_row(redirect_store)["api_key"] == "sk-secret"
+    # ...then enable a key and trigger another write: plaintext upgraded.
+    monkeypatch.setenv("CLAUDEY_PROVIDER_ENCRYPTION_KEY", "later-key")
+    custom_provider_store().upsert(_record(provider_id="custom_second"))
+    assert is_encrypted(_raw_row(redirect_store)["api_key"])
+    second = json.loads(redirect_store.read_text(encoding="utf-8"))[1]
+    assert is_encrypted(second["api_key"])
