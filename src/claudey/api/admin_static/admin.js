@@ -2973,7 +2973,8 @@ async function renderCombos() {
     const empty = document.createElement("p");
     empty.className = "combo-empty";
     empty.textContent =
-      "No fallback combos yet. Add one to reference it from tier settings with @combo:id.";
+      "No fallback combos yet. Add one above, then reference it from the " +
+      "Fallback tier in Model Config with its @combo:<id> token.";
     grid.appendChild(empty);
     return;
   }
@@ -3008,6 +3009,23 @@ async function renderCombos() {
     );
     title.appendChild(meta);
 
+    // The id is what tier settings reference (@combo:<id>), so surface it as
+    // a copyable token — otherwise users have no way to know it.
+    const token = document.createElement("button");
+    token.type = "button";
+    token.className = "combo-token";
+    token.textContent = `@combo:${combo.combo_id}`;
+    token.title = "Copy this reference for the Fallback tier in Model Config";
+    token.setAttribute("aria-label", `Copy ${token.textContent}`);
+    token.addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(token.textContent);
+        showMessage(`Copied ${token.textContent}`, "ok");
+      } catch {
+        showMessage(`Copy failed — note ${token.textContent}`, "warn");
+      }
+    });
+
     const actions = document.createElement("div");
     actions.className = "provider-actions";
     const edit = document.createElement("button");
@@ -3022,7 +3040,7 @@ async function renderCombos() {
     remove.addEventListener("click", () => removeCombo(combo));
     actions.append(edit, remove);
 
-    card.append(title, actions);
+    card.append(title, token, actions);
     card.style.setProperty("--card-index", grid.children.length);
     grid.appendChild(card);
   });
@@ -3094,6 +3112,12 @@ function showComboDialog(combo) {
         <label for="comboName">Combo Name</label>
         <input type="text" id="comboName" placeholder="e.g. Flagship" value="${isEdit ? escapeHtml(combo.display_name) : ""}" required />
       </div>
+      ${
+        isEdit
+          ? `<div class="field"><label for="comboId">Combo ID (reference in tier settings)</label>
+             <input type="text" id="comboId" class="combo-id-field" value="@combo:${escapeHtml(combo.combo_id)}" readonly aria-label="Combo ID" /></div>`
+          : ""
+      }
       <div class="field">
         <label for="comboNodes">Fallback chain (tried in order, lowest priority first)</label>
         <div id="comboNodeRows" class="combo-node-rows"></div>
@@ -3126,6 +3150,12 @@ function showComboDialog(combo) {
   dialog.addEventListener("close", () => {
     dialogComboboxes.forEach((combobox) => state.modelComboboxes.delete(combobox));
     dialog.remove();
+  });
+  // Pressing any dialog control (except a suggestion option) closes the open
+  // list first, so an open dropdown can never swallow the click.
+  dialog.addEventListener("mousedown", (event) => {
+    if (event.target.closest(".model-combobox-list")) return;
+    state.modelComboboxes.forEach((combobox) => combobox.close());
   });
   dialog.querySelector("#addComboNodeBtn").addEventListener("click", () => {
     addComboNodeRow(rows);

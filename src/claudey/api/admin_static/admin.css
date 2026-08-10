@@ -2859,8 +2859,41 @@ textarea:focus-visible,
   white-space: nowrap;
 }
 
+.combo-token {
+  align-self: flex-start;
+  margin-top: 8px;
+  padding: 3px 10px;
+  border: 1px dashed var(--line-strong, rgba(0, 0, 0, 0.25));
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted, #6b7280);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  cursor: pointer;
+  transition: color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.combo-token:hover,
+.combo-token:focus-visible {
+  color: var(--accent, #f97316);
+  border-color: var(--accent, #f97316);
+}
+
+.combo-id-field {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 13px;
+}
+
 .combo-dialog {
   width: 560px;
+}
+
+/* Keep dialog actions clickable above an open suggestion list, and drop the
+   list when a button is pressed instead of letting it intercept the click. */
+.combo-dialog .dialog-actions,
+.combo-dialog #addComboNodeBtn {
+  position: relative;
+  z-index: 130;
 }
 
 .combo-node-rows {
