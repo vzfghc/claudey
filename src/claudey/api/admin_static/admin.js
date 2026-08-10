@@ -3034,22 +3034,53 @@ function comboNodeRows(combo) {
   return [{ provider_model_ref: "", enabled: true, priority: 0 }];
 }
 
+let comboNodeRefKey = 0;
+
 function addComboNodeRow(rows) {
   const wrapper = document.createElement("div");
   wrapper.className = "combo-node-row";
-  wrapper.innerHTML = `
-    <input type="text" class="combo-node-ref" placeholder="provider/model" aria-label="Provider model reference" />
-    <label class="combo-node-toggle">
-      <input type="checkbox" class="combo-node-enabled" checked />
-      enabled
-    </label>
-    <input type="number" class="combo-node-priority" value="0" min="0" aria-label="Priority" />
-    <button type="button" class="combo-node-remove secondary-button" aria-label="Remove node">×</button>
-  `;
-  wrapper.querySelector(".combo-node-remove").addEventListener("click", () => {
-    wrapper.remove();
+
+  // Node refs are provider/model pairs, so reuse the model combobox to offer
+  // discovered-model recommendations while still allowing custom slugs.
+  const refInput = document.createElement("input");
+  refInput.type = "text";
+  refInput.className = "combo-node-ref";
+  refInput.placeholder = "provider/model";
+  refInput.setAttribute("aria-label", "Provider model reference");
+  const refCombobox = new ModelCombobox(refInput, {
+    type: "model",
+    key: `combo-node-ref-${++comboNodeRefKey}`,
+    label: "Provider model reference",
   });
+
+  const toggleLabel = document.createElement("label");
+  toggleLabel.className = "combo-node-toggle";
+  const enabledCheckbox = document.createElement("input");
+  enabledCheckbox.type = "checkbox";
+  enabledCheckbox.className = "combo-node-enabled";
+  enabledCheckbox.checked = true;
+  toggleLabel.append(enabledCheckbox, document.createTextNode(" enabled"));
+
+  const priorityInput = document.createElement("input");
+  priorityInput.type = "number";
+  priorityInput.className = "combo-node-priority";
+  priorityInput.value = "0";
+  priorityInput.min = "0";
+  priorityInput.setAttribute("aria-label", "Priority");
+
+  const removeButton = document.createElement("button");
+  removeButton.type = "button";
+  removeButton.className = "combo-node-remove secondary-button";
+  removeButton.setAttribute("aria-label", "Remove node");
+  removeButton.textContent = "×";
+  removeButton.addEventListener("click", () => {
+    wrapper.remove();
+    state.modelComboboxes.delete(refCombobox);
+  });
+
+  wrapper.append(refCombobox.element, toggleLabel, priorityInput, removeButton);
   rows.appendChild(wrapper);
+  return refCombobox;
 }
 
 function showComboDialog(combo) {
@@ -3082,12 +3113,19 @@ function showComboDialog(combo) {
   `;
 
   const rows = dialog.querySelector("#comboNodeRows");
+  const dialogComboboxes = [];
   comboNodeRows(combo).forEach((node) => {
-    addComboNodeRow(rows);
+    dialogComboboxes.push(addComboNodeRow(rows));
     const row = rows.lastElementChild;
     row.querySelector(".combo-node-ref").value = node.provider_model_ref;
     row.querySelector(".combo-node-enabled").checked = node.enabled;
     row.querySelector(".combo-node-priority").value = node.priority;
+  });
+  // Drop the row comboboxes and the dialog element once it closes so they
+  // don't accumulate across opens.
+  dialog.addEventListener("close", () => {
+    dialogComboboxes.forEach((combobox) => state.modelComboboxes.delete(combobox));
+    dialog.remove();
   });
   dialog.querySelector("#addComboNodeBtn").addEventListener("click", () => {
     addComboNodeRow(rows);

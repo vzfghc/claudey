@@ -2877,9 +2877,13 @@ textarea:focus-visible,
   flex-wrap: wrap;
 }
 
-.combo-node-row .combo-node-ref {
+.combo-node-row .model-combobox {
   flex: 1 1 auto;
   min-width: 140px;
+}
+
+.combo-node-row .model-combobox input[type="text"] {
+  padding-right: 44px;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 13px;
 }
