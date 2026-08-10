@@ -271,4 +271,12 @@ Per-provider state machine (**Healthy / down / recovery / auth-err / locked**, r
     wire APIs. Tests in `tests/api/test_route_header.py` + failover `primary_route`/format tests.
   - Deferred (non-testable UI polish): the read-only route column in `get_admin_dashboard`
     rendering is a follow-up; header + trace telemetry already expose the same decision.
-- [ ] QA-N1 Nightly mutmut + Schemathesis job (parallel)
+- [x] QA-N1 Nightly mutmut + Schemathesis job (parallel)
+  - Shipped: `.github/workflows/nightly.yml` runs two informational `continue-on-error: true`
+    jobs on `schedule` + `workflow_dispatch` — `mutation` (`uv run mutmut run` against
+    providers/application under `[tool.mutmut]` config, uploads `html/` results) and
+    `schemathesis` (serves `scripts/hans_schemathesis_app:app` on 127.0.0.1:8082 with
+    in-memory fake providers + temp-dir store redirects, then runs `schemathesis run`
+    against the live OpenAPI excluding `/admin` `/docs` `/openapi` `/health`). Local
+    driver: `scripts/nightly_ci.sh`. Failures never block merges (required checks stay
+    the CI workflow's ruff/ty/pytest gates only).

@@ -190,9 +190,12 @@ class CustomProviderStore:
             for existing in records
             if existing.provider_id != record.provider_id
         ] + [record]
-        self._records = updated
-        _write_records(self._resolved_path(), _dump_records(updated))
-        return list(updated)
+        path = self._resolved_path()
+        _write_records(path, _dump_records(updated))
+        # Reload so the in-memory view mirrors what is on disk (e.g. keys that
+        # were transparently encrypted at-rest by a configured key).
+        self._records = _parse_records(_read_records(path))
+        return list(self._records)
 
     def remove(self, provider_id: str) -> bool:
         """Remove a provider and persist atomically. Returns whether removed."""
@@ -200,8 +203,9 @@ class CustomProviderStore:
         kept = [record for record in records if record.provider_id != provider_id]
         if len(kept) == len(records):
             return False
-        self._records = kept
-        _write_records(self._resolved_path(), _dump_records(kept))
+        path = self._resolved_path()
+        _write_records(path, _dump_records(kept))
+        self._records = _parse_records(_read_records(path))
         return True
 
 

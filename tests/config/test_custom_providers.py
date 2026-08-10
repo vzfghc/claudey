@@ -10,11 +10,13 @@ import pytest
 from claudey.config.custom_provider_check import check_compatible_connection
 from claudey.config.custom_providers import (
     CUSTOM_PROVIDERS_PATH_ENV,
+    PROVIDER_ENCRYPTION_KEY_ENV,
     CustomProviderRecord,
     CustomProviderStore,
     custom_provider_ids,
     custom_provider_store,
     custom_providers_path,
+    effective_api_key,
     find_custom_provider,
     is_valid_compatible_type,
     list_custom_providers,
@@ -22,6 +24,7 @@ from claudey.config.custom_providers import (
     slug_for_display_name,
     validate_base_url,
 )
+from claudey.core.secret_crypto import ENCRYPTED_PREFIX, SecretCryptoError
 
 
 @pytest.fixture
@@ -98,6 +101,84 @@ def test_atomic_write_creates_valid_json(redirect_store):
     store.upsert(_record(api_key="sk-abc"))
     raw = json.loads(redirect_store.read_text(encoding="utf-8"))
     assert raw[0]["api_key"] == "sk-abc"
+
+
+def test_without_key_writes_remain_plaintext(redirect_store):
+    """Back-compat: no CLAUDEY_PROVIDER_ENCRYPTION_KEY leaves keys as-is."""
+    store = custom_provider_store()
+    store.upsert(_record(api_key="sk-plain"))
+    raw = json.loads(redirect_store.read_text(encoding="utf-8"))
+    assert raw[0]["api_key"] == "sk-plain"
+
+
+def test_with_key_encrypts_keys_on_write(redirect_store, monkeypatch):
+    monkeypatch.setenv(PROVIDER_ENCRYPTION_KEY_ENV, "k" * 64)
+    store = custom_provider_store()
+    store.upsert(_record(api_key="sk-topsecret"))
+
+    raw = json.loads(redirect_store.read_text(encoding="utf-8"))
+    assert raw[0]["api_key"].startswith(ENCRYPTED_PREFIX)
+    assert "sk-topsecret" not in raw[0]["api_key"]
+    record = store.find("custom_acme")
+    assert record is not None
+    assert effective_api_key(record) == "sk-topsecret"
+
+
+def test_existing_plaintext_upgraded_on_next_write(redirect_store, monkeypatch):
+    """Plaintext rows are transparently re-encrypted on the next write."""
+    store = custom_provider_store()
+    store.upsert(_record(api_key="sk-legacy"))
+    assert (
+        json.loads(redirect_store.read_text(encoding="utf-8"))[0]["api_key"]
+        == "sk-legacy"
+    )
+
+    monkeypatch.setenv(PROVIDER_ENCRYPTION_KEY_ENV, "k" * 64)
+    store.upsert(_record(provider_id="custom_other", api_key="sk-new"))
+
+    raw = json.loads(redirect_store.read_text(encoding="utf-8"))
+    by_id = {entry["provider_id"]: entry for entry in raw}
+    assert by_id["custom_acme"]["api_key"].startswith(ENCRYPTED_PREFIX)
+    another = store.find("custom_other")
+    assert another is not None
+    assert effective_api_key(another) == "sk-new"
+
+
+def test_already_encrypted_keys_are_not_double_encrypted(redirect_store, monkeypatch):
+    monkeypatch.setenv(PROVIDER_ENCRYPTION_KEY_ENV, "k" * 64)
+    store = custom_provider_store()
+    store.upsert(_record(api_key="sk-first"))
+
+    # Same key persists alongside a newly written provider.
+    store.upsert(_record(provider_id="custom_second", api_key="sk-second"))
+    raw = json.loads(redirect_store.read_text(encoding="utf-8"))
+    first = next(e for e in raw if e["provider_id"] == "custom_acme")
+    assert first["api_key"].startswith(ENCRYPTED_PREFIX)
+    first_count = first["api_key"].count(ENCRYPTED_PREFIX)
+    assert first_count == 1
+
+
+def test_encrypted_key_without_configured_key_fails_fast(redirect_store, monkeypatch):
+    monkeypatch.setenv(PROVIDER_ENCRYPTION_KEY_ENV, "k" * 64)
+    custom_provider_store().upsert(_record(api_key="sk-secret"))
+
+    monkeypatch.delenv(PROVIDER_ENCRYPTION_KEY_ENV)
+    record = custom_provider_store().find("custom_acme")
+    assert record is not None
+    with pytest.raises(SecretCryptoError):
+        effective_api_key(record)
+
+
+def test_wrong_key_raises_when_decrypting(redirect_store, monkeypatch):
+    monkeypatch.setenv(PROVIDER_ENCRYPTION_KEY_ENV, "right" + "0" * 60)
+    custom_provider_store().upsert(_record(api_key="sk-guarded"))
+
+    monkeypatch.setenv(PROVIDER_ENCRYPTION_KEY_ENV, "wrong" + "0" * 60)
+    record = custom_provider_store().find("custom_acme")
+    assert record is not None
+    with pytest.raises(SecretCryptoError) as exc_info:
+        effective_api_key(record)
+    assert "failed authentication" in str(exc_info.value)
 
 
 def test_list_in_creation_order(redirect_store):

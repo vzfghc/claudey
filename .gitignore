@@ -14,6 +14,11 @@ debug-*.log
 .coverage
 llama_cache
 .smoke-results
+# mutmut working copies
+mutants/
+mutant-tests/
+# schemathesis local state
+.schemathesis/
 .vscode
 # npm dev dependency for scripts/fetch_provider_logos.py
 node_modules/

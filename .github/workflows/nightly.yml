@@ -1,0 +1,114 @@
+# Nightly adversarial batteries (QA-N1): mutation testing + schema fuzzing.
+#
+# Informational only — failures are filed in run logs/artifacts and NEVER block
+# merges (every job has continue-on-error: true, and required checks cover only
+# the CI workflow's ruff/ty/pytest gates).
+
+name: Nightly QA
+
+on:
+  schedule:
+    - cron: "0 4 * * *" # 04:00 UTC daily
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  UV_MALWARE_CHECK: "1"
+  UV_PREVIEW_FEATURES: "malware-check"
+
+jobs:
+  mutation:
+    name: Mutation (mutmut)
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    continue-on-error: true
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.ref }}
+          repository: ${{ github.event.pull_request.head.repo.full_name || github.repository }}
+          fetch-depth: 1
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9
+        with:
+          version: "0.11.16"
+          enable-cache: true
+          cache-python: true
+
+      - name: Run mutmut
+        run: uv run mutmut run
+
+      - name: Summarize surviving mutants
+        run: |
+          uv run mutmut results 2>&1 | tail -40 || true
+          echo "mutation-score:" >> "$GITHUB_STEP_SUMMARY"
+          uv run mutmut results 2>&1 | tail -3 >> "$GITHUB_STEP_SUMMARY" || true
+
+      - name: Upload HTML report
+        uses: actions/upload-artifact@a8a3f3ad30e3422c9c7b888a15615d19a852ae32
+        if: always()
+        with:
+          name: mutmut-report
+          path: html/
+          if-no-files-found: ignore
+
+  schemathesis:
+    name: Schema fuzz (schemathesis)
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    continue-on-error: true
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.ref }}
+          repository: ${{ github.event.pull_request.head.repo.full_name || github.repository }}
+          fetch-depth: 1
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9
+        with:
+          version: "0.11.16"
+          enable-cache: true
+          cache-python: true
+
+      - name: Serve fuzz target
+        run: |
+          uv run uvicorn scripts.hans_schemathesis_app:app \
+            --host 127.0.0.1 --port 8082 &
+          for i in $(seq 1 40); do
+            if curl -fsS http://127.0.0.1:8082/health >/dev/null 2>&1; then
+              echo "fuzz server ready"; break
+            fi
+            sleep 2
+          done
+          curl -fsS http://127.0.0.1:8082/health
+
+      - name: Run Schemathesis
+        run: |
+          uv run schemathesis run http://127.0.0.1:8082/openapi.json \
+            -u http://127.0.0.1:8082 \
+            -n 50 \
+            --max-failures 100 \
+            --exclude-path-regex '^/admin' \
+            --exclude-path-regex '^/docs' \
+            --exclude-path-regex '^/openapi' \
+            --exclude-path-regex '^/health' \
+            --suppress-health-check all
+        env:
+          SHELL: /bin/bash
+
+      - name: Upload report
+        uses: actions/upload-artifact@a8a3f3ad30e3422c9c7b888a15615d19a852ae32
+        if: always()
+        with:
+          name: schemathesis-report
+          path: schemathesis-output/
+          if-no-files-found: ignore
