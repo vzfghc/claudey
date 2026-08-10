@@ -257,7 +257,13 @@ Per-provider state machine (**Healthy / down / recovery / auth-err / locked**, r
 - [x] P0-B8 Integration/contract tests + README docs
 - [x] P1-C1 Auth-failure quarantine latch
 - [x] P1-C2 FCM normalizer audit + regression tests
-- [ ] P2-C3 Token-budget / cost-aware routing design doc (after Phase B)
+- [x] P2-C3 Token-budget / cost-aware routing design doc (after Phase B)
+  - Shipped: `docs/plans/token-budget-cost-aware-routing-design.md` — design-only
+    (gates a future MINOR, no production change). Composes with existing
+    `failover._ordered_nodes` (LKG-P-first-within-class + health-wins-over-cost),
+    consumes the already-present `[<n>m|k]` context-window suffix as the
+    zero-config budget signal, optional sidecar overlay + `CLAUDEY_*` opt-in
+    (default-off). Implementation deferred to a separate MINOR.
 - [ ] P3-C4 Background credential-health scheduler (deferred)
 - [ ] P3-C5 Guard-only truncation slice (opt-in, non-default)
 - [x] P3-D1 Encrypt custom-provider keys at rest (+ migration)
