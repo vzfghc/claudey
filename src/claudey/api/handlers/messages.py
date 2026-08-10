@@ -33,7 +33,7 @@ from claudey.api.web_tools.request import (
 from claudey.api.web_tools.streaming import stream_web_server_tool_response
 from claudey.application.errors import ApplicationError, InvalidRequestError
 from claudey.application.execution import TokenCounter
-from claudey.application.failover import FallbackExecutor
+from claudey.application.failover import FallbackExecutor, format_route_header
 from claudey.application.ports import ProviderResolver
 from claudey.application.routing import ModelRouter, RoutedMessagesRequest
 from claudey.config.settings import Settings
@@ -105,9 +105,17 @@ class MessagesHandler:
             self._reject_unsupported_server_tools(routed)
 
             result = self._run_message_intercepts(routed)
+            route_header = None
             if result is None:
                 logger.debug("No optimization matched, routing to provider")
                 resolution = self._model_router.resolve_chain(request_data.model)
+                if self._settings.route_response_header:
+                    route_header = format_route_header(
+                        self._provider_executor,
+                        self._model_router,
+                        resolution,
+                        request_data.model,
+                    )
                 result = _MessagesStreamResult(
                     self._provider_executor.stream(
                         resolution,
@@ -126,6 +134,7 @@ class MessagesHandler:
                 result,
                 stream=request_data.stream,
                 request_id=request_id,
+                route_header=route_header,
             )
         except ApplicationError:
             raise
@@ -145,6 +154,7 @@ class MessagesHandler:
         *,
         stream: bool,
         request_id: str,
+        route_header: str | None = None,
     ) -> object:
         if isinstance(result, _MessagesCompleteResult):
             return result.response
@@ -194,6 +204,10 @@ class MessagesHandler:
                         request_id=request_id,
                     ),
                 )
+            if route_header is not None:
+                return JSONResponse(
+                    content=message, headers={"x-claudey-route": route_header}
+                )
             return JSONResponse(content=message)
         return await anthropic_sse_streaming_response(
             result.body,
@@ -201,6 +215,7 @@ class MessagesHandler:
                 exc, request_id=request_id
             ),
             request_id=request_id,
+            route_header=route_header,
         )
 
     def _pre_start_error_response(

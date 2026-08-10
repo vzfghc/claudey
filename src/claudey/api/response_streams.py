@@ -330,11 +330,15 @@ async def anthropic_sse_streaming_response(
     *,
     pre_start_error_response: PreStartErrorResponse,
     request_id: str,
+    route_header: str | None = None,
 ) -> Response:
     """Return a streaming response for Anthropic-style SSE streams."""
+    headers = dict(ANTHROPIC_SSE_RESPONSE_HEADERS)
+    if route_header is not None:
+        headers["x-claudey-route"] = route_header
     return await _first_chunk_streaming_response(
         body,
-        headers=ANTHROPIC_SSE_RESPONSE_HEADERS,
+        headers=headers,
         pre_start_error_response=pre_start_error_response,
         terminal_frame=_anthropic_terminal_frame,
         terminal_failure_observer=lambda exc: _trace_anthropic_terminal_failure(

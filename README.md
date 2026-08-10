@@ -285,6 +285,12 @@ Manage combos in the **Admin UI → Providers → Fallback combos** panel: group
 
 Failover is health-aware: providers marked down, currently in recovery, or locked out for a failing model are skipped, and the last-known-good path for a chain is preferred on subsequent requests.
 
+#### Route explainability (`x-claudey-route`)
+
+Every Messages/Responses response carries an **`x-claudey-route`** header naming the provider/model the request was served by (e.g. `x-claudey-route: novita/deepseek/deepseek-r1`). When the configured primary node is skipped by the health registry, the reason is appended (e.g. `x-claudey-route: llm7/meta-llama/llama-3.1-70b; why=down`). This makes proactive-routing decisions transparent to CLI tooling and logs.
+
+Disable the header with `X_CLAUDEY_ROUTE_HEADER=false`. The underlying route decision (chain, node index, provider/model) is also emitted as a `claudey.api.route.resolved` trace event, independent of the header toggle.
+
 ### Reasoning Control
 
 Open **Admin UI → Model Config → Reasoning** and select the behavior you want.

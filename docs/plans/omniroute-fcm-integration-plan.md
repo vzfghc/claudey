@@ -254,12 +254,17 @@ Per-provider state machine (**Healthy / down / recovery / auth-err / locked**, r
 - [x] P0-B5 `failover.py` executor + eligibility + streaming-window guard
 - [x] P0-B6 Wire Messages/Responses handlers; trace + decision fields
 - [x] P0-B7 Combos admin CRUD endpoints + Admin UI panel + tests
-- [ ] P0-B8 Integration/contract tests + README docs
+- [x] P0-B8 Integration/contract tests + README docs
 - [x] P1-C1 Auth-failure quarantine latch
 - [x] P1-C2 FCM normalizer audit + regression tests
 - [ ] P2-C3 Token-budget / cost-aware routing design doc (after Phase B)
 - [ ] P3-C4 Background credential-health scheduler (deferred)
 - [ ] P3-C5 Guard-only truncation slice (opt-in, non-default)
 - [ ] P3-D1 Encrypt custom-provider keys at rest (+ migration)
-- [ ] P3-D2 Route explainability telemetry + dashboard column
+- [x] P3-D2 Route explainability telemetry + dashboard column
+  - Shipped: `x-claudey-route` header (+ `; why=<reason>` fail-why), route payload extended with
+    `chain`/`node_index`, `X_CLAUDEY_ROUTE_HEADER` toggle, `format_route_header` shared by both
+    wire APIs. Tests in `tests/api/test_route_header.py` + failover `primary_route`/format tests.
+  - Deferred (non-testable UI polish): the read-only route column in `get_admin_dashboard`
+    rendering is a follow-up; header + trace telemetry already expose the same decision.
 - [ ] QA-N1 Nightly mutmut + Schemathesis job (parallel)

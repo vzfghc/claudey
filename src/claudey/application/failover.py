@@ -16,6 +16,7 @@ from claudey.application.execution import ProviderExecutor, TokenCounter
 from claudey.application.ports import ProviderResolver
 from claudey.application.routing import (
     ChainResolution,
+    ModelRouter,
     ResolvedModel,
     RoutedMessagesRequest,
 )
@@ -48,6 +49,25 @@ NO_USABLE_NODE_STATUS = 503
 def _failover_eligible(failure: ExecutionFailure) -> bool:
     """Return whether a finalized failure may trigger chain failover."""
     return failure.kind in FAILOVER_ELIGIBLE_KINDS and failure.retryable
+
+
+def format_route_header(
+    executor: FallbackExecutor,
+    router: ModelRouter,
+    resolution: ChainResolution,
+    model_ref: str,
+) -> str:
+    """Build the ``x-claudey-route`` value for a failover chain.
+
+    Returns a ``provider/model`` reference, appending ``; why=<reason>`` when
+    the primary was skipped by the health registry.
+    """
+    provider_model_ref, fail_why = executor.primary_route(
+        resolution, chain_identity=router.chain_identity(model_ref)
+    )
+    if fail_why is not None:
+        return f"{provider_model_ref}; why={fail_why}"
+    return provider_model_ref
 
 
 def is_content_start(chunk: str) -> bool:
@@ -83,6 +103,29 @@ class FallbackExecutor:
             log_raw_payloads=log_raw_payloads,
         )
 
+    def primary_route(
+        self,
+        resolution: ChainResolution,
+        chain_identity: str | None = None,
+    ) -> tuple[str, str | None]:
+        """Return ``(provider_model_ref, fail_why)`` for the initial usable node.
+
+        Mirrors :meth:`stream`'s traversal so an API handler can present the
+        chosen route (e.g. as an ``x-claudey-route`` header) before streaming
+        begins. ``fail_why`` is None when the primary serves, else the reason it
+        was skipped.
+        """
+        nodes = self._ordered_nodes(resolution, chain_identity)
+        if not nodes:
+            return "", "no-usable"
+        for node in nodes:
+            if self._health.should_skip(node.provider_model_ref):
+                continue
+            return node.provider_model_ref, None
+        return nodes[0].provider_model_ref, self._health.effective_state(
+            nodes[0].provider_model_ref
+        ).value
+
     def stream(
         self,
         resolution: ChainResolution,
@@ -103,6 +146,7 @@ class FallbackExecutor:
         """
         nodes = self._ordered_nodes(resolution, chain_identity)
         self._preflight_first(nodes, request, reasoning)
+        chain_refs: list[str] = [node.provider_model_ref for node in nodes]
 
         async def _stream() -> AsyncIterator[str]:
             content_emitted = False
@@ -116,6 +160,12 @@ class FallbackExecutor:
                 tried_any = True
                 node_reasoning = reasoning or resolution.reasoning
                 routed = self._routed_node(request, node, node_reasoning)
+                route_trace_extra: dict[str, object] = {
+                    "chain": chain_refs,
+                    "node_index": attempt,
+                }
+                if chain_identity is not None:
+                    route_trace_extra["chain_identity"] = chain_identity
                 try:
                     async for chunk in self._provider_executor.stream(
                         routed,
@@ -124,6 +174,7 @@ class FallbackExecutor:
                         raw_log_payload=raw_log_payload,
                         request_id=request_id,
                         preflight=False,
+                        route_trace_extra=route_trace_extra,
                     ):
                         if is_content_start(chunk):
                             content_emitted = True

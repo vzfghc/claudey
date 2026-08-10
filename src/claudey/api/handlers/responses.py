@@ -14,7 +14,7 @@ from claudey.api.response_streams import (
     trace_terminal_execution_error,
 )
 from claudey.application.errors import ApplicationError, InvalidRequestError
-from claudey.application.failover import FallbackExecutor
+from claudey.application.failover import FallbackExecutor, format_route_header
 from claudey.application.ports import ProviderResolver
 from claudey.application.routing import ModelRouter
 from claudey.config.settings import Settings
@@ -71,6 +71,15 @@ class ResponsesHandler:
             routed = self._model_router.resolve_messages_request(response_request)
             resolution = self._model_router.resolve_chain(response_request.model)
 
+            stream_headers: dict[str, str] = dict(self._responses_adapter.sse_headers)
+            if self._settings.route_response_header:
+                stream_headers["x-claudey-route"] = format_route_header(
+                    self._provider_executor,
+                    self._model_router,
+                    resolution,
+                    response_request.model,
+                )
+
             streamed = self._provider_executor.stream(
                 resolution,
                 response_request,
@@ -94,7 +103,7 @@ class ResponsesHandler:
                         )
                     ),
                 ),
-                headers=self._responses_adapter.sse_headers,
+                headers=stream_headers,
                 pre_start_error_response=lambda exc: self._pre_start_error_response(
                     exc, request_id=request_id
                 ),

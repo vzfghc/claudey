@@ -301,6 +301,11 @@ class Settings(BaseSettings):
     log_raw_messaging_content: bool = Field(
         default=False, validation_alias="LOG_RAW_MESSAGING_CONTENT"
     )
+    # When true, expose the chosen route as x-claudey-route on Messages/Responses
+    # responses for CLI debugging (provider/model + optional fail-why).
+    route_response_header: bool = Field(
+        default=True, validation_alias="X_CLAUDEY_ROUTE_HEADER"
+    )
     # When true, log full Claude CLI stderr, non-JSON lines, and parser error text.
     log_raw_cli_diagnostics: bool = Field(
         default=False, validation_alias="LOG_RAW_CLI_DIAGNOSTICS"

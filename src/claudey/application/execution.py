@@ -55,6 +55,7 @@ class ProviderExecutor:
         raw_log_payload: object,
         request_id: str,
         preflight: bool = True,
+        route_trace_extra: dict[str, object] | None = None,
     ) -> AsyncIterator[str]:
         """Preflight synchronously (unless skipped), then return the traced stream."""
         provider = self._provider_resolver(routed.resolved.provider_id)
@@ -82,6 +83,8 @@ class ProviderExecutor:
             ),
             "reasoning_budget_tokens": routed.reasoning.budget_tokens,
         }
+        if route_trace_extra:
+            route_trace.update(route_trace_extra)
         if wire_api == "responses":
             route_trace["wire_api"] = "responses"
         if self._generation_id is not None:

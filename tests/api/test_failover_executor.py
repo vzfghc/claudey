@@ -6,9 +6,10 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from claudey.application.failover import FallbackExecutor
-from claudey.application.routing import ChainResolution, ResolvedModel
+from claudey.application.failover import FallbackExecutor, format_route_header
+from claudey.application.routing import ChainResolution, ModelRouter, ResolvedModel
 from claudey.config.reasoning import ReasoningPreference
+from claudey.config.settings import Settings
 from claudey.core.anthropic import Message, MessagesRequest
 from claudey.core.failures import ExecutionFailure, FailureKind, find_execution_failure
 from claudey.providers.health import HealthRegistry
@@ -284,3 +285,66 @@ async def test_single_node_chain_surfaces_its_failure():
         await _run(_resolution((_NODE_A,)), {"provider_a": primary})
 
     assert len(primary.stream_kwargs) == 1
+
+
+def _route_executor(health: HealthRegistry) -> FallbackExecutor:
+    return FallbackExecutor(_provider_factory({}), health=health)
+
+
+def _router() -> ModelRouter:
+    return ModelRouter(Settings())
+
+
+def test_primary_route_returns_healthy_first_node():
+    health = HealthRegistry()
+    executor = _route_executor(health)
+
+    ref, fail_why = executor.primary_route(_resolution((_NODE_A,)))
+
+    assert ref == "provider_a/model-a"
+    assert fail_why is None
+
+
+def test_primary_route_prefers_unskipped_secondary():
+    health = HealthRegistry()
+    health.record_failure("provider_a/model-a", FailureKind.OVERLOADED)
+    executor = _route_executor(health)
+
+    ref, fail_why = executor.primary_route(_resolution((_NODE_A, _NODE_B)))
+
+    assert ref == "provider_b/model-b"
+    assert fail_why is None
+
+
+def test_primary_route_reports_skip_reason_when_none_usable():
+    health = HealthRegistry()
+    health.mark_provider_down("provider_a", "probe failed")
+    executor = _route_executor(health)
+
+    ref, fail_why = executor.primary_route(_resolution((_NODE_A,)))
+
+    assert ref == "provider_a/model-a"
+    assert fail_why == "down"
+
+
+def test_format_route_header_plain_ref_when_healthy():
+    health = HealthRegistry()
+    executor = _route_executor(health)
+
+    value = format_route_header(
+        executor, _router(), _resolution((_NODE_A,)), "claude-3-opus"
+    )
+
+    assert value == "provider_a/model-a"
+
+
+def test_format_route_header_appends_fail_why_when_primary_skipped():
+    health = HealthRegistry()
+    health.mark_provider_down("provider_a", "probe failed")
+    executor = _route_executor(health)
+
+    value = format_route_header(
+        executor, _router(), _resolution((_NODE_A,)), "claude-3-opus"
+    )
+
+    assert value == "provider_a/model-a; why=down"
