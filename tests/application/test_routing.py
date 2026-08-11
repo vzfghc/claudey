@@ -537,6 +537,36 @@ def test_resolve_chain_direct_override_is_single_node(settings):
     assert _chain_refs(settings, "deepseek/deepseek-chat") == ["deepseek/deepseek-chat"]
 
 
+def test_resolve_chain_gateway_encoded_direct_override_keeps_decoded_provider(settings):
+    """Gateway-encoded direct overrides reuse the decoded primary node.
+
+    Regression: re-parsing the raw model name mis-split
+    ``claude-3-claudey-no-thinking/<provider>/<model>`` (and
+    ``anthropic/<provider>/<model>``) into a non-existent provider type,
+    breaking the failover chain for every Claude Code-discoverable gateway /
+    no-thinking model.
+    """
+    no_thinking = ModelRouter(settings).resolve_chain(
+        "claude-3-claudey-no-thinking/nvidia_nim/deepseek-ai/deepseek-v4-pro"
+    )
+    assert [node.provider_model_ref for node in no_thinking.chain] == [
+        "claude-3-claudey-no-thinking/nvidia_nim/deepseek-ai/deepseek-v4-pro"
+    ]
+    assert no_thinking.primary.provider_id == "nvidia_nim"
+    assert no_thinking.primary.provider_model == "deepseek-ai/deepseek-v4-pro"
+    assert no_thinking.primary.reasoning_preference is ReasoningPreference.OFF
+
+    gateway = ModelRouter(settings).resolve_chain(
+        "anthropic/nvidia_nim/deepseek-ai/deepseek-v4-pro"
+    )
+    assert [node.provider_model_ref for node in gateway.chain] == [
+        "anthropic/nvidia_nim/deepseek-ai/deepseek-v4-pro"
+    ]
+    assert gateway.primary.provider_id == "nvidia_nim"
+    assert gateway.primary.provider_model == "deepseek-ai/deepseek-v4-pro"
+    assert gateway.primary.reasoning_preference is not ReasoningPreference.OFF
+
+
 def test_resolve_chain_reasoning_derived_from_primary_when_request_given(settings):
     settings.reasoning_policy = ReasoningPreference.HIGH
     request = MessagesRequest(

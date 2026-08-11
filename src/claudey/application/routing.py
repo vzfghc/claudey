@@ -252,20 +252,24 @@ class ModelRouter:
         """
         primary = self.resolve(claude_model_name)
         if primary.provider_model_ref == claude_model_name:
-            refs = (primary.provider_model_ref,)
+            # Direct override (plain ``provider/model`` or gateway-encoded id):
+            # reuse the already-decoded primary as the single chain node.
+            # Re-parsing the raw name would mis-split gateway-encoded ids (e.g.
+            # ``claude-3-claudey-no-thinking/<provider>/<model>``) into a
+            # non-existent provider type.
+            chain = (primary,)
         else:
             refs = self._resolve_chain_refs(claude_model_name)
-
-        chain = tuple(
-            ResolvedModel(
-                original_model=claude_model_name,
-                provider_id=parse_provider_type(ref),
-                provider_model=strip_context_window_suffix(parse_model_name(ref)),
-                provider_model_ref=ref,
-                reasoning_preference=primary.reasoning_preference,
+            chain = tuple(
+                ResolvedModel(
+                    original_model=claude_model_name,
+                    provider_id=parse_provider_type(ref),
+                    provider_model=strip_context_window_suffix(parse_model_name(ref)),
+                    provider_model_ref=ref,
+                    reasoning_preference=primary.reasoning_preference,
+                )
+                for ref in refs
             )
-            for ref in refs
-        )
 
         reasoning: ReasoningPolicy | None = None
         if request is not None:
