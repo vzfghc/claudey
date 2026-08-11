@@ -360,7 +360,7 @@ class Settings(BaseSettings):
 
     # ==================== Server ====================
     host: str = "0.0.0.0"
-    port: int = 8082
+    port: int = 8090
     open_admin_browser: bool = Field(
         default=True,
         validation_alias=AliasChoices("HANS_OPEN_BROWSER", "FCC_OPEN_BROWSER"),

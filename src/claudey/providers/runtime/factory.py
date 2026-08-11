@@ -11,7 +11,11 @@ from claudey.config.custom_providers import (
     effective_api_key,
     find_custom_provider,
 )
-from claudey.config.provider_catalog import PROVIDER_CATALOG, ProviderAuthKind
+from claudey.config.provider_catalog import (
+    INJECTED_PROVIDER_IDS,
+    PROVIDER_CATALOG,
+    ProviderAuthKind,
+)
 from claudey.config.settings import Settings
 from claudey.providers.admission import ProviderAdmissionController
 from claudey.providers.base import BaseProvider, ProviderConfig
@@ -154,8 +158,6 @@ _SPECIAL_PROVIDER_FACTORIES: dict[str, ProviderFactory] = {
     "vertex": _create_vertex,
     "github_models": _create_github_models,
 }
-_INJECTED_PROVIDER_IDS = {"openai"}
-
 _connected_account_ids = {
     pid
     for pid, desc in PROVIDER_CATALOG.items()
@@ -165,18 +167,18 @@ _connected_account_ids = {
 _profiled_ids = set(OPENAI_CHAT_PROFILES)
 _special_ids = set(_SPECIAL_PROVIDER_FACTORIES)
 _construction_ids = (
-    _profiled_ids | _special_ids | _INJECTED_PROVIDER_IDS | _connected_account_ids
+    _profiled_ids | _special_ids | INJECTED_PROVIDER_IDS | _connected_account_ids
 )
 if (
     _profiled_ids & _special_ids
-    or _profiled_ids & _INJECTED_PROVIDER_IDS
-    or _special_ids & _INJECTED_PROVIDER_IDS
+    or _profiled_ids & INJECTED_PROVIDER_IDS
+    or _special_ids & INJECTED_PROVIDER_IDS
     or _construction_ids != set(PROVIDER_CATALOG)
 ):
     raise AssertionError(
         "Every provider must have exactly one construction owner: "
         f"profiles={_profiled_ids!r} special={_special_ids!r} "
-        f"injected={_INJECTED_PROVIDER_IDS!r} catalog={set(PROVIDER_CATALOG)!r}"
+        f"injected={INJECTED_PROVIDER_IDS!r} catalog={set(PROVIDER_CATALOG)!r}"
     )
 
 
@@ -203,13 +205,23 @@ def create_provider(
         max_concurrency=config.max_concurrency,
     )
     factory = (injected_factories or {}).get(provider_id)
-    if provider_id in _INJECTED_PROVIDER_IDS and factory is None:
+    if provider_id in INJECTED_PROVIDER_IDS and factory is None:
         raise ApplicationUnavailableError(
             f"Provider {provider_id!r} is unavailable in this runtime."
         )
     factory = factory or _SPECIAL_PROVIDER_FACTORIES.get(provider_id)
     if factory is not None:
         return factory(config, settings, admission)
+    if provider_id in _connected_account_ids:
+        # Connected-account ids only own OAuth/login state; without an injected
+        # or special factory they have no construction owner. Fall through to a
+        # clean user-facing error instead of an internal KeyError from the
+        # OpenAI-chat profile dispatch.
+        raise ApplicationUnavailableError(
+            f"Provider {provider_id!r} is an OAuth connected account with no "
+            "runtime provider; route requests through a tier model instead of "
+            "a direct override."
+        )
     return create_openai_chat_provider(provider_id, config, admission)
 
 

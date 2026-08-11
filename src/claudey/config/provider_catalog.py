@@ -99,6 +99,13 @@ class ProviderDescriptor:
         return ()
 
 
+# Connected-account providers whose clients are injected by the runtime
+# bootstrap (OAuth credential) rather than constructed from declarative
+# profiles. ``openai`` (ChatGPT/Codex) is the only one with a construction
+# path; ``anthropic`` owns UI login state only and has no factory, so direct
+# overrides for it must fall through to the tier chain.
+INJECTED_PROVIDER_IDS: frozenset[str] = frozenset({"openai"})
+
 PROVIDER_CATALOG: dict[str, ProviderDescriptor] = {
     "nvidia_nim": ProviderDescriptor(
         provider_id="nvidia_nim",

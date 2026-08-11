@@ -308,7 +308,7 @@ _NON_PROVIDER_FIELDS: tuple[ConfigFieldSpec, ...] = (
         "runtime",
         "number",
         settings_attr="port",
-        default="8082",
+        default="8090",
         restart_required=True,
     ),
     ConfigFieldSpec(

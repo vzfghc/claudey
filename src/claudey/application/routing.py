@@ -12,8 +12,10 @@ from claudey.config.model_refs import (
     parse_provider_type,
 )
 from claudey.config.provider_catalog import (
+    INJECTED_PROVIDER_IDS,
     PROVIDER_CATALOG,
     SUPPORTED_PROVIDER_IDS,
+    ProviderAuthKind,
 )
 from claudey.config.reasoning import ReasoningPreference
 from claudey.config.settings import Settings
@@ -48,6 +50,28 @@ def _is_runtime_provider_id(provider_id: str) -> bool:
     return (
         provider_id in SUPPORTED_PROVIDER_IDS or provider_id in _runtime_provider_ids()
     )
+
+
+def _is_constructible_provider_id(provider_id: str) -> bool:
+    """Return whether a bare ``<provider>/<model>`` override is constructible.
+
+    Custom providers are always constructible. Catalog providers are
+    constructible unless they are connected-account ids with no injected
+    client: ``anthropic`` owns OAuth/login state only and has no factory, so
+    ``anthropic/claude-sonnet-5`` must fall through to the tier chain instead
+    of failing with an internal error (matching upstream free-claude-code,
+    where Claude models always map to ``MODEL``). ``openai`` is injected by the
+    runtime (ChatGPT/Codex), so ``openai/<model>`` remains a valid direct
+    override.
+    """
+    if not _is_runtime_provider_id(provider_id):
+        return False
+    descriptor = PROVIDER_CATALOG.get(provider_id)
+    if descriptor is None:
+        return True  # admin-defined custom provider
+    if descriptor.auth_kind is ProviderAuthKind.CONNECTED_ACCOUNT:
+        return provider_id in INJECTED_PROVIDER_IDS
+    return True
 
 
 @dataclass(frozen=True, slots=True)
@@ -166,6 +190,8 @@ class ModelRouter:
         if not separator:
             return None, None, False
         if not _is_runtime_provider_id(provider_id):
+            return None, None, False
+        if not _is_constructible_provider_id(provider_id):
             return None, None, False
         if not provider_model:
             return None, None, False

@@ -500,6 +500,18 @@ def test_create_provider_uses_openai_chat_openrouter_by_default():
     assert isinstance(provider, OpenRouterProvider)
 
 
+def test_create_provider_for_uninjected_connected_account_raises_unavailable():
+    """A connected-account id without an injected factory fails cleanly.
+
+    ``anthropic`` owns OAuth/login state, not a constructible provider. Without
+    an injected factory it used to fall through to the OpenAI-chat profile
+    dispatch and blow up with an internal KeyError (surfaced as a 500
+    server_error); it must now yield a clean user-facing unavailable error.
+    """
+    with pytest.raises(ApplicationUnavailableError, match="connected account"):
+        create_provider("anthropic", _make_settings(anthropic_auth_token="token"))
+
+
 def test_create_provider_instantiates_each_builtin():
     settings = _make_settings(
         gemini_api_key="test_gemini_key",

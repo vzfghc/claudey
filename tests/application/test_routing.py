@@ -198,6 +198,41 @@ def test_model_router_routes_prefixed_provider_model_directly(settings):
     assert routed.resolved.provider_model_ref == "deepseek/deepseek-chat"
 
 
+@pytest.mark.parametrize(
+    "model_name",
+    [
+        "anthropic/claude-sonnet-5",
+        "anthropic/claude-opus-4-20250514",
+    ],
+)
+def test_model_router_anthropic_overrides_fall_through_to_chain(settings, model_name):
+    """Bare ``anthropic/`` overrides must not route to the phantom provider.
+
+    ``anthropic`` is a connected-account id with no injected client or factory;
+    routing ``anthropic/<model>`` to it used to explode with an internal
+    KeyError (500 server_error). Such overrides fall through to the configured
+    tier chain instead.
+    """
+    resolved = ModelRouter(settings).resolve(model_name)
+
+    assert resolved.provider_id == "nvidia_nim"
+    assert resolved.provider_model == "fallback-model"
+    assert resolved.provider_model_ref == "nvidia_nim/fallback-model"
+
+
+def test_model_router_openai_override_routes_direct(settings):
+    """``openai/<model>`` stays a direct override: openai is runtime-injected.
+
+    The OpenAI/ChatGPT connected account has a construction path, so a bare
+    ``openai/`` prefix must not fall through to the tier chain.
+    """
+    resolved = ModelRouter(settings).resolve("openai/gpt-4o")
+
+    assert resolved.provider_id == "openai"
+    assert resolved.provider_model == "gpt-4o"
+    assert resolved.provider_model_ref == "openai/gpt-4o"
+
+
 def test_model_router_routes_wafer_provider_model_directly(settings):
     routed = ModelRouter(settings).resolve_messages_request(
         MessagesRequest(
