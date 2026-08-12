@@ -21,7 +21,6 @@ from claudey.application.model_metadata import (
 from claudey.config.admin.values import MASKED_SECRET
 from claudey.config.server_urls import local_admin_url
 from claudey.config.settings import Settings
-from claudey.core.version import asset_version
 from tests.api.support import create_test_app, provider_manager_for_app
 
 
@@ -77,24 +76,27 @@ def test_admin_page_is_loopback_only(monkeypatch, tmp_path):
     assert remote_client.get("/admin").status_code == 403
 
 
-@pytest.mark.parametrize(
-    "path",
-    (
-        "/admin",
-        "/admin/assets/admin.css",
-        "/admin/assets/admin.js",
-        "/admin/assets/admin-animations.css",
-        "/admin/assets/admin-animations.js",
-        "/admin/assets/beam.bundle.js",
-        "/admin/api/config",
-    ),
-)
-def test_admin_responses_are_never_cached(monkeypatch, tmp_path, path):
-    _set_home(monkeypatch, tmp_path)
-    response = _local_client(create_test_app()).get(path)
+def _react_asset_paths() -> list[str]:
+    """Resolve the hashed JS/CSS paths the built React entry references."""
+    entry = Path("src/claudey/api/admin_static/admin_ui_dist/index.html").read_text(
+        encoding="utf-8"
+    )
+    return re.findall(r'(?:src|href)="(/admin/assets/[^"]+)"', entry)
 
-    assert response.status_code == 200
-    assert response.headers["cache-control"] == "no-store"
+
+def test_admin_responses_are_never_cached(monkeypatch, tmp_path):
+    # Resolve the asset paths from the committed build BEFORE _set_home chdirs
+    # into tmp_path (the build lives at a repo-relative path).
+    asset_paths = _react_asset_paths()
+
+    _set_home(monkeypatch, tmp_path)
+    client = _local_client(create_test_app())
+
+    for path in ["/admin", "/admin/api/config", *asset_paths]:
+        response = client.get(path)
+
+        assert response.status_code == 200, path
+        assert response.headers["cache-control"] == "no-store", path
 
 
 @pytest.mark.parametrize(
@@ -209,60 +211,50 @@ def test_admin_cache_policy_does_not_match_similar_public_paths(monkeypatch, tmp
     assert "cache-control" not in response.headers
 
 
-def test_admin_api_fetches_bypass_browser_cache():
-    script = Path("src/claudey/api/admin_static/admin.js").read_text(encoding="utf-8")
+def _react_bundle() -> str:
+    """Read the committed React bundle (Phase 4: the app at /admin)."""
+    assets = Path("src/claudey/api/admin_static/admin_ui_dist/assets")
+    bundles = sorted(assets.glob("index-*.js"))
+    assert bundles, "admin-ui build must be committed"
+    return bundles[-1].read_text(encoding="utf-8")
 
-    assert 'cache: "no-store"' in script
+
+def test_admin_api_fetches_bypass_browser_cache():
+    # The Vite minifier may emit the cache value as a double-quoted string or a
+    # backtick template literal, so assert on the directive itself.
+    bundle = _react_bundle()
+    assert "no-store" in bundle
+    # The directive must be attached to the fetch cache option, not some other
+    # string — confirm it sits in a fetch(...) cache: assignment.
+    match = re.search(r"cache:\s*[`\"']no-store[`\"']", bundle)
+    assert match is not None, "fetch cache directive not found in bundle"
 
 
 def test_admin_custom_providers_render_fallback_logo():
-    script = Path("src/claudey/api/admin_static/admin.js").read_text(encoding="utf-8")
+    bundle = _react_bundle()
 
-    assert 'FALLBACK_LOGO_SRC = "/admin/assets/logos/_fallback.svg"' in script
-    assert 'if (providerId.startsWith("custom_"))' in script
-    assert "logo.src = FALLBACK_LOGO_SRC" in script
-    assert "logo.onerror = () =>" in script
-
-
-def test_admin_beam_bundle_is_served(monkeypatch, tmp_path):
-    _set_home(monkeypatch, tmp_path)
-    response = _local_client(create_test_app()).get("/admin/assets/beam.bundle.js")
-
-    assert response.status_code == 200
-    assert "ClaudeyBeam" in response.text
-
-
-def test_admin_beam_microfrontend_wiring():
-    html = Path("src/claudey/api/admin_static/index.html").read_text(encoding="utf-8")
-    script = Path("src/claudey/api/admin_static/admin.js").read_text(encoding="utf-8")
-    bundle = Path("src/claudey/api/admin_static/beam.bundle.js").read_text(
-        encoding="utf-8"
-    )
-
-    # The mount div and its strip live in the providers view.
-    assert 'id="providerBeamMount"' in html
-    assert "Connected providers" in html
-    # admin.js feeds the live provider list into the micro-frontend.
-    assert "providerLogoSrc" in script
-    assert "beamProviders" in script
-    assert 'beam.mount("providerBeamMount"' in script
-    # The bundle is a self-contained IIFE exposing the mount API with the
-    # vendored animated-beam component and the inlined stylesheet.
-    assert "window.ClaudeyBeam" in bundle
-    assert "AnimatedBeam" in bundle
-    assert "beam-panel" in bundle
-    assert "attachShadow" in bundle
+    assert "/admin/assets/logos/_fallback.svg" in bundle
+    assert "custom_".strip() in bundle  # custom provider id prefix
+    assert "_fallback.svg" in bundle
 
 
 def test_admin_ui_entry_is_served(monkeypatch, tmp_path):
     _set_home(monkeypatch, tmp_path)
-    response = _local_client(create_test_app()).get("/admin/ui")
+    response = _local_client(create_test_app()).get("/admin")
 
     assert response.status_code == 200
     assert 'id="root"' in response.text
     # Same cache policy as every other admin response; hashed asset names carry
     # the immutable cache-busting.
     assert response.headers["cache-control"] == "no-store"
+
+
+def test_admin_ui_legacy_path_redirects(monkeypatch, tmp_path):
+    _set_home(monkeypatch, tmp_path)
+    response = _local_client(create_test_app()).get("/admin/ui", follow_redirects=False)
+
+    assert response.status_code == 308
+    assert response.headers["location"] == "/admin"
 
 
 def test_admin_ui_is_loopback_only(monkeypatch, tmp_path):
@@ -277,8 +269,8 @@ def test_admin_ui_assets_are_served(monkeypatch, tmp_path):
     entry = Path("src/claudey/api/admin_static/admin_ui_dist/index.html").read_text(
         encoding="utf-8"
     )
-    asset_src = re.search(r'(?:src|href)="(/admin/ui/assets/[^"]+)"', entry)
-    assert asset_src is not None, "built entry must reference admin_ui_dist assets"
+    asset_src = re.search(r'(?:src|href)="(/admin/assets/[^"]+)"', entry)
+    assert asset_src is not None, "built entry must reference /admin/assets chunks"
 
     _set_home(monkeypatch, tmp_path)
     response = _local_client(create_test_app()).get(asset_src.group(1))
@@ -290,9 +282,9 @@ def test_admin_ui_assets_are_served(monkeypatch, tmp_path):
 @pytest.mark.parametrize(
     "path",
     (
-        "/admin/ui/assets/missing.js",
-        "/admin/ui/assets/..%2fadmin.js",
-        "/admin/ui/assets/..%2Fadmin.js",
+        "/admin/assets/missing.js",
+        "/admin/assets/..%2fadmin.js",
+        "/admin/assets/..%2Fadmin.js",
     ),
 )
 def test_admin_ui_rejects_unknown_and_traversal(monkeypatch, tmp_path, path):
@@ -301,19 +293,6 @@ def test_admin_ui_rejects_unknown_and_traversal(monkeypatch, tmp_path, path):
 
     assert response.status_code == 404
     assert response.headers["cache-control"] == "no-store"
-
-
-def test_admin_connected_account_login_preopens_sign_in_window():
-    script = Path("src/claudey/api/admin_static/admin.js").read_text(encoding="utf-8")
-
-    assert 'window.open("about:blank", "_blank")' in script
-    assert "popup.location.replace(target)" in script
-    assert "if (popup) popup.close()" in script
-    assert '"Reconnect"' in script
-    assert '"Copy code"' in script
-    assert '"Open sign-in"' in script
-    assert '"Use device code"' in script
-    assert 'window.confirm("Disconnect this ChatGPT account from Claudey?")' in script
 
 
 class _FakeConnectedAccount:
@@ -409,13 +388,6 @@ def test_admin_rejects_auth_routes_for_non_connected_provider(monkeypatch, tmp_p
     assert response.status_code == 404
 
 
-def test_admin_provider_cards_support_non_key_configuration():
-    script = Path("src/claudey/api/admin_static/admin.js").read_text(encoding="utf-8")
-
-    assert '"missing_config"' in script
-    assert "provider.configuration.split" in script  # used by primary field resolver
-
-
 def test_admin_page_no_longer_renders_generated_env_panel(monkeypatch, tmp_path):
     _set_home(monkeypatch, tmp_path)
     app = create_test_app()
@@ -425,132 +397,6 @@ def test_admin_page_no_longer_renders_generated_env_panel(monkeypatch, tmp_path)
     assert response.status_code == 200
     assert "Generated Env" not in response.text
     assert "envPreview" not in response.text
-
-
-def test_admin_page_renders_server_status_pill(monkeypatch, tmp_path):
-    _set_home(monkeypatch, tmp_path)
-    app = create_test_app()
-
-    response = _local_client(app).get("/admin")
-
-    assert response.status_code == 200
-    assert 'id="serverStatusPill"' in response.text
-    assert 'class="toast-container"' in response.text
-    assert 'id="onboardingCard"' in response.text
-    assert "aria-keyshortcuts" in response.text
-    assert "Local Admin" not in response.text
-    assert "modelBadge" not in response.text
-
-
-def test_admin_static_renders_server_status_pill():
-    script = Path("src/claudey/api/admin_static/admin.js").read_text(encoding="utf-8")
-
-    assert 'api("/admin/api/status")' in script
-    assert "serverStatusPill" in script
-    assert '"Claudey Admin"' in script
-    assert "Running on :" in script
-    assert "updateHeader" not in script
-    assert "modelBadge" not in script
-
-
-def test_admin_static_guards_unsaved_changes_on_close():
-    script = Path("src/claudey/api/admin_static/admin.js").read_text(encoding="utf-8")
-
-    assert 'window.addEventListener("beforeunload",' in script
-    assert "event.returnValue" in script
-    assert "suppressBeforeUnload" in script
-    assert "changedValues()).length" in script
-    # The apply-triggered restart navigation must not trip the guard.
-    assert "suppressBeforeUnload = true" in script
-
-
-def test_admin_static_nav_renders_icon_rail_with_labels():
-    script = Path("src/claudey/api/admin_static/admin.js").read_text(encoding="utf-8")
-    styles = Path("src/claudey/api/admin_static/admin.css").read_text(encoding="utf-8")
-
-    assert 'icon: `<svg viewBox="0 0 24 24"' in script
-    assert 'className = "nav-icon"' in script
-    assert 'className = "nav-label"' in script
-    assert ".nav-label" in styles
-    # Below 900px the sidebar collapses to an icon rail with labels hidden.
-    assert "@media (max-width: 900px)" in styles
-    assert ".nav-label {\n    display: none;" in styles
-    assert "min-height: 44px" in styles
-
-
-def test_admin_static_buttons_meet_40px_touch_targets():
-    styles = Path("src/claudey/api/admin_static/admin.css").read_text(encoding="utf-8")
-
-    assert "min-height: 40px;" in styles
-    assert "min-height: 36px;" not in styles
-
-
-def test_admin_static_hides_managed_source_label():
-    script = Path("src/claudey/api/admin_static/admin.js").read_text(encoding="utf-8")
-
-    assert 'managed_env: "",' in script
-    assert "hasOwnProperty.call(labels, source)" in script
-    assert 'parts.push("locked")' in script
-    assert "sourceEl.textContent = source" in script
-
-
-def test_admin_static_places_reasoning_fields_in_model_config():
-    script = Path("src/claudey/api/admin_static/admin.js").read_text(encoding="utf-8")
-
-    assert 'sections: ["models", "reasoning", "web_tools"]' in script
-    assert 'sections: ["models", "thinking", "web_tools"]' not in script
-
-
-def test_admin_static_model_combobox_owns_dropdown_and_search_behavior():
-    script = Path("src/claudey/api/admin_static/admin.js").read_text(encoding="utf-8")
-    styles = Path("src/claudey/api/admin_static/admin.css").read_text(encoding="utf-8")
-
-    assert 'api("/admin/api/models" + (refresh ? "/refresh" : "")' in script
-    assert 'field.type === "model" || field.type === "optional_model"' in script
-    assert 'input.setAttribute("role", "combobox")' in script
-    assert 'listbox.setAttribute("role", "listbox")' in script
-    assert 'toggle.className = "model-combobox-toggle"' in script
-    assert "class ModelCombobox" in script
-    assert 'input.addEventListener("click", () => this.open())' in script
-    assert "value.toLocaleLowerCase().includes(normalizedQuery)" in script
-    assert 'event.key === "ArrowDown" || event.key === "ArrowUp"' in script
-    assert "this.setActive(this.visibleOptions.length - 1)" in script
-    assert 'event.key === "Enter"' in script
-    assert 'event.key === "Escape"' in script
-    assert 'document.createElement("datalist")' not in script
-    assert ".model-combobox-list" in styles
-    assert ".model-combobox-option.active" in styles
-    assert styles.count("background-image: var(--dropdown-chevron)") == 2
-
-
-def test_admin_static_model_combobox_preserves_custom_slugs_and_none_semantics():
-    script = Path("src/claudey/api/admin_static/admin.js").read_text(encoding="utf-8")
-
-    assert '? ["None", ...state.modelOptions]' in script
-    assert "You can still enter a custom slug." in script
-    assert 'input.dataset.fieldType === "optional_model"' in script
-    assert 'return "";' in script
-    assert "await hydrateModelOptions();" in script
-    assert "Model fields remain editable" in script
-    assert "result.failed_providers || []" in script
-    assert '"warn"' in script
-
-
-def test_admin_static_usage_period_pill_defaults_to_total():
-    script = Path("src/claudey/api/admin_static/admin.js").read_text(encoding="utf-8")
-    styles = Path("src/claudey/api/admin_static/admin.css").read_text(encoding="utf-8")
-
-    # Total is the first option and the default selection.
-    assert 'const USAGE_PERIODS = ["Total", "24h", "7d", "30d"];' in script
-    assert 'let usagePeriod = "Total";' in script
-    # Total is the first rendered button.
-    assert script.index('"Total"') < script.index('"24h"')
-
-    # Firecrawl-style segmented pill with a sliding highlight.
-    assert 'indicator.className = "usage-period-pill-indicator"' in script
-    assert "positionIndicator(tab)" in script
-    assert ".usage-period-pill-indicator" in styles
-    assert "transition: left" in styles
 
 
 def test_admin_config_masks_secrets_and_exposes_manifest(monkeypatch, tmp_path):
@@ -1467,375 +1313,6 @@ def test_admin_launch_url_uses_loopback_for_wildcard_host():
     assert local_admin_url(settings) == "http://127.0.0.1:8082/admin"
 
 
-def test_admin_static_html_loads_animation_assets_in_order():
-    html = Path("src/claudey/api/admin_static/index.html").read_text(encoding="utf-8")
-
-    # The animations layer loads after the base admin styles.
-    assert html.index("admin-animations.css") > html.index("admin.css")
-    # The ES module loads after admin.js and is declared as a module.
-    assert html.index("admin-animations.js") > html.index("admin.js")
-    assert 'type="module"' in html
-    # The scout dashboard is the first child of the providers view.
-    providers = html.index('id="view-providers"')
-    scout = html.index('class="scout-dashboard"')
-    onboarding = html.index('id="onboardingCard"')
-    assert providers < scout < onboarding
-    # The provider-beam micro-frontend loads before admin.js so
-    # window.ClaudeyBeam exists when load() mounts the diagram.
-    beam_script = html.index('src="/admin/assets/beam.bundle.js')
-    admin_script = html.index('src="/admin/assets/admin.js')
-    assert beam_script < admin_script
-    # The beam strip sits between the scout dashboard and the onboarding card.
-    beam_mount = html.index('id="providerBeamMount"')
-    assert scout < beam_mount < onboarding
-
-
-def test_admin_static_sidebar_tween_contract():
-    module = Path("src/claudey/api/admin_static/admin-animations.js").read_text(
-        encoding="utf-8"
-    )
-    styles = Path("src/claudey/api/admin_static/admin.css").read_text(encoding="utf-8")
-    animations = Path("src/claudey/api/admin_static/admin-animations.css").read_text(
-        encoding="utf-8"
-    )
-
-    # The toggle is exposed for admin.js and delegates state to it.
-    assert "window.__sidebarTweenToggle" in module
-    assert "window.applySidebarCollapsed" in module
-    # Per-frame inline writes, not a CSS transition.
-    assert "requestAnimationFrame" in module
-    assert "sidebar.style.width" in module
-    assert 'document.documentElement.style.setProperty("--sidebar-w"' in module
-    assert "easeOutQuint" in module
-    assert "1 - Math.pow(1 - t, 5)" in module
-    assert "cancelAnimationFrame" in module
-    assert "parseFloat(sidebar.style.width)" in module
-    assert "collapseMs: 350" in module
-    assert "expandMs: 220" in module
-    assert "collapsed: 64" in module
-    assert "expanded: 256" in module
-    # The rail class is added only once the tween completes.
-    assert 'document.body.classList.add("sidebar-rail")' in module
-    # CSS: the sidebar's own width is tweened per-frame, not via a CSS
-    # transition (the action bar follows the var). The budget fill bar may
-    # still animate its width — that is a different element.
-    sidebar_rule = styles[styles.index(".sidebar {") : styles.index(".brand {")]
-    assert "transition" not in sidebar_rule
-    assert "left: var(--sidebar-w, 256px)" in styles
-    assert ":root {\n  --sidebar-w: 256px;" in animations
-    # No-JS fallback keeps the collapsed width at 64px.
-    assert "body.sidebar-collapsed .sidebar {\n    width: 64px;" in styles
-
-
-def test_admin_static_sidebar_budget_and_brand_fade():
-    module = Path("src/claudey/api/admin_static/admin-animations.js").read_text(
-        encoding="utf-8"
-    )
-    styles = Path("src/claudey/api/admin_static/admin.css").read_text(encoding="utf-8")
-
-    # The footer budget fades out with the width instead of being crushed,
-    # and its elements are cached once per tween (never re-queried per frame).
-    assert "BUDGET_FADE_END" in module
-    assert "budgetOpacityFor" in module
-    assert "setBudgetOpacity" in module
-    assert "fadeLabels" in module
-    assert 'const budget = document.querySelector(".sidebar-budget")' in module
-    # Brand text clips cleanly as the width tween shrinks it, and stays
-    # measurable in the rail (width 0, not display:none) so the expand
-    # tween can grow it back from the natural scrollWidth.
-    assert "overflow: hidden;" in styles
-    assert ".brand-text {" in styles
-    assert "body.sidebar-rail .brand-text {\n    width: 0;\n    opacity: 0;" in styles
-
-
-def test_admin_static_sidebar_click_delegates_to_tween():
-    script = Path("src/claudey/api/admin_static/admin.js").read_text(encoding="utf-8")
-
-    assert "if (window.__sidebarTweenToggle) {" in script
-    assert "window.__sidebarTweenToggle();" in script
-    assert (
-        'applySidebarCollapsed(!document.body.classList.contains("sidebar-collapsed"));'
-    ) in script
-    # State and aria ownership stay with admin.js.
-    assert 'sidebarToggle.setAttribute("aria-expanded"' in script
-    assert "sectionNav.inert" in script
-
-
-def test_admin_static_sidebar_no_hover_peek():
-    module = Path("src/claudey/api/admin_static/admin-animations.js").read_text(
-        encoding="utf-8"
-    )
-
-    # Hover no longer drives a peek — the toggle click owns collapse/expand.
-    assert 'sidebarEl.addEventListener("mouseenter"' not in module
-    assert 'sidebarEl.addEventListener("mouseleave"' not in module
-    assert "1b. Sidebar — no hover-peek; toggle click owns collapse/expand" in module
-    # admin.js owns applySidebarCollapsed/localStorage; the 1b section
-    # captures the elements and never mutates the pin state itself.
-    section = module[module.index("1b. Sidebar") : module.index("/* 2. Section nav")]
-    assert "const sidebarEl" in section
-    assert "const sidebarToggleEl" in section
-    assert "const sidebarCollapseBtn" in section
-    assert "applySidebarCollapsed(" not in section
-    assert "localStorage.setItem" not in section
-    # The exposed toggle delegates state changes to admin.js.
-    assert "onSidebarToggleClick" in module
-    assert "window.applySidebarCollapsed" in module
-    assert "window.__sidebarTweenToggle" in module
-    # Mid-tween reversals stay supported; a same-target tween is not
-    # restarted so hover and clicks cannot fight each other.
-    assert "sidebarTweenTarget" in module
-    assert "sidebarTweenTarget === targetCollapsed && sidebarTweenId !== null" in module
-    assert "sidebarTweenTarget = null" in module
-    assert "parseFloat(sidebar.style.width)" in module
-    # Reduced motion and viewport changes cancel the tween and reset aria.
-    assert "restoreSidebarAria" in module
-    assert "cancelSidebarTween" in module
-    # Regression: an expand tween/snap must keep the final inline
-    # width — the collapsed-state CSS width would snap the sidebar
-    # back to 64px if the inline width were cleared at tween completion.
-    assert "would snap the sidebar back to" in module
-    assert module.count("sidebar.style.width = `${SIDEBAR_W.expanded}px`") >= 2
-
-
-def test_admin_static_nav_uses_shared_sliding_pills_on_desktop():
-    module = Path("src/claudey/api/admin_static/admin-animations.js").read_text(
-        encoding="utf-8"
-    )
-    animations = Path("src/claudey/api/admin_static/admin-animations.css").read_text(
-        encoding="utf-8"
-    )
-    styles = Path("src/claudey/api/admin_static/admin.css").read_text(encoding="utf-8")
-
-    assert "MutationObserver" in module
-    assert 'className = "nav-pill nav-pill-active"' in module
-    assert 'className = "nav-pill nav-pill-hover"' in module
-    assert 'setAttribute("aria-hidden", "true")' in module
-    assert "NAV_PITCH" in module
-    assert "nav-pills-ready" in module
-    assert "pointermove" in module
-    assert "DESKTOP.matches" in module
-    # The active pill carries no shadow; the grey hover pill is hidden
-    # the moment the active item changes (not on the next pointermove).
-    assert "box-shadow: var(--shadow-sm)" not in animations
-    assert "syncActivePill" in module
-    assert "lastActiveIndex" in module
-    # Pill styles live at >=901px; per-item highlights are mobile-only.
-    assert "@media (min-width: 901px)" in animations
-    assert ".nav-pill-active" in animations
-    assert "transform 0.2s cubic-bezier(0.22, 1, 0.36, 1)" in animations
-    assert "pointer-events: none" in animations
-    assert ".nav-pill {\n    display: none;" in animations
-    assert "@media (max-width: 900px)" in animations
-    assert "body.sidebar-rail .nav-label {\n    visibility: hidden;" in animations
-    # The old desktop per-item highlight is gone from admin.css...
-    assert ".nav-link.active {\n  background: var(--accent-muted);" not in styles
-    # ...and lives inside the mobile block now.
-    mobile = styles.index("@media (max-width: 900px)")
-    assert styles.index(".nav-link.active", mobile) > mobile
-
-
-def test_admin_static_buttons_flat_heat_only_on_configure():
-    animations = Path("src/claudey/api/admin_static/admin-animations.css").read_text(
-        encoding="utf-8"
-    )
-    styles = Path("src/claudey/api/admin_static/admin.css").read_text(encoding="utf-8")
-
-    # The lift-and-press treatment is gone from primary/secondary:
-    # no sheen overlay, no 0.995 press, no per-button box-shadows.
-    # The only layered rgba shadow left is the Configure hover stack.
-    assert "scale(0.995)" not in animations
-    assert "linear-gradient(180deg, rgba(255, 255, 255, 0.9)" not in animations
-    assert "primary-button::before" not in animations
-    assert "secondary-button::before" not in animations
-    assert "box-shadow: inset" not in styles
-    assert ".card-configure:hover:not(:disabled) {" in animations
-    assert animations.index(
-        ".card-configure:hover:not(:disabled) {"
-    ) < animations.index("inset 0 -6px 12px rgba(")
-    # The 0.98 grouped press is restored for all three buttons.
-    assert (
-        ".primary-button:not(:disabled):active,\n"
-        ".secondary-button:not(:disabled):active,\n"
-        ".test-button:not(:disabled):active {\n  transform: scale(0.98);\n}" in styles
-    )
-    # The lone test-button rule is gone; the press lives in the
-    # grouped rule only (there .test-button is preceded by a comma).
-    assert (
-        "}\n\n.test-button:not(:disabled):active {\n  transform: scale(0.98);\n}"
-        not in styles
-    )
-    # Configure turns heat (#ff4d00) on hover with the exact layered stack.
-    assert "background: #ff4d00;" in animations
-    assert (
-        "box-shadow: inset 0 -6px 12px rgba(255, 77, 0, 0.25), 0 2px 4px rgba(255, 77, 0, 0.12),"
-    ) in animations
-    assert (
-        "0 1px 1px rgba(255, 77, 0, 0.12), 0 0.5px 0.5px rgba(255, 77, 0, 0.16),"
-    ) in animations
-    assert "transition: background-color 0.2s ease" in animations
-    # The base heat hover stays in admin.css (surgical edit boundary).
-    assert ".card-configure:hover:not(:disabled) {" in styles
-    assert styles.index(".card-configure:hover:not(:disabled) {") > styles.index(
-        ".ghost-button:hover:not(:disabled) {"
-    )
-
-
-def test_admin_static_toasts_sonner_style_with_swipe():
-    animations = Path("src/claudey/api/admin_static/admin-animations.css").read_text(
-        encoding="utf-8"
-    )
-    module = Path("src/claudey/api/admin_static/admin-animations.js").read_text(
-        encoding="utf-8"
-    )
-    script = Path("src/claudey/api/admin_static/admin.js").read_text(encoding="utf-8")
-
-    # Enter: scale 0.8 -> 1 with the sonner curve.
-    assert (
-        "animation: sonner-in 0.18s cubic-bezier(0.22, 1, 0.36, 1) backwards;"
-    ) in animations
-    assert "@keyframes sonner-in" in animations
-    assert "transform: scale(0.8)" in animations
-    # Exit: shrink + rise.
-    assert ".toast.toast-leaving" in animations
-    assert "transform: scale(0.9) translateY(-6px)" in animations
-    # Swipe: no transition while dragging, springy snap-back.
-    assert ".toast.swiping {\n  transition: none;" in animations
-    assert "cubic-bezier(0.34, 1.56, 0.64, 1)" in animations
-    assert "touch-action: pan-y" in animations
-    assert "SWIPE_DISMISS_AT" in module
-    assert "SWIPE_FADE_OVER" in module
-    assert "SWIPE_FLICK_VELOCITY" in module
-    assert "pointerdown" in module
-    assert 'closest(".toast")' in module
-    assert "snap-back" in module
-    assert "stopPropagation" in module
-    # Loading variant: spinner icon, spin keyframes, no auto-dismiss.
-    assert ".toast.toast-loading .toast-icon" in animations
-    assert "animation: toast-spin 0.8s linear infinite" in animations
-    assert "@keyframes toast-spin" in animations
-    assert "ICON_SPINNER" in script
-    assert 'kind === "loading" ? ICON_SPINNER : ICON_INFO' in script
-    assert 'container.querySelector(".toast-loading")?.remove();' in script
-    assert "M12 3a9 9 0 1 0 9 9" in script
-    assert 'showMessage("Restarting server...", "loading")' in script
-    assert 'showMessage("Applied. Restarting server...", "loading")' in script
-    assert 'showMessage("Refreshing models...", "loading")' in script
-    assert 'if (kind !== "loading") {' in script
-
-
-def test_admin_static_scout_dashboard_replaces_flow_diagram():
-    module = Path("src/claudey/api/admin_static/admin-animations.js").read_text(
-        encoding="utf-8"
-    )
-    html = Path("src/claudey/api/admin_static/index.html").read_text(encoding="utf-8")
-    logos_dir = Path("src/claudey/api/admin_static/logos")
-    slugs = sorted(path.stem for path in logos_dir.glob("*.svg"))
-    # 34 catalog logos + 6 letter-chip fallbacks added with the P3 providers
-    # (llm7, novita, ovhcloud, qwen, routeway, scaleway) — keep in sync with
-    # scripts/fetch_provider_logos.py --check.
-    assert len(slugs) == 40
-    assert "pecut" in slugs
-    assert "_fallback" in slugs
-
-    # The marquee and the flow diagram are both gone; logos stay untouched.
-    assert "provider-marquee" not in html
-    assert "marquee-track" not in html
-    assert "provider-flow" not in html
-    assert "flow-diagram" not in html
-    assert "flow-card" not in html
-    assert "MARQUEE_LOGO_SLUGS" not in module
-    assert "startMarquee" not in module
-    assert "stopMarquee" not in module
-    # The scout dashboard markup: header, left stats, scrolling panel.
-    assert 'class="scout-dashboard"' in html
-    assert 'id="scoutTitle"' in html
-    assert 'id="scoutQuery"' in html
-    assert 'id="scoutCursor"' in html
-    assert 'id="scoutStats"' in html
-    assert 'id="scoutTrack"' in html
-    assert 'class="scout-stat-value" data-final="0"' in html
-    assert 'aria-live="polite"' in html
-    assert "Scout searching in progress" in html
-    # The module fetches the dashboard data and ports the animation.
-    assert 'fetch("/admin/api/dashboard")' in module
-    assert "initScoutDashboard" in module
-    assert "scoutEncrypt" in module
-    assert "SCOUT_QUERY" in module
-    assert "countUpScoutValue" in module
-    # Panel: input row, fixed viewport, paused marquee track with
-    # seamless two-copy loop gated on .scout-scrolling.
-    animations_css = Path(
-        "src/claudey/api/admin_static/admin-animations.css"
-    ).read_text(encoding="utf-8")
-    assert ".scout-panel" in animations_css
-    assert "border-radius: 16px" in animations_css
-    assert ".scout-input" in animations_css
-    assert ".scout-viewport" in animations_css
-    assert ".scout-track" in animations_css
-    assert "@keyframes scout-scroll" in animations_css
-    assert "translateY(-50%)" in animations_css
-    assert "animation-play-state: paused" in animations_css
-    assert ".scout-track.scout-scrolling" in animations_css
-    assert "height: 132px" in animations_css
-    assert ".scout-row-cost" in animations_css
-    assert "@media (max-width: 600px)" in animations_css
-
-
-def test_admin_static_reduced_motion_gates_all_loops():
-    module = Path("src/claudey/api/admin_static/admin-animations.js").read_text(
-        encoding="utf-8"
-    )
-    animations = Path("src/claudey/api/admin_static/admin-animations.css").read_text(
-        encoding="utf-8"
-    )
-    styles = Path("src/claudey/api/admin_static/admin.css").read_text(encoding="utf-8")
-
-    # The JS marquee is gone; the tween paths never run under reduced motion.
-    assert 'window.matchMedia("(prefers-reduced-motion: reduce)")' in module
-    assert "REDUCED_MOTION" in module
-    assert "if (REDUCED_MOTION || !DESKTOP.matches) {" in module
-    assert "startMarquee" not in module
-    assert "stopMarquee" not in module
-    # The scout marquee stays paused and is killed under reduced motion.
-    assert "@keyframes scout-scroll" in animations
-    assert "animation-play-state: paused" in animations
-    assert "@media (prefers-reduced-motion: reduce)" in animations
-    assert ".scout-track {\n    animation: none;" in animations
-    # The CSS baseline zeroes every animation/transition duration.
-    assert "@media (prefers-reduced-motion: reduce)" in styles
-    assert "animation-duration: 0.01ms !important" in styles
-    assert "transition-duration: 0.01ms !important" in styles
-
-
-def test_admin_static_preserves_accessibility_attributes():
-    html = Path("src/claudey/api/admin_static/index.html").read_text(encoding="utf-8")
-    script = Path("src/claudey/api/admin_static/admin.js").read_text(encoding="utf-8")
-    module = Path("src/claudey/api/admin_static/admin-animations.js").read_text(
-        encoding="utf-8"
-    )
-    styles = Path("src/claudey/api/admin_static/admin.css").read_text(encoding="utf-8")
-
-    assert 'aria-expanded="true"' in html
-    assert 'aria-controls="sectionNav"' in html
-    assert 'aria-label="Unpin sidebar"' in html
-    assert 'aria-label="Admin views"' in html
-    assert 'aria-label="Notifications"' in html
-    assert 'role="status"' in html
-    assert 'aria-live="polite"' in html
-    assert 'aria-hidden="true"' in html
-    # Pills are decorative and invisible to assistive tech.
-    assert 'setAttribute("aria-hidden", "true")' in module
-    # The module mirrors the persistent collapsed state into
-    # aria-expanded on media-query changes; admin.js owns the rest.
-    assert 'sidebarToggleEl.setAttribute("aria-expanded", String(!collapsed))' in module
-    assert "restoreSidebarAria" in module
-    # Focus-visible outlines and live regions stay untouched.
-    assert "focus-visible" in styles
-    assert 'sidebarToggle.setAttribute("aria-expanded"' in script
-    assert 'toast.setAttribute("role", "status")' in script
-
-
 def test_admin_dashboard_endpoint_loopback_and_shape(monkeypatch, tmp_path):
     _set_home(monkeypatch, tmp_path)
     with patch("claudey.api.admin_dashboard.usd_to_idr", return_value=18000.0):
@@ -2172,63 +1649,6 @@ def test_admin_usage_payload_uses_providers_not_sources(monkeypatch, tmp_path):
 
     assert "sources" not in payload
     assert payload["providers"][0]["provider"] == "nvidia_nim"
-
-
-def test_admin_static_usage_view_markup(monkeypatch, tmp_path):
-    _set_home(monkeypatch, tmp_path)
-    response = _local_client(create_test_app()).get("/admin")
-
-    page = response.text
-    assert 'id="view-usage"' in page
-    assert 'data-view="usage"' in page
-    assert 'id="usageSections"' in page
-
-    cache_buster = asset_version()
-    js = (
-        _local_client(create_test_app())
-        .get(f"/admin/assets/admin.js?v={cache_buster}")
-        .text
-    )
-    assert 'id: "usage"' in js
-    assert 'containerId: "usageSections"' in js
-    assert 'api("/admin/api/usage")' in js
-    assert "function loadUsage" in js
-    assert "USAGE_PROVIDER_COLORS" in js
-    assert "renderUsageProviders" in js
-    assert "renderUsageTrendCard" in js
-    assert "renderUsageDailyTable" in js
-    assert "function formatTokens" in js
-    assert "function formatUsd" in js
-    assert "renderUsageBillingCard" in js
-    assert "DeepSeek billing" in js
-    assert 'if (activeView.id === "usage")' in js
-    assert "usage-period-tab" in js
-    assert "heat-cell heat-" in js
-
-    css = (
-        _local_client(create_test_app())
-        .get(f"/admin/assets/admin.css?v={cache_buster}")
-        .text
-    )
-    assert ".usage-grid" in css
-    assert ".usage-heatmap" in css
-    assert ".heat-cell" in css
-    assert ".usage-provider-bar" in css
-    assert ".usage-table" in css
-    assert ".usage-billing" in css
-    assert ".usage-billing-value" in css
-    assert "color: #ff4d00;" in css
-    assert "background: #ff4d00;" in css
-    assert "background: #f9f3f0;" in css
-    assert "var(--heat" not in css
-
-    for asset in (
-        "admin.js",
-        "admin-animations.js",
-        "admin.css",
-        "admin-animations.css",
-    ):
-        assert f"{asset}?v={cache_buster}" in page
 
 
 @pytest.fixture

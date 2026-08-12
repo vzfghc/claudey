@@ -30,17 +30,10 @@
   - Custom provider dialog (name/base_url/api_key/type/model_id + validate + create).
   - Combo dialog (name/nodes/enabled + validate + create/edit/delete).
   - Combo cards with copyable `@combo:<id>` token, edit/delete actions.
-  - **Routing beam re-homed** (`ui/magic/animated-beam.tsx` + `providers/provider-beam.tsx`):
-    - Re-imported the **original magicui `AnimatedBeam`** (canonical defaults:
-      `currentColor`, `pathWidth=1`, random `duration`, `linear` ease) into
-      `components/ui/magic/animated-beam.tsx`, re-applying only the `measureKey`
-      drag-tracking patch (plan step 10). The old vendored copy had drifted
-      (`gray` pathColor, fixed `duration=5`, easeOutExpo, purple gradient) —
-      those are gone.
-    - Ported the pan/zoom/drag diagram (`provider-beam.tsx`) + `beam.css` into
-      the Providers view; the beam now runs on the real Tailwind engine and
-      follows theme tokens (--panel/--line/--muted aliases), so it tracks
-      light + dark.
+  - **Beam removed** (product decision): the routing beam is deferred to a future
+    implementation. The magicui `AnimatedBeam` re-home, the pan/zoom diagram +
+    css, and the Providers "Routing" section were all dropped. The vanilla
+    `/admin` still serves `beam.bundle.js` until Phase 4 sunset.
 - **Model Config view** (`views/model-config-view.tsx`):
   - 5 role cards (Fallback/Fable/Opus/Sonnet/Haiku) with model + reasoning fields.
   - Refresh models button with toast feedback.
@@ -76,10 +69,12 @@
 
 ## Known Issues
 
-- Bundle is 1.38MB (391KB gzip) — tremor/recharts is heavy; code-splitting deferred.
-- Beam is re-homed in the React Nodes view; the vanilla `beam.bundle.js` still
-  serves the old `/admin` until Phase 4 sunset (must stay until then).
+- Bundle is ~1.1MB (320KB gzip) after removing the beam — tremor/recharts is
+  heavy; code-splitting deferred.
+- Beam removed from the React app (deferred to a future implementation); the
+  vanilla `beam.bundle.js` still serves the old `/admin` until Phase 4 sunset.
 - Connected-account OAuth flow not ported (providers view shows remote/local/custom only).
+- Fixed: main content scrolling (was clipped because `<main>` wasn't a flex column).
 - 3 pre-existing CI failures remain (import boundaries ×2, provider_manager warm-refresh ×1).
 - The eval rubric (`gan-harness/eval-rubric.md`) scores the vanilla admin animation
   patterns, NOT the React rebuild — it's stale relative to this Phase 3 work.

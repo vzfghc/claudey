@@ -19,8 +19,8 @@ export default defineConfig({
     sourcemap: false,
     target: "es2020",
   },
-  // Served under /admin/ui by admin_routes.py — all emitted asset URLs are
-  // absolute against this base so the entry works with or without a trailing
-  // slash.
-  base: "/admin/ui/",
+  // Phase 4: the React app now IS /admin (retired vanilla). All emitted asset
+  // URLs are absolute against this base so the entry works with or without a
+  // trailing slash.
+  base: "/admin/",
 });

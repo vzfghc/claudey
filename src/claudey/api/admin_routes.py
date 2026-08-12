@@ -8,7 +8,7 @@ from urllib.parse import urlsplit
 
 import httpx
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
-from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse
 from pydantic import BaseModel, Field
 
 from claudey.application.connected_accounts import (
@@ -159,58 +159,40 @@ def require_loopback_admin(request: Request) -> None:
         raise HTTPException(status_code=403, detail="Admin UI is local-only")
 
 
-def _asset_response(filename: str) -> FileResponse:
-    path = STATIC_DIR / filename
-    if not path.is_file():
-        raise HTTPException(status_code=404, detail="Admin asset not found")
-    return FileResponse(path)
-
-
-@router.get("/admin", include_in_schema=False)
-async def admin_page(request: Request):
-    require_loopback_admin(request)
-    template = (STATIC_DIR / "index.html").read_text("utf-8")
-    rendered = template.replace("__ASSET_VERSION__", asset_version())
-    return HTMLResponse(rendered, media_type="text/html")
-
-
-@router.get("/admin/ui", include_in_schema=False)
-async def admin_ui_page(request: Request):
-    """React admin micro-frontend entry (built from admin_static/admin-ui)."""
-    require_loopback_admin(request)
+def _admin_ui_response() -> HTMLResponse:
+    """Render the built React admin entry (admin_static/admin_ui_dist)."""
     entry = ADMIN_UI_DIR / "index.html"
     if not entry.is_file():
         raise HTTPException(status_code=404, detail="Admin UI not built")
     rendered = entry.read_text("utf-8").replace("__ASSET_VERSION__", asset_version())
-    # The global admin middleware appends Cache-Control: no-store (same as every
-    # other /admin response); the hashed script/style names make the build itself
-    # cache-busting.
+    # The global admin middleware appends Cache-Control: no-store; the hashed
+    # script/style names (base /admin/) make the build itself cache-busting.
     return HTMLResponse(rendered, media_type="text/html")
 
 
-@router.get("/admin/ui/assets/{filename}", include_in_schema=False)
-async def admin_ui_asset(filename: str, request: Request):
-    """Hashed JS/CSS chunks emitted by the Vite build."""
+@router.get("/admin", include_in_schema=False)
+async def admin_page(request: Request):
+    """React admin app — Phase 4 replacement for the retired vanilla admin."""
     require_loopback_admin(request)
-    root = ADMIN_UI_DIR.resolve()
-    path = (ADMIN_UI_DIR / "assets" / filename).resolve()
-    if root not in path.parents or not path.is_file():
-        raise HTTPException(status_code=404, detail="Admin UI asset not found")
-    return FileResponse(path)
+    return _admin_ui_response()
+
+
+@router.get("/admin/ui", include_in_schema=False)
+async def admin_ui_redirect(request: Request):
+    """Legacy path — the React app now lives at /admin (Phase 4 sunset)."""
+    require_loopback_admin(request)
+    return RedirectResponse("/admin", status_code=308)
 
 
 @router.get("/admin/assets/{filename}", include_in_schema=False)
 async def admin_asset(filename: str, request: Request):
+    """Hashed JS/CSS chunks emitted by the Vite build (React admin app)."""
     require_loopback_admin(request)
-    if filename not in {
-        "admin.css",
-        "admin.js",
-        "admin-animations.css",
-        "admin-animations.js",
-        "beam.bundle.js",
-    }:
+    root = ADMIN_UI_DIR.resolve()
+    path = (ADMIN_UI_DIR / "assets" / filename).resolve()
+    if root not in path.parents or not path.is_file():
         raise HTTPException(status_code=404, detail="Admin asset not found")
-    return _asset_response(filename)
+    return FileResponse(path)
 
 
 @router.get("/admin/assets/logos/{filename}", include_in_schema=False)
