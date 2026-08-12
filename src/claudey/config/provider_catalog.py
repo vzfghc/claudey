@@ -52,14 +52,9 @@ SAMBANOVA_DEFAULT_BASE = "https://api.sambanova.ai/v1"
 KILO_DEFAULT_BASE = "https://api.kilo.ai/api/gateway"
 OPENAI_CODEX_DEFAULT_BASE = "https://chatgpt.com/backend-api/codex"
 # Free/cheap OpenAI-compatible gateways (Phase A: free-coding-models ingestion).
-# OVHcloud AI Endpoints sandbox is keyless (static credential sent verbatim).
-OVHCLOUD_DEFAULT_BASE = "https://oai.endpoints.kepler.ai.cloud.ovh.net/v1"
-OVHCLOUD_STATIC_CREDENTIAL = "ovh-sandbox"
 SCALEWAY_DEFAULT_BASE = "https://api.scaleway.ai/v1"
 # Alibaba DashScope international OpenAI-compatible layer.
 QWEN_DEFAULT_BASE = "https://dashscope-intl.aliyuncs.com/compatible-mode/v1"
-LLM7_DEFAULT_BASE = "https://api.llm7.io/v1"
-LLM7_STATIC_CREDENTIAL = "llm7"
 ROUTEWAY_DEFAULT_BASE = "https://api.routeway.ai/v1"
 NOVITA_DEFAULT_BASE = "https://api.novita.ai/openai/v1"
 
@@ -382,13 +377,6 @@ PROVIDER_CATALOG: dict[str, ProviderDescriptor] = {
         proxy_attr="ollama_cloud_proxy",
     ),
     # === Phase A free OpenAI-compatible gateways ===
-    "ovhcloud": ProviderDescriptor(
-        provider_id="ovhcloud",
-        display_name="OVHcloud AI Endpoints",
-        static_credential=OVHCLOUD_STATIC_CREDENTIAL,
-        default_base_url=OVHCLOUD_DEFAULT_BASE,
-        credential_url="https://www.ovhcloud.com/en/ai-endpoints/",
-    ),
     "scaleway": ProviderDescriptor(
         provider_id="scaleway",
         display_name="Scaleway AI",
@@ -404,13 +392,6 @@ PROVIDER_CATALOG: dict[str, ProviderDescriptor] = {
         credential_url="https://bailian.console.aliyun.com/?tabModel=API-KEY",
         credential_attr="qwen_api_key",
         default_base_url=QWEN_DEFAULT_BASE,
-    ),
-    "llm7": ProviderDescriptor(
-        provider_id="llm7",
-        display_name="LLM7",
-        static_credential=LLM7_STATIC_CREDENTIAL,
-        default_base_url=LLM7_DEFAULT_BASE,
-        credential_url="https://llm7.io",
     ),
     "routeway": ProviderDescriptor(
         provider_id="routeway",
@@ -460,7 +441,7 @@ PROVIDER_CATALOG: dict[str, ProviderDescriptor] = {
 # NVIDIA NIM first (README default), DeepSeek fourth, OpenCode gateways adjacent,
 # Vercel / Hugging Face / Cohere / GitHub Models follow gateway-style remotes,
 # then cloud gateways, Ollama Cloud, the free OpenAI-compatible gateways
-# (OVHcloud, Scaleway, Qwen/DashScope, LLM7, Routeway, Novita), then local
+# (Scaleway, Qwen/DashScope, Routeway, Novita), then local
 # providers per project plan (github.com/cheahjs/free-llm-api-resources Free
 # Providers TOC as rough guide beyond fixed slots).
 # ``SUPPORTED_PROVIDER_IDS`` inherits this insertion order for UI and error-message listing.

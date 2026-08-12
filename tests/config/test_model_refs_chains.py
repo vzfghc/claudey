@@ -23,10 +23,10 @@ def test_single_ref_back_compat():
 
 
 def test_inline_chain_splits_and_strips():
-    assert parse_chain_refs(" open_router/a , novita/b , llm7/c ") == (
+    assert parse_chain_refs(" open_router/a , novita/b , routeway/c ") == (
         "open_router/a",
         "novita/b",
-        "llm7/c",
+        "routeway/c",
     )
 
 
@@ -79,7 +79,7 @@ def seeded_combo(monkeypatch, tmp_path: Path) -> Path:
             display_name="Flagship",
             nodes=(
                 ComboNode("novita/deepseek/deepseek-r1-0528", priority=1),
-                ComboNode("llm7/meta-llama/llama-3.1-70b", priority=0),
+                ComboNode("routeway/meta-llama/llama-3.1-70b", priority=0),
             ),
         )
     )
@@ -88,7 +88,7 @@ def seeded_combo(monkeypatch, tmp_path: Path) -> Path:
 
 def test_combo_ref_store_backed(seeded_combo):
     assert parse_chain_refs("@combo:flagship") == (
-        "llm7/meta-llama/llama-3.1-70b",
+        "routeway/meta-llama/llama-3.1-70b",
         "novita/deepseek/deepseek-r1-0528",
     )
 
@@ -117,7 +117,7 @@ def test_configured_refs_expand_combo(seeded_combo):
     settings.model_haiku = "@combo:flagship"
     assert _refs(settings) == [
         "nvidia_nim/x",
-        "llm7/meta-llama/llama-3.1-70b",
+        "routeway/meta-llama/llama-3.1-70b",
         "novita/deepseek/deepseek-r1-0528",
     ]
 
@@ -129,7 +129,7 @@ def test_configured_refs_appends_global_fallback_last(seeded_combo):
     settings.global_fallback_model = "open_router/openrouter/free"
     assert _refs(settings) == [
         "nvidia_nim/x",
-        "llm7/meta-llama/llama-3.1-70b",
+        "routeway/meta-llama/llama-3.1-70b",
         "novita/deepseek/deepseek-r1-0528",
         "open_router/openrouter/free",
     ]
@@ -151,7 +151,7 @@ def test_configured_refs_dedupes_across_tiers_and_chain(seeded_combo):
         "nvidia_nim/x",
         "open_router/a",
         "novita/b",
-        "llm7/meta-llama/llama-3.1-70b",
+        "routeway/meta-llama/llama-3.1-70b",
         "novita/deepseek/deepseek-r1-0528",
     ]
 

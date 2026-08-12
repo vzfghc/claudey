@@ -32,7 +32,7 @@ def _body(*, name: str = "Flagship", nodes: list[dict] | None = None) -> dict:
             nodes
             if nodes is not None
             else [
-                {"provider_model_ref": "llm7/meta-llama/llama-3.1-70b"},
+                {"provider_model_ref": "routeway/meta-llama/llama-3.1-70b"},
                 {"provider_model_ref": "novita/deepseek/deepseek-r1", "priority": 1},
             ]
         ),
@@ -51,7 +51,7 @@ def test_admin_combos_crud(monkeypatch, tmp_path, combos_store_path):
     assert payload["combo_id"].startswith("combo_flagship")
     assert payload["display_name"] == "Flagship"
     assert [n["provider_model_ref"] for n in payload["nodes"]] == [
-        "llm7/meta-llama/llama-3.1-70b",
+        "routeway/meta-llama/llama-3.1-70b",
         "novita/deepseek/deepseek-r1",
     ]
     # No secrets surface on a combo payload.

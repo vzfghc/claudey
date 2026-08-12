@@ -57,7 +57,7 @@ def seeded_combo(monkeypatch, tmp_path):
             display_name="Flagship",
             nodes=(
                 ComboNode("open_router/**/deepseek/deepseek-r1", priority=1),
-                ComboNode("llm7/meta-llama/llama-3.1-70b", priority=0),
+                ComboNode("routeway/meta-llama/llama-3.1-70b", priority=0),
             ),
         )
     )
@@ -517,7 +517,7 @@ def test_resolve_chain_expands_combo(settings, seeded_combo):
     settings.model_sonnet = "@combo:flagship"
 
     assert _chain_refs(settings, "claude-sonnet-4-20250514") == [
-        "llm7/meta-llama/llama-3.1-70b",  # priority 0 first
+        "routeway/meta-llama/llama-3.1-70b",  # priority 0 first
         "open_router/**/deepseek/deepseek-r1",
     ]
 
@@ -527,7 +527,7 @@ def test_resolve_chain_combo_plus_fallback(settings, seeded_combo):
     settings.global_fallback_model = "nvidia_nim/fallback-model"
 
     assert _chain_refs(settings, "claude-sonnet-4-20250514") == [
-        "llm7/meta-llama/llama-3.1-70b",
+        "routeway/meta-llama/llama-3.1-70b",
         "open_router/**/deepseek/deepseek-r1",
         "nvidia_nim/fallback-model",
     ]

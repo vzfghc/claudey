@@ -80,13 +80,13 @@ def test_upsert_replaces_existing_combo(redirect_store):
     store.upsert(
         _combo(
             display_name="Flagship Renamed",
-            nodes=(_node(provider_model_ref="llm7/meta-llama/llama-3.1-70b"),),
+            nodes=(_node(provider_model_ref="routeway/meta-llama/llama-3.1-70b"),),
         )
     )
     records = store.all_records()
     assert len(records) == 1
     assert records[0].display_name == "Flagship Renamed"
-    assert records[0].nodes[0].provider_model_ref == "llm7/meta-llama/llama-3.1-70b"
+    assert records[0].nodes[0].provider_model_ref == "routeway/meta-llama/llama-3.1-70b"
 
 
 def test_remove_deletes_combo(redirect_store):
@@ -136,7 +136,9 @@ def test_parse_skips_invalid_rows(redirect_store):
                 {
                     "combo_id": "combo_ok",
                     "display_name": "Ok",
-                    "nodes": [{"provider_model_ref": "llm7/meta-llama/llama-3.1-70b"}],
+                    "nodes": [
+                        {"provider_model_ref": "routeway/meta-llama/llama-3.1-70b"}
+                    ],
                 },
                 {
                     "combo_id": "",
@@ -153,7 +155,7 @@ def test_parse_skips_invalid_rows(redirect_store):
                 {
                     "combo_id": "combo_string_nodes",
                     "display_name": "String nodes",
-                    "nodes": ["llm7/meta-llama/llama-3.1-70b"],
+                    "nodes": ["routeway/meta-llama/llama-3.1-70b"],
                 },
             ]
         ),
@@ -260,7 +262,7 @@ def test_validate_provider_model_ref_rejects(raw):
 @pytest.mark.parametrize(
     ("raw", "expected"),
     [
-        ("llm7/meta-llama/llama-3.1-70b", "llm7/meta-llama/llama-3.1-70b"),
+        ("routeway/meta-llama/llama-3.1-70b", "routeway/meta-llama/llama-3.1-70b"),
         ("  vertex/google/gemini-3.5-flash  ", "vertex/google/gemini-3.5-flash"),
         ("custom_acme/gpt-4o-mini", "custom_acme/gpt-4o-mini"),
     ],

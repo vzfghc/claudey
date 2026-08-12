@@ -49,7 +49,7 @@ Run your coding agents with free, paid, or local models. Choose and validate pro
 
 - Launch Claude Code with `hans-claude`, Codex with `hans-codex`, or Pi with `hans-pi`.
 - Run Claudey in the background from a desktop launcher on Windows or macOS.
-- Switch among 39 cloud and local providers from the Admin UI.
+- Switch among 37 cloud and local providers from the Admin UI.
 - Use each coding agent's native model picker.
 - Route Fable, Opus, Sonnet, Haiku, and fallback traffic to different models.
 - Keep streaming, tool use, reasoning, and image input across compatible models.
@@ -197,10 +197,8 @@ hans-codex exec "hello"
 | [Z.ai](https://z.ai/manage-apikey/apikey-list) | `ZAI_API_KEY` | `zai/glm-5.2` |
 | [Pecut](https://api.pecutopus.web.id/v1) | `PECUT_API_KEY` | `pecut/claude-opus-4-8` |
 | [Ollama Cloud](https://ollama.com/settings/keys) | `OLLAMA_API_KEY` | `ollama_cloud/qwen3-coder:480b` |
-| [OVHcloud AI Endpoints](https://www.ovhcloud.com/en/ai-endpoints/) | Free tier, no key | `ovhcloud/<model-id>` |
 | [Scaleway AI](https://console.scaleway.com/project/iam/api-keys) | `SCALEWAY_API_KEY` | `scaleway/<model-id>` |
 | [Qwen (DashScope)](https://bailian.console.aliyun.com/?tabModel=API-KEY) | `DASHSCOPE_API_KEY` | `qwen/<model-id>` |
-| [LLM7](https://llm7.io) | Free tier, no key | `llm7/<model-id>` |
 | [Routeway](https://routeway.ai) | `ROUTEWAY_API_KEY` | `routeway/<model-id>` |
 | [Novita AI](https://novita.ai/settings/key-management) | `NOVITA_API_KEY` | `novita/<model-id>` |
 | [LM Studio](https://lmstudio.ai/) | `LM_STUDIO_BASE_URL` | `lmstudio/<model-id>` |
@@ -272,7 +270,7 @@ For example, route Opus to `nvidia_nim/nvidia/nemotron-3-super-120b-a12b`, Sonne
 A tier can hold an **ordered fallback chain** — a comma-separated list of `provider/model` references tried in order. The first healthy node serves; if it exhausts with a *retryable* runtime failure (rate limit, overload, timeout, upstream, unavailable) **before any content is sent**, the gateway advances to the next node. Auth, permission, invalid-request, and context-window failures never fall back — they surface immediately.
 
 ```env
-MODEL_OPUS="llm7/meta-llama/llama-3.1-70b,novita/deepseek/deepseek-r1"
+MODEL_OPUS="routeway/meta-llama/llama-3.1-70b,novita/deepseek/deepseek-r1"
 ```
 
 Long or shared chains can be saved as **combos** and referenced from any tier:
@@ -287,7 +285,7 @@ Failover is health-aware: providers marked down, currently in recovery, or locke
 
 #### Route explainability (`x-claudey-route`)
 
-Every Messages/Responses response carries an **`x-claudey-route`** header naming the provider/model the request was served by (e.g. `x-claudey-route: novita/deepseek/deepseek-r1`). When the configured primary node is skipped by the health registry, the reason is appended (e.g. `x-claudey-route: llm7/meta-llama/llama-3.1-70b; why=down`). This makes proactive-routing decisions transparent to CLI tooling and logs.
+Every Messages/Responses response carries an **`x-claudey-route`** header naming the provider/model the request was served by (e.g. `x-claudey-route: novita/deepseek/deepseek-r1`). When the configured primary node is skipped by the health registry, the reason is appended (e.g. `x-claudey-route: routeway/meta-llama/llama-3.1-70b; why=down`). This makes proactive-routing decisions transparent to CLI tooling and logs.
 
 Disable the header with `X_CLAUDEY_ROUTE_HEADER=false`. The underlying route decision (chain, node index, provider/model) is also emitted as a `claudey.api.route.resolved` trace event, independent of the header toggle.
 

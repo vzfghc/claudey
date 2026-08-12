@@ -87,7 +87,7 @@ _ALWAYS_ON_REMOTE_IDS = frozenset(
 def _exclude_keyless_remote_providers_from_discovery(monkeypatch):
     """Keep keyless remote providers out of manager discovery in unit tests.
 
-    Built-in free gateways (e.g. OVHcloud, LLM7) need no credential, so
+    Built-in free gateways need no credential, so
     ``model_cache_provider_ids_for_settings`` marks them configured and the
     runtime would construct live ``AsyncOpenAI`` clients for them. These tests
     inject fake providers for an explicit universe, so strip the always-on

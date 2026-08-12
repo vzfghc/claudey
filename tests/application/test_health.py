@@ -16,31 +16,33 @@ def _registry(now_holder: list[float]) -> HealthRegistry:
 
 def test_healthy_node_is_not_skipped():
     registry = HealthRegistry()
-    assert registry.should_skip("llm7/meta-llama/llama-3.1-70b") is False
+    assert registry.should_skip("routeway/meta-llama/llama-3.1-70b") is False
     assert (
-        registry.effective_state("llm7/meta-llama/llama-3.1-70b")
+        registry.effective_state("routeway/meta-llama/llama-3.1-70b")
         is ProviderHealthState.HEALTHY
     )
 
 
 def test_auth_failure_marks_provider_auth_error(now_holder):
     registry = _registry(now_holder)
-    registry.record_failure("llm7/meta-llama/llama-3.1-70b", FailureKind.AUTHENTICATION)
+    registry.record_failure(
+        "routeway/meta-llama/llama-3.1-70b", FailureKind.AUTHENTICATION
+    )
 
     assert (
-        registry.effective_state("llm7/meta-llama/llama-3.1-70b")
+        registry.effective_state("routeway/meta-llama/llama-3.1-70b")
         is ProviderHealthState.AUTH_ERROR
     )
-    assert registry.should_skip("llm7/meta-llama/llama-3.1-70b") is True
+    assert registry.should_skip("routeway/meta-llama/llama-3.1-70b") is True
 
 
 def test_auth_failure_degrades_whole_provider():
     now_holder = [0.0]
     registry = _registry(now_holder)
-    registry.record_failure("llm7/a", FailureKind.AUTHENTICATION)
+    registry.record_failure("routeway/a", FailureKind.AUTHENTICATION)
 
     # Any node on that provider is skipped, not just the failing one.
-    assert registry.should_skip("llm7/b") is True
+    assert registry.should_skip("routeway/b") is True
 
 
 @pytest.mark.parametrize(
@@ -121,22 +123,23 @@ def test_record_success_clears_provider_and_model_marks(now_holder):
 def test_lkgp_preferred_primary_round_trip():
     registry = HealthRegistry()
     assert registry.preferred_primary("combo_flagship") is None
-    registry.record_lkgp("combo_flagship", "llm7/meta-llama/llama-3.1-70b")
+    registry.record_lkgp("combo_flagship", "routeway/meta-llama/llama-3.1-70b")
     assert (
-        registry.preferred_primary("combo_flagship") == "llm7/meta-llama/llama-3.1-70b"
+        registry.preferred_primary("combo_flagship")
+        == "routeway/meta-llama/llama-3.1-70b"
     )
 
 
 def test_lkgp_updates_to_most_recent():
     registry = HealthRegistry()
-    registry.record_lkgp("tier:opus", "llm7/a")
+    registry.record_lkgp("tier:opus", "routeway/a")
     registry.record_lkgp("tier:opus", "novita/b")
     assert registry.preferred_primary("tier:opus") == "novita/b"
 
 
 def test_lkgp_bounded_by_capacity():
     registry = HealthRegistry(lkgp_capacity=2)
-    registry.record_lkgp("combo_a", "llm7/a")
+    registry.record_lkgp("combo_a", "routeway/a")
     registry.record_lkgp("combo_b", "novita/b")
     registry.record_lkgp("combo_c", "deepseek/c")
 
@@ -151,9 +154,9 @@ def test_validate_providers_backs_off_raising_probe(now_holder):
     def probe(provider: str) -> object:
         raise RuntimeError("unreachable")
 
-    registry.validate_providers(["llm7/a", "llm7/b"], probe)
-    assert registry.effective_state("llm7/a") is ProviderHealthState.DOWN
-    assert registry.should_skip("llm7/b") is True
+    registry.validate_providers(["routeway/a", "routeway/b"], probe)
+    assert registry.effective_state("routeway/a") is ProviderHealthState.DOWN
+    assert registry.should_skip("routeway/b") is True
 
 
 def test_validate_providers_backs_off_falsy_probe(now_holder):
@@ -170,10 +173,10 @@ def test_validate_providers_keeps_verified_provider_healthy(now_holder):
         calls.append(provider)
         return True
 
-    registry.validate_providers(["llm7/a", "llm7/b", "novita/c"], probe)
+    registry.validate_providers(["routeway/a", "routeway/b", "novita/c"], probe)
 
-    assert calls == ["llm7", "novita"]  # each provider probed once
-    assert registry.should_skip("llm7/a") is False
+    assert calls == ["routeway", "novita"]  # each provider probed once
+    assert registry.should_skip("routeway/a") is False
     assert registry.should_skip("novita/c") is False
 
 
