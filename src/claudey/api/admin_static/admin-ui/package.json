@@ -1,0 +1,32 @@
+{
+  "name": "claudey-admin-ui",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "React admin UI for claudey (Vite 8 + Tailwind 4 + shadcn + tremor). Built into admin_static/admin_ui_dist and served offline from the admin UI.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build && node build.mjs",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@tremor/react": "^3.18.7",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "lucide-react": "^0.469.0",
+    "motion": "^13.1.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "tailwind-merge": "^3.0.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.3.3",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "@vitejs/plugin-react": "^5.0.0",
+    "tailwindcss": "^4.3.3",
+    "typescript": "^5.8.0",
+    "vite": "^8.2.1"
+  }
+}

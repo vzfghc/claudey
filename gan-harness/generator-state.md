@@ -1,31 +1,53 @@
-# Generator State — Iteration 002
+# Generator State — Frontend Scaffold Iteration (admin-ui)
+
+> Track: React micro-frontend scaffold (docs/design-system.md + docs/frontend-scaffold-plan.md).
+> Branch: `feat/phase-a-free-providers` · HEAD after this iteration.
+> Status: Phase 1 (Foundation) + Phase 2 (Shell + preserved components) implemented.
 
 ## What Was Built
 
-Iteration 2 implements all 4 items from the design review (`gan-harness/feedback/feedback-001.md`) on top of the iteration-1 animation layer, still vanilla HTML/CSS/JS, no new libraries, no runtime CDN:
-
-- **Item 1 — Active nav pill**: `.nav-pill-active` no longer has `border: 1px solid var(--accent-border)`; it is now `background: var(--accent-muted); border-radius: 999px; box-shadow: var(--shadow-sm);`. `.nav-label` font-weight reduced to 400 (base rule in admin.css, shared by idle and active states). All existing ids/classes/aria preserved.
-- **Item 2 — Sidebar hover-to-expand**: the rail now expands on cursor enter and collapses on leave (mouseenter/mouseleave in admin-animations.js) using the existing per-frame tween (expand 220ms, collapse 350ms, easeOutQuint). `#sidebarToggle` click remains the pin/unpin override, still owned by admin.js (`applySidebarCollapsed`: class + localStorage + inert + aria). Hover-peek is purely visual: it tweens inline width/padding + `--sidebar-w` + label fade + `body.sidebar-rail`, and mirrors the visually expanded state into `aria-expanded` on the toggle; it never touches `sidebar-collapsed`, localStorage, or inert. Edge cases handled: same-target tween guard (`sidebarTweenTarget`) so pin-click-then-leave can't restart the collapse tween; mid-tween reversal resumes from `parseFloat(sidebar.style.width)`; reduced-motion/`<901px` snaps instead of tweens; pinned state (class removed) never collapses on hover-out; media-query changes cancel tweens and call `restoreSidebarAria()`. Pin label/aria-label updated by admin.js to "Pin sidebar open"/"Unpin sidebar".
-- **Item 3 — Buttons**: lift-and-press (layered shadows, `::before` sheen, `scale(0.995)`, shadow-lift hover) removed from admin-animations.css; primary/secondary/test buttons are back to the original pre-iteration-1 flat styles (base rules in admin.css never changed; the grouped `:active` rule restores the shared `scale(0.98)` press for all three). The heat style applies ONLY to `.card-configure:hover:not(:disabled)` with the exact CSS from the review (`background: #ff4c00` + the 5-layer box-shadow stack + ~0.2s transition). All other buttons stay flat.
-- **Item 4 — Flow diagram**: the logo marquee is gone (markup, CSS, JS, and all tests). `#view-providers` opens with a firecrawl-style `.provider-flow` section: `.flow-caption` (mono small caps, the only accessible text) + `aria-hidden` `.flow-diagram` with three node cards ("You" avatar, "Claudey" brand mark, "Providers & models" database icon) joined by two connectors. Each card: border-radius 16px, 1px faint inset border via `::before`, padding 8px, inner 96x96 node with 4 corner dots + faint center grid cross, layered subtle drop shadows, `position: relative; z-index: 1`. Each node figure carries a spinning heat-orange (`#FA5D19`) 270-degree SVG arc (1s linear). Connectors are `flex: 1` columns with a dashed arrow SVG and two spinning rings (1s heat arc + 0.9s reverse orbit). Max-width 704px, centered, column-stacked below 600px (arrow rotates 90deg). All loops gated behind `prefers-reduced-motion` (no-preference wrapper + the universal reduced-motion block in admin.css). `logos/` untouched.
+- **Two reference docs for downstream generator agents:**
+  - `docs/design-system.md` — Apple × Firecrawl merge: heat `#ff4d00` as the single accent (replaces apple blue + firecrawl main), Apple typography/hierarchy (17px body, weight ladder 300/400/600/700, negative tracking), radius grammar, elevation, n×50ms motion, component grammars.
+  - `docs/frontend-scaffold-plan.md` — 11 user-approved decisions (Vite 8, React 19, Tailwind v4, local shadcn, magicui MCP, tremor, motion, dist-directory serving), directory tree, build/serve contract, **preservation contract** §5a sidebar / §5b total-token hero, 4 phases, risks.
+- **`src/claudey/api/admin_static/admin-ui/` — Vite 8 + React 19 + TS + Tailwind v4 scaffold:**
+  - `tokens.css` + `globals.css` — full design-token theme mapped into Tailwind v4 `@theme` (heat, surfaces, text, hairlines, radius, elevation, motion keyframes; reduced-motion global).
+  - `lib/utils.ts` (cn/compactNumber/thousands/formatUsd/formatIdr), `api/client.ts` + `api/types.ts` (typed fetchers for `/admin/api/usage|dashboard`), `hooks/use-reduced-motion.ts`, `hooks/use-stored-flag` (in use-reduced-motion.ts), `hooks/use-count-up.ts`, `hooks/use-json.ts`.
+  - **Preserved Sidebar** (`shared/layout/sidebar.tsx`) — exact choreography port: rAF per-frame easeOutQuint width tween, collapse 350ms / expand 220ms, label fade ends 120px / budget fade 170px, nav pill glide easeOutQuart 160ms with travel-anchored sine dip `PILL_DIP=0.07`, retarget-safe, snap under reduced-motion / ≤900px, `claudey.sidebar.collapsed` persistence, `aria-expanded`/`aria-hidden`, brand-mark hover `rotate(-4deg) scale(1.05)`.
+  - **Preserved UsageHero** (`app/usage/usage-hero.tsx`) — 8 concentric ripple rings (`size=140+i*70`, `opacity=max(0.08,0.4-i*0.045)`, delay `i*0.06s`, 3.2s `cubic-bezier(0.4,0,0.2,1)` scale 1→0.78→1, mask fade), sliding period pill (Total/24h/7d/30d), count-up (500ms easeOutCubic), compact⇄full toggle, cost row (USD + IDR).
+  - `shared/layout/sidebar-budget.tsx` — budget widget fed by `/admin/api/dashboard`, fade driven by sidebar tween's `--sidebar-budget-opacity`.
+  - `app/usage/usage-view.tsx` — live container (loading/empty/error states with personality), provider breakdown strip.
+  - `app/views/placeholder-view.tsx` — design-system scaffold states for providers/model_config/messaging.
+  - `app.tsx` + `main.tsx` — app shell: sidebar + topbar + view switch + theme toggle + `#hash` deep links.
+  - `components/ui/shadcn/button.tsx` — five Apple grammars as CVA variants with heat substituted.
+- **Serving integration (decision #11, dist-directory serving):**
+  - `build.mjs` copies Vite `dist/` → committed `admin_ui_dist/` (offline-safe, no CDN).
+  - `vite.config.ts` `base: "/admin/ui/"` — absolute hashed asset URLs.
+  - `admin_routes.py` — new `GET /admin/ui` (entry, loopback-guarded) + `GET /admin/ui/assets/{filename}` (traversal-safe) serving `admin_ui_dist/`; vanilla `/admin` untouched.
+- **Tests (`tests/api/test_admin.py`):** 6 new tests — entry served, loopback-only, assets served (regex-derived hashed name), unknown/traversal 404s.
 
 ## What Changed This Iteration
 
-- `src/claudey/api/admin_static/admin-animations.css`: nav-pill-active restyle; lift-and-press section replaced with the `.card-configure` heat-on-hover rule; marquee section replaced with the full flow-diagram CSS (cards, node dots/cross, arcs, rings, arrow, responsive stack, dark-theme overrides).
-- `src/claudey/api/admin_static/admin-animations.js`: marquee constants/JS removed; added sidebar hover-peek section 1b (mouseenter/mouseleave, `peekSidebar`, `isSidebarCollapsed`); `tweenSidebar` gained the same-target guard + `sidebarTweenTarget`; media-query handlers now `restoreSidebarAria()` + `cancelSidebarTween()`.
-- `src/claudey/api/admin_static/admin.css`: `.nav-label` font-weight 400; lone `.test-button` `:active` rule grouped with primary/secondary (`scale(0.98)`).
-- `src/claudey/api/admin_static/admin.js`: `applySidebarCollapsed` now writes aria-expanded, pin/unpin aria-label and title on the toggle.
-- `src/claudey/api/admin_static/index.html`: `#sidebarToggle` initial attrs use pin wording; marquee markup replaced by the `.provider-flow` section (3 flow-cards, 2 connectors, caption).
-- `tests/api/test_admin.py`: marquee tests converted to flow-diagram contract tests; new `test_admin_static_sidebar_hover_peek`; button test renamed to assert flat buttons + heat-only-on-configure with the exact review CSS; a11y test asserts module-owned peek aria + `restoreSidebarAria`.
-- Version: stays `5.10.0` (iter-1 bump; design-review polish, no new capability) — `pyproject.toml`/`uv.lock` untouched and in sync.
+- Fixed: `useStoredFlag` re-written to `useState` (previous `useSyncExternalStore` never notified); removed unused imports to satisfy `noUnusedLocals`.
+- Added: `.npmrc` `legacy-peer-deps=true` (tremor 3.18.7 declares peer `react@^18`, React-19-safe in practice).
+- Added: `.gitignore` entry for `admin-ui/dist/` (intermediate build output; `admin_ui_dist` is the committed serving dir).
+- CI unblocks (pre-existing branch drift, zero-risk convention fixes):
+  - `scripts/fetch_provider_logos.py` — added `None` letter-chip fallback mappings for `llm7, novita, ovhcloud, qwen, routeway, scaleway` (same convention as `wafer`/`pecut`) + regenerated the 6 fallback SVGs; reverted accidental overwrite of 5 hand-crafted committed logos (anthropic heat mark, real pecut vector).
+  - `src/claudey/core/secret_crypto.py` — removed banned `from __future__ import annotations` (ty + 14 tests green).
+- Bumped scout logo-count test `34 → 40` (6 new fallback chips; kept in sync with the logos script).
 
 ## Known Issues
 
-- Hover-peek and the pin button are both bound to the same `aria-expanded` attribute; a peek that ends with the cursor still inside while the media query flips to reduced-motion is reconciled by the `motionQuery` change handler (`restoreSidebarAria` + snap). No unresolved issues known.
-- The flow diagram is `aria-hidden` (decorative); the caption carries the accessible text. If the product wants the diagram announced, that would need an explicit description — flagged for the evaluator.
+- **Pre-existing CI failures (NOT from this scaffold — verified by stash: fail on pristine branch HEAD):**
+  1. `tests/contracts/test_import_boundaries.py::test_package_dependencies_follow_declarative_policy` — 9 undeclared cross-package import edges introduced by the phase-a providers work, e.g. `application/failover → providers.health`, `config/custom_provider_check → providers.{anthropic.messages, openai_chat.base_url}`, `config/custom_providers → core.secret_crypto`. Fix = phase-a owner reconciles `ALLOWED_PACKAGE_DEPENDENCIES` or refactors to owned facades. Deliberately NOT policy-hacked here.
+  2. `test_import_boundaries.py::test_external_consumers_use_owned_package_facades` — same root cause (`custom_provider_check` reaching into `providers.openai_chat.base_url`).
+  3. `tests/runtime/test_provider_manager.py::test_catalog_publication_tracks_warm_refresh_and_direct_cache` — expected warm-refresh set not updated after the 6 new catalog providers gained models (`ovhcloud/warm-model`, `llm7/warm-model` now published). Needs phase-a confirmation that cross-provider warm publication is intended before updating the expectation.
+  - One observed flake: `test_generated_catalog_schema_is_accepted_by_installed_codex` failed once during full CI, passes in isolation (not related to changes).
+- React app is served at `/admin/ui`; `/admin` still serves the vanilla app until Phase 3 views reach parity and Phase 4 sunsets vanilla (plan §6/§9).
+- Tremor recharts@2 deprecation warning at install (transitive; charts ship Phase 3).
 
 ## Dev Server
 
-- URL: http://127.0.0.1:8082/admin
-- Status: running (no restart needed this iteration — static assets are served from disk; curl verified /admin, /admin/assets/admin-animations.js, /admin/assets/admin-animations.css all 200)
-- Command: `uv run hans-server` (background, log at /tmp/claudey-admin-server.log)
+- URL: http://127.0.0.1:8090/admin (vanilla) and http://127.0.0.1:8090/admin/ui (React scaffold)
+- Status: running (restarted this iteration to load `/admin/ui` routes)
+- Command: `uv run hans-server` (background, log at `/tmp/claudey-admin-server.log`)
+- Build: `cd src/claudey/api/admin_static/admin-ui && npm run build` → copies to `admin_ui_dist`

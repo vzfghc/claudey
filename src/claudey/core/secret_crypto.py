@@ -13,8 +13,6 @@ Encryption is **opt-in**: no key means plaintext fallback (back-compat), and a
 configured key transparently upgrades plaintext on the next write.
 """
 
-from __future__ import annotations
-
 import base64
 import binascii
 import hashlib

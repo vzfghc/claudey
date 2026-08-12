@@ -1,4 +1,5 @@
 import json
+import re
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
@@ -251,6 +252,55 @@ def test_admin_beam_microfrontend_wiring():
     assert "AnimatedBeam" in bundle
     assert "beam-panel" in bundle
     assert "attachShadow" in bundle
+
+
+def test_admin_ui_entry_is_served(monkeypatch, tmp_path):
+    _set_home(monkeypatch, tmp_path)
+    response = _local_client(create_test_app()).get("/admin/ui")
+
+    assert response.status_code == 200
+    assert 'id="root"' in response.text
+    # Same cache policy as every other admin response; hashed asset names carry
+    # the immutable cache-busting.
+    assert response.headers["cache-control"] == "no-store"
+
+
+def test_admin_ui_is_loopback_only(monkeypatch, tmp_path):
+    _set_home(monkeypatch, tmp_path)
+    remote_client = TestClient(create_test_app(), client=("203.0.113.10", 50000))
+
+    assert remote_client.get("/admin/ui").status_code == 403
+
+
+def test_admin_ui_assets_are_served(monkeypatch, tmp_path):
+    # Read the committed build before _set_home chdirs into tmp_path.
+    entry = Path("src/claudey/api/admin_static/admin_ui_dist/index.html").read_text(
+        encoding="utf-8"
+    )
+    asset_src = re.search(r'(?:src|href)="(/admin/ui/assets/[^"]+)"', entry)
+    assert asset_src is not None, "built entry must reference admin_ui_dist assets"
+
+    _set_home(monkeypatch, tmp_path)
+    response = _local_client(create_test_app()).get(asset_src.group(1))
+
+    assert response.status_code == 200
+    assert len(response.content) > 0
+
+
+@pytest.mark.parametrize(
+    "path",
+    (
+        "/admin/ui/assets/missing.js",
+        "/admin/ui/assets/..%2fadmin.js",
+        "/admin/ui/assets/..%2Fadmin.js",
+    ),
+)
+def test_admin_ui_rejects_unknown_and_traversal(monkeypatch, tmp_path, path):
+    _set_home(monkeypatch, tmp_path)
+    response = _local_client(create_test_app()).get(path)
+
+    assert response.status_code == 404
+    assert response.headers["cache-control"] == "no-store"
 
 
 def test_admin_connected_account_login_preopens_sign_in_window():
@@ -1681,7 +1731,10 @@ def test_admin_static_scout_dashboard_replaces_flow_diagram():
     html = Path("src/claudey/api/admin_static/index.html").read_text(encoding="utf-8")
     logos_dir = Path("src/claudey/api/admin_static/logos")
     slugs = sorted(path.stem for path in logos_dir.glob("*.svg"))
-    assert len(slugs) == 34
+    # 34 catalog logos + 6 letter-chip fallbacks added with the P3 providers
+    # (llm7, novita, ovhcloud, qwen, routeway, scaleway) — keep in sync with
+    # scripts/fetch_provider_logos.py --check.
+    assert len(slugs) == 40
     assert "pecut" in slugs
     assert "_fallback" in slugs
 

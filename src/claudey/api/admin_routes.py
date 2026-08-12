@@ -51,6 +51,10 @@ from .usage_aggregate import usage_payload
 router = APIRouter()
 
 STATIC_DIR = Path(__file__).resolve().parent / "admin_static"
+# Built by admin-ui/build.mjs (`npm run build` inside admin-ui/) — the React
+# micro-frontend. Hashed assets are cache-busting on their own; the entry HTML
+# is served with a no-cache header so a rebuild is picked up immediately.
+ADMIN_UI_DIR = STATIC_DIR / "admin_ui_dist"
 LOCAL_PROVIDER_PATHS = {
     "lmstudio": "/models",
     "llamacpp": "/models",
@@ -168,6 +172,31 @@ async def admin_page(request: Request):
     template = (STATIC_DIR / "index.html").read_text("utf-8")
     rendered = template.replace("__ASSET_VERSION__", asset_version())
     return HTMLResponse(rendered, media_type="text/html")
+
+
+@router.get("/admin/ui", include_in_schema=False)
+async def admin_ui_page(request: Request):
+    """React admin micro-frontend entry (built from admin_static/admin-ui)."""
+    require_loopback_admin(request)
+    entry = ADMIN_UI_DIR / "index.html"
+    if not entry.is_file():
+        raise HTTPException(status_code=404, detail="Admin UI not built")
+    rendered = entry.read_text("utf-8").replace("__ASSET_VERSION__", asset_version())
+    # The global admin middleware appends Cache-Control: no-store (same as every
+    # other /admin response); the hashed script/style names make the build itself
+    # cache-busting.
+    return HTMLResponse(rendered, media_type="text/html")
+
+
+@router.get("/admin/ui/assets/{filename}", include_in_schema=False)
+async def admin_ui_asset(filename: str, request: Request):
+    """Hashed JS/CSS chunks emitted by the Vite build."""
+    require_loopback_admin(request)
+    root = ADMIN_UI_DIR.resolve()
+    path = (ADMIN_UI_DIR / "assets" / filename).resolve()
+    if root not in path.parents or not path.is_file():
+        raise HTTPException(status_code=404, detail="Admin UI asset not found")
+    return FileResponse(path)
 
 
 @router.get("/admin/assets/{filename}", include_in_schema=False)

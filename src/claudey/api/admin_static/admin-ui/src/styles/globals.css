@@ -1,0 +1,138 @@
+@import "tailwindcss";
+@import "./tokens.css";
+
+/* Tailwind v4 CSS-first theme mapping to the design tokens. Every apple/firecrawl
+   blue resolves to claudey heat #ff4d00; spacing stays standard Tailwind (Apple
+   8px rhythm), NOT the firecrawl pixel-px override (see docs/design-system.md §4). */
+@theme {
+  /* Brand + interactive accent */
+  --color-heat: var(--heat);
+  --color-heat-focus: var(--heat-focus);
+  --color-heat-on-dark: var(--heat-on-dark);
+  --color-heat-soft: var(--heat-soft);
+
+  /* Surfaces */
+  --color-canvas: var(--canvas);
+  --color-parchment: var(--parchment);
+  --color-pearl: var(--pearl);
+  --color-tile-1: var(--tile-1);
+  --color-tile-2: var(--tile-2);
+  --color-tile-3: var(--tile-3);
+  --color-surface-black: var(--surface-black);
+
+  /* Text */
+  --color-ink: var(--ink);
+  --color-ink-muted-48: var(--ink-muted-48);
+  --color-body-muted-dark: var(--body-muted-dark);
+
+  /* Semantic status */
+  --color-success: var(--success);
+  --color-warn: var(--warn);
+  --color-danger: var(--danger);
+  --color-info: var(--info-aux);
+
+  /* Hairlines & borders */
+  --color-hairline: var(--hairline);
+  --color-divider-soft: var(--divider-soft);
+
+  /* Fonts (apple stacks) */
+  --font-display: var(--font-display);
+  --font-body: var(--font-body);
+  --font-mono: var(--font-mono);
+
+  /* Radius (apple grammar) */
+  --radius-xs: 5px;
+  --radius-sm: 8px;
+  --radius-md: 11px;
+  --radius-lg: 18px;
+  --radius-pill: 9999px;
+
+  /* Elevation */
+  --shadow-card: var(--shadow-card);
+  --shadow-float: var(--shadow-float);
+
+  /* Motion */
+  --ease-default: var(--ease-default);
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@layer base {
+  html {
+    font-family: var(--font-body);
+    color: var(--ink);
+    background: var(--canvas);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    margin: 0;
+    font-size: 17px; /* apple body: never 16px */
+    line-height: 1.47;
+    letter-spacing: -0.374px;
+  }
+
+  /* Numeric surfaces: tabular figures everywhere numbers read */
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* Shared motion keyframes (firecrawl, gated on reduced motion) */
+@theme {
+  --animate-fade-in: fade-in 0.3s var(--ease-default) backwards;
+  --animate-fade-up: fade-up 0.3s var(--ease-default) backwards;
+  --animate-rise-in: rise-in 0.35s ease backwards;
+  --animate-view-in: view-in 0.28s ease backwards;
+
+  @keyframes fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes fade-up {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes rise-in {
+    from { opacity: 0; transform: translateY(6px) scale(0.995); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  @keyframes view-in {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+}
+
+/* ==========================================================================
+   Preserved usage-hero ripple (docs/frontend-scaffold-plan.md §5b).
+   Circles get inline width/height/opacity/delay from UsageHero; this class
+   owns the shared chrome + the 3.2s breathe keyframe.
+   ========================================================================== */
+.usage-hero-ripple-circle {
+  border: 1px solid rgba(255, 77, 0, 0.38);
+  background: rgba(255, 77, 0, 0.09);
+  box-shadow: 0 0 10px 2px rgba(255, 77, 0, 0.05);
+  transform: translate(-50%, -50%) scale(1);
+  animation: usage-hero-ripple 3.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  will-change: transform;
+}
+
+@keyframes usage-hero-ripple {
+  0%,
+  100% {
+    transform: translate(-50%, -50%) scale(1);
+  }
+  50% {
+    transform: translate(-50%, -50%) scale(0.78);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

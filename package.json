@@ -1,5 +1,6 @@
 {
   "dependencies": {
-    "@lobehub/icons": "^5.15.0"
+    "@lobehub/icons": "^5.15.0",
+    "@remixicon/react": "^4.9.0"
   }
 }
