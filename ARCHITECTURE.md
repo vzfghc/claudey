@@ -673,7 +673,7 @@ declared non-SSE media type retains the bounded diagnostic failure path. The
 Admin API exposes only safe connected-account state and never serializes token
 objects.
 
-[providers/google_openai/](src/claudey/providers/google_openai/) owns the
+[providers/gemini_family/](src/claudey/providers/gemini_family/) owns the
 Google-specific protocol behavior shared by AI Studio and Vertex AI: literal
 Google `extra_body` construction, exclusive reasoning serialization, and
 thought-signature replay. Each concrete profile selects one Google reasoning

@@ -3,7 +3,7 @@
 from claudey.core.anthropic import ReasoningReplayMode
 from claudey.providers.admission import ProviderAdmissionController
 from claudey.providers.base import ProviderConfig
-from claudey.providers.google_openai import (
+from claudey.providers.gemini_family import (
     GeminiReasoningEncoder,
     GoogleOpenAIProvider,
     validate_google_extra_body,

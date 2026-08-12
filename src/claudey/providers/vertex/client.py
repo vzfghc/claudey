@@ -9,7 +9,7 @@ from claudey.core.anthropic import ReasoningReplayMode
 from claudey.core.model_metadata import ProviderModelInfo
 from claudey.providers.admission import ProviderAdmissionController
 from claudey.providers.base import ProviderConfig
-from claudey.providers.google_openai import (
+from claudey.providers.gemini_family import (
     GoogleOpenAIProvider,
     VertexReasoningEncoder,
     validate_google_extra_body,

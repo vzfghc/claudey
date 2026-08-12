@@ -9,7 +9,7 @@ from claudey.core.errors import InvalidRequestError
 from claudey.core.reasoning import ReasoningEffort, ReasoningPolicy
 from claudey.providers.base import ProviderConfig
 from claudey.providers.gemini import GeminiProvider
-from claudey.providers.google_openai import (
+from claudey.providers.gemini_family import (
     GOOGLE_SKIP_THOUGHT_SIGNATURE_VALIDATOR,
 )
 from tests.providers.request_factory import make_messages_request

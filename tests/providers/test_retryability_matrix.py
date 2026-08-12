@@ -1,7 +1,7 @@
 """Pinned retryability matrix for the unified classifier (refactor Sprint 3).
 
 Every exception family appearing in either pre-merge decision table
-(``is_retryable_provider_error`` / ``is_retryable_stream_error``) is asserted
+(``is_retryable_provider_error`` / the pre-merge stream-recovery classifier) is asserted
 in BOTH execution contexts: the provider-retry context (admission-level
 retries and post-retry classification) and the stream-recovery context.
 The table was written first and passed against the pre-merge code; it pins

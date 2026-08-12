@@ -47,6 +47,10 @@ FACADE_ONLY_BOUNDARIES = {
     "claudey.core.openai_responses",
     "claudey.messaging.trees",
     "claudey.providers.openai_chat",
+    # Sprint 4 (H2): gemini_family is the neutral family package behind which
+    # no external consumer may reach; only the gemini/vertex public facades
+    # (and the family itself) import it.
+    "claudey.providers.gemini_family",
 }
 
 OPTIONAL_IMPORT_OWNERS = {
@@ -202,10 +206,10 @@ def test_openai_chat_collaborators_have_explicit_ownership_boundaries() -> None:
 
 
 def test_google_reasoning_wire_fields_have_one_owner() -> None:
-    owner = _PACKAGE_ROOT / "providers" / "google_openai" / "reasoning.py"
+    owner = _PACKAGE_ROOT / "providers" / "gemini_family" / "reasoning.py"
     roots = [
         _PACKAGE_ROOT / "providers" / "gemini",
-        _PACKAGE_ROOT / "providers" / "google_openai",
+        _PACKAGE_ROOT / "providers" / "gemini_family",
         _PACKAGE_ROOT / "providers" / "vertex",
     ]
     owned_fields = {
