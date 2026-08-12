@@ -542,6 +542,19 @@ textarea:focus-visible,
   padding: 24px;
 }
 
+/* Reserves the provider-beam diagram height so the strip doesn't collapse
+   before the React micro-frontend (beam.bundle.js) mounts into the shadow
+   root. Matches .beam-panel in beam/src/beam.css. */
+.beam-mount {
+  min-height: 440px;
+}
+
+@media (max-width: 600px) {
+  .beam-mount {
+    min-height: 360px;
+  }
+}
+
 .strip-header,
 .section-heading {
   display: flex;
@@ -638,16 +651,6 @@ textarea:focus-visible,
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-.provider-logo-placeholder {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--neutral-bg);
-  color: var(--muted);
-  font-size: 14px;
-  line-height: 1;
 }
 
 .custom-compatible-badge {

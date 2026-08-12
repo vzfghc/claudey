@@ -165,27 +165,38 @@ const LOBEHUB_ID_MAP = {
 };
 
 const LOBEHUB_CDN = "https://cdn.jsdelivr.net/npm/@lobehub/icons-static-svg@1.94.0/icons";
+const FALLBACK_LOGO_SRC = "/admin/assets/logos/_fallback.svg";
+
+// Resolve the provider logo URL without building an <img>; the beam
+// micro-frontend (beam.bundle.js) reuses this for its provider circles.
+function providerLogoSrc(providerId) {
+  if (providerId.startsWith("custom_")) return FALLBACK_LOGO_SRC;
+  const lobeSlug = LOBEHUB_ID_MAP[providerId];
+  if (lobeSlug && LOBEHUB_COLOR_ICONS.has(lobeSlug)) {
+    return `${LOBEHUB_CDN}/${lobeSlug}-color.svg`;
+  }
+  return `/admin/assets/logos/${providerId}.svg`;
+}
 
 function providerLogo(providerId) {
-  if (providerId.startsWith("custom_")) {
-    const placeholder = document.createElement("span");
-    placeholder.className = "provider-logo provider-logo-placeholder";
-    placeholder.textContent = "●";
-    return placeholder;
-  }
-  const lobeSlug = LOBEHUB_ID_MAP[providerId];
   const logo = document.createElement("img");
   logo.className = "provider-logo";
   logo.alt = "";
   logo.width = 32;
   logo.height = 32;
   logo.loading = "lazy";
+  // Any provider without a dedicated SVG (custom providers included) shows the
+  // generic badge instead of a broken-image icon.
+  logo.onerror = () => {
+    logo.onerror = null;
+    logo.src = FALLBACK_LOGO_SRC;
+  };
 
-  if (lobeSlug && LOBEHUB_COLOR_ICONS.has(lobeSlug)) {
-    logo.src = `${LOBEHUB_CDN}/${lobeSlug}-color.svg`;
-  } else {
-    logo.src = `/admin/assets/logos/${providerId}.svg`;
+  if (providerId.startsWith("custom_")) {
+    logo.src = FALLBACK_LOGO_SRC;
+    return logo;
   }
+  logo.src = providerLogoSrc(providerId);
   return logo;
 }
 
@@ -194,6 +205,36 @@ function statusClass(status) {
   if (["missing_key", "missing_config", "missing_url", "unknown", "connecting"].includes(status)) return "warn";
   if (["offline", "error"].includes(status)) return "error";
   return "neutral";
+}
+
+// The provider-beam micro-frontend shows the connected providers flowing into
+// the claudey gateway. Healthiest first; the diagram pan/zooms so all can be
+// shown without a hard cap.
+function beamProviders(providerStatus) {
+  const rank = { ok: 0, configured: 0, warn: 1, neutral: 2, error: 3 };
+  return providerStatus
+    .filter(
+      (provider) =>
+        provider.kind !== "connected_account" &&
+        statusClass(provider.status) === "ok",
+    )
+    .sort(
+      (a, b) =>
+        (rank[statusClass(a.status)] ?? 4) - (rank[statusClass(b.status)] ?? 4),
+    )
+    .map((provider) => ({
+      id: provider.provider_id,
+      name: provider.display_name || provider.provider_id,
+      logo: providerLogoSrc(provider.provider_id),
+    }));
+}
+
+// Mount the React beam diagram into #providerBeamMount. The bundle is a plain
+// IIFE loaded before admin.js, so window.ClaudeyBeam is defined here.
+function renderProviderBeam(providerStatus) {
+  const beam = window.ClaudeyBeam;
+  if (!beam) return;
+  beam.mount("providerBeamMount", { providers: beamProviders(providerStatus) });
 }
 
 async function api(path, options = {}) {
@@ -236,6 +277,7 @@ async function load() {
   renderGreeting();
   renderNav();
   renderProviders(config.provider_status);
+  renderProviderBeam(config.provider_status);
   renderOnboarding(config.provider_status);
   renderSections(config.sections, config.fields);
   renderServerStatus();

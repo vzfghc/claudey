@@ -178,6 +178,7 @@ async def admin_asset(filename: str, request: Request):
         "admin.js",
         "admin-animations.css",
         "admin-animations.js",
+        "beam.bundle.js",
     }:
         raise HTTPException(status_code=404, detail="Admin asset not found")
     return _asset_response(filename)

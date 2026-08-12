@@ -282,6 +282,13 @@ const sidebarCollapseBtn = byId("sidebarCollapseBtn");
 let activePill = null;
 let hoverPill = null;
 
+// Last settled active item index. The active change can come from a
+// click, keyboard nav, or a programmatic view switch; when it moves we
+// hide the grey hover pill immediately instead of waiting for the next
+// pointermove (which otherwise leaves it painted over the new orange pill
+// until the cursor nudges).
+let lastActiveIndex = -1;
+
 // Hover-pill glide state. pillFromY/pillFromScale are the last
 // written frame values — a retarget starts the tween from them.
 let pillTweenId = null;
@@ -306,6 +313,16 @@ function activeNavIndex() {
 function positionActivePill() {
   if (!activePill) return;
   activePill.style.transform = `translateY(${activeNavIndex() * NAV_PITCH}px)`;
+}
+
+/** Hide the hover pill when the active item changes, then move the active pill. */
+function syncActivePill() {
+  const index = activeNavIndex();
+  if (index !== lastActiveIndex) {
+    lastActiveIndex = index;
+    if (hoverPill) hoverPill.style.opacity = "0";
+  }
+  positionActivePill();
 }
 
 /** Drop the pill onto an item instantly and park the tween there. */
@@ -407,6 +424,7 @@ function buildPills() {
   // Hover pill last so its tint paints over the active pill.
   nav.append(activePill, hoverPill);
   positionActivePill();
+  lastActiveIndex = activeNavIndex();
   // Rest the hover pill on the active item until the pointer moves.
   hoverPill.style.transform = `translateY(${activeNavIndex() * NAV_PITCH}px)`;
   resetPillTween(activeNavIndex());
@@ -428,6 +446,7 @@ function syncPills() {
   } else if (!wantPills && hasPills) {
     activePill = null;
     hoverPill = null;
+    lastActiveIndex = -1;
     nav.querySelectorAll(".nav-pill").forEach((pill) => pill.remove());
   }
 }
@@ -436,9 +455,9 @@ const navObserver = new MutationObserver((mutations) => {
   for (const mutation of mutations) {
     if (mutation.type === "childList") {
       syncPills();
-      positionActivePill();
+      syncActivePill();
     } else if (mutation.type === "attributes" && mutation.attributeName === "class") {
-      positionActivePill();
+      syncActivePill();
     }
   }
 });

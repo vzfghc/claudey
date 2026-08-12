@@ -84,6 +84,7 @@ def test_admin_page_is_loopback_only(monkeypatch, tmp_path):
         "/admin/assets/admin.js",
         "/admin/assets/admin-animations.css",
         "/admin/assets/admin-animations.js",
+        "/admin/assets/beam.bundle.js",
         "/admin/api/config",
     ),
 )
@@ -133,6 +134,15 @@ def test_admin_provider_logos_are_served(monkeypatch, tmp_path, provider_id):
     response = _local_client(create_test_app()).get(
         f"/admin/assets/logos/{provider_id}.svg"
     )
+
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "image/svg+xml"
+    assert b"<svg" in response.content
+
+
+def test_admin_fallback_provider_logo_is_served(monkeypatch, tmp_path):
+    _set_home(monkeypatch, tmp_path)
+    response = _local_client(create_test_app()).get("/admin/assets/logos/_fallback.svg")
 
     assert response.status_code == 200
     assert response.headers["content-type"] == "image/svg+xml"
@@ -202,6 +212,45 @@ def test_admin_api_fetches_bypass_browser_cache():
     script = Path("src/claudey/api/admin_static/admin.js").read_text(encoding="utf-8")
 
     assert 'cache: "no-store"' in script
+
+
+def test_admin_custom_providers_render_fallback_logo():
+    script = Path("src/claudey/api/admin_static/admin.js").read_text(encoding="utf-8")
+
+    assert 'FALLBACK_LOGO_SRC = "/admin/assets/logos/_fallback.svg"' in script
+    assert 'if (providerId.startsWith("custom_"))' in script
+    assert "logo.src = FALLBACK_LOGO_SRC" in script
+    assert "logo.onerror = () =>" in script
+
+
+def test_admin_beam_bundle_is_served(monkeypatch, tmp_path):
+    _set_home(monkeypatch, tmp_path)
+    response = _local_client(create_test_app()).get("/admin/assets/beam.bundle.js")
+
+    assert response.status_code == 200
+    assert "ClaudeyBeam" in response.text
+
+
+def test_admin_beam_microfrontend_wiring():
+    html = Path("src/claudey/api/admin_static/index.html").read_text(encoding="utf-8")
+    script = Path("src/claudey/api/admin_static/admin.js").read_text(encoding="utf-8")
+    bundle = Path("src/claudey/api/admin_static/beam.bundle.js").read_text(
+        encoding="utf-8"
+    )
+
+    # The mount div and its strip live in the providers view.
+    assert 'id="providerBeamMount"' in html
+    assert "Connected providers" in html
+    # admin.js feeds the live provider list into the micro-frontend.
+    assert "providerLogoSrc" in script
+    assert "beamProviders" in script
+    assert 'beam.mount("providerBeamMount"' in script
+    # The bundle is a self-contained IIFE exposing the mount API with the
+    # vendored animated-beam component and the inlined stylesheet.
+    assert "window.ClaudeyBeam" in bundle
+    assert "AnimatedBeam" in bundle
+    assert "beam-panel" in bundle
+    assert "attachShadow" in bundle
 
 
 def test_admin_connected_account_login_preopens_sign_in_window():
@@ -1381,6 +1430,14 @@ def test_admin_static_html_loads_animation_assets_in_order():
     scout = html.index('class="scout-dashboard"')
     onboarding = html.index('id="onboardingCard"')
     assert providers < scout < onboarding
+    # The provider-beam micro-frontend loads before admin.js so
+    # window.ClaudeyBeam exists when load() mounts the diagram.
+    beam_script = html.index('src="/admin/assets/beam.bundle.js')
+    admin_script = html.index('src="/admin/assets/admin.js')
+    assert beam_script < admin_script
+    # The beam strip sits between the scout dashboard and the onboarding card.
+    beam_mount = html.index('id="providerBeamMount"')
+    assert scout < beam_mount < onboarding
 
 
 def test_admin_static_sidebar_tween_contract():
@@ -1508,6 +1565,11 @@ def test_admin_static_nav_uses_shared_sliding_pills_on_desktop():
     assert "nav-pills-ready" in module
     assert "pointermove" in module
     assert "DESKTOP.matches" in module
+    # The active pill carries no shadow; the grey hover pill is hidden
+    # the moment the active item changes (not on the next pointermove).
+    assert "box-shadow: var(--shadow-sm)" not in animations
+    assert "syncActivePill" in module
+    assert "lastActiveIndex" in module
     # Pill styles live at >=901px; per-item highlights are mobile-only.
     assert "@media (min-width: 901px)" in animations
     assert ".nav-pill-active" in animations
@@ -1619,8 +1681,9 @@ def test_admin_static_scout_dashboard_replaces_flow_diagram():
     html = Path("src/claudey/api/admin_static/index.html").read_text(encoding="utf-8")
     logos_dir = Path("src/claudey/api/admin_static/logos")
     slugs = sorted(path.stem for path in logos_dir.glob("*.svg"))
-    assert len(slugs) == 33
+    assert len(slugs) == 34
     assert "pecut" in slugs
+    assert "_fallback" in slugs
 
     # The marquee and the flow diagram are both gone; logos stay untouched.
     assert "provider-marquee" not in html

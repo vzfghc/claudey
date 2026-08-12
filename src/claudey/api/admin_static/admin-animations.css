@@ -43,7 +43,6 @@
   .nav-pill-active {
     background: #f7eae5;
     border-radius: 10px;
-    box-shadow: var(--shadow-sm);
   }
 
   /* The hover pill's transform is JS-tweened per frame by
