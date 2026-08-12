@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { ProviderCard } from "@/components/app/providers/provider-card";
 import { CustomProviderDialog } from "@/components/app/providers/custom-provider-dialog";
 import { ComboDialog } from "@/components/app/providers/combo-dialog";
+import { ProviderBeam, type BeamProvider } from "@/components/app/providers/provider-beam";
 import { Card, CardContent, CardHeader, CardTitle, CardAction } from "@/components/ui/shadcn/card";
 import { Button } from "@/components/ui/shadcn/button";
 import { Badge } from "@/components/ui/shadcn/badge";
@@ -62,6 +63,16 @@ export function ProvidersView() {
   );
   const custom = providers.filter((p) => p.kind === "custom");
 
+  // All non-connected providers become beam nodes (keeps the diagram lively
+  // even before keys are set; custom providers share the fallback logo).
+  const beamProviders: BeamProvider[] = [...remoteAndLocal, ...custom].map((p) => ({
+    id: p.provider_id,
+    name: p.display_name,
+    logo: p.provider_id.startsWith("custom_")
+      ? "/admin/assets/logos/_fallback.svg"
+      : `/admin/assets/logos/${p.provider_id}.svg`,
+  }));
+
   return (
     <div key={reloadKey} className="min-h-0 flex-1 overflow-y-auto px-6 py-8">
       <div className="mx-auto max-w-[1080px] space-y-8">
@@ -81,6 +92,18 @@ export function ProvidersView() {
             </Button>
           </div>
         </div>
+
+        {/* Routing diagram — re-homed provider beam */}
+        <section>
+          <h2 className="mb-4 text-[21px] leading-tight font-semibold tracking-[-0.374px] text-ink">
+            Routing
+          </h2>
+          <Card>
+            <CardContent className="p-0">
+              <ProviderBeam providers={beamProviders} />
+            </CardContent>
+          </Card>
+        </section>
 
         {/* Provider grid */}
         <section>
