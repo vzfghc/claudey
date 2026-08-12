@@ -1,4 +1,30 @@
-# Generator State — Phase 4 Sunset (React at /admin)
+# Generator State — Phase-A Refactor Sprint 0 (import-boundary contract green)
+
+> Track: refactor foundation sprints (docs/plans/refactor/REFACTOR_PLAN.md).
+> Branch: `feat/phase-a-free-providers` · HEAD `0db4fb43`.
+> Status: Sprint 0 iteration 1 complete — boundary test 21/21 green.
+
+## Sprint 0 (iteration 001) — What Was Built
+
+- C1: `core/anthropic/urls.py` owns `ANTHROPIC_VERSION_HEADER`,
+  `anthropic_messages_url`, `openai_v1_base_url`; all src importers repointed
+  (config/custom_provider_check.py, providers/anthropic/messages.py,
+  openai_chat facade + profiles); `providers/openai_chat/base_url.py` deleted
+  (zero importers, complete migration).
+- C2: `providers/health.py` → `application/health.py` (git mv) + test moved to
+  `tests/application/test_health.py`; 3 remaining import sites updated.
+- C3: sanctioned contract amendment `config: {"core"}` in
+  test_import_boundaries.py + ARCHITECTURE.md policy table.
+- Verification: boundary 21 passed; ty clean; ruff clean; targeted 192 passed;
+  providers suite 937 passed; coverage 90% (= baseline 90%).
+- Report: `docs/plans/refactor/sprint-report-0-001.md`.
+- Known: pre-existing `test_catalog_publication_tracks_warm_refresh_and_direct_cache`
+  failure unchanged from baseline (verified via stash); untracked root junk
+  untouched (Sprint 8 scope).
+
+---
+
+# (Superseded) Generator State — Phase 4 Sunset (React at /admin)
 
 > Track: React micro-frontend (docs/design-system.md + docs/frontend-scaffold-plan.md).
 > Branch: `feat/phase-a-free-providers` · HEAD `a6c3b152`.
