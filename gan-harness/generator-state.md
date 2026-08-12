@@ -1,88 +1,63 @@
-# Generator State — Phase 3 Views Rebuilt
+# Generator State — Phase 4 Sunset (React at /admin)
 
 > Track: React micro-frontend (docs/design-system.md + docs/frontend-scaffold-plan.md).
-> Branch: `feat/phase-a-free-providers` · HEAD after this iteration.
-> Status: Phase 3 (Views rebuilt) implemented — Providers, Model Config, Messaging, Usage.
+> Branch: `feat/phase-a-free-providers` · HEAD `a6c3b152`.
+> Status: Phase 4 (retire vanilla admin + move React to /admin) implemented.
 
 ## What Was Built
 
-- **shadcn primitive layer** (`components/ui/shadcn/`):
-  - `card.tsx`, `input.tsx`, `label.tsx`, `badge.tsx`, `textarea.tsx`,
-    `switch.tsx`, `separator.tsx`, `skeleton.tsx`, `dialog.tsx`, `tooltip.tsx`,
-    `table.tsx`, `select.tsx`, `checkbox.tsx`, `tabs.tsx`, `sonner.tsx`
-  - All adapted from `/Users/hanifrestian/shadcnstudio` onto claudey tokens
-    (heat `#ff4d00`, Apple typography, hairline borders, lg radius cards).
-- **API layer** (`api/client.ts` + `api/types.ts`):
-  - Full typed client: config, validate, apply, restart, models, refresh,
-    combos CRUD, custom providers CRUD, provider test, local-status,
-    connected-account auth (login/cancel/disconnect).
-  - Types for all 15+ admin API payloads (ConfigPayload, Combo, ProviderStatus, etc.).
-- **Config form system** (`shared/form/` + `hooks/use-config-form.ts` + `lib/config.ts`):
-  - `ConfigFieldRow` — renders any field type (text/secret/number/boolean/
-    model/optional_model/select/textarea) with correct wire-value normalization.
-  - `ConfigSection` — section wrapper with advanced toggle.
-  - `ConfigActionBar` — sticky validate/apply/restart bar with dirty count.
-  - `ModelCombobox` — searchable model dropdown with arrow-key nav + custom slug entry.
-  - `useConfigForm` hook — loads `/admin/api/config`, tracks dirty state,
-    validate/apply/restart via typed client.
-- **Providers view** (`views/providers-view.tsx` + `providers/`):
-  - Provider grid with logo, status badge (semantic colors), test/configure buttons.
-  - Custom provider dialog (name/base_url/api_key/type/model_id + validate + create).
-  - Combo dialog (name/nodes/enabled + validate + create/edit/delete).
-  - Combo cards with copyable `@combo:<id>` token, edit/delete actions.
-  - **Beam removed** (product decision): the routing beam is deferred to a future
-    implementation. The magicui `AnimatedBeam` re-home, the pan/zoom diagram +
-    css, and the Providers "Routing" section were all dropped. The vanilla
-    `/admin` still serves `beam.bundle.js` until Phase 4 sunset.
-- **Model Config view** (`views/model-config-view.tsx`):
-  - 5 role cards (Fallback/Fable/Opus/Sonnet/Haiku) with model + reasoning fields.
-  - Refresh models button with toast feedback.
-  - Web Tools config section.
-  - Sticky action bar (validate/apply/restart).
-- **Messaging view** (`views/messaging-view.tsx`):
-  - Messaging + Voice notes config sections.
-  - Sticky action bar.
-- **Usage view** (rebuilt `views/usage-view.tsx` + `usage/`):
-  - Preserved `UsageHero` (ripple rings, count-up, period tabs, cost row).
-  - `UsageHeatmap` — 52-week grid with 5 heat levels + tooltip.
-  - `UsageTrendChart` — tremor `AreaChart` with heat `#ff4d00` fill.
-  - `UsageDailyTable` — shadcn Table with totals row + per-day breakdown.
-  - `ProviderBreakdown` — stacked bar + per-provider token share.
-- **App shell** (`app.tsx`):
-  - All 4 views wired (Providers/Model Config/Messaging/Usage).
-  - `TooltipProvider` wrapping the app.
-  - `Toaster` (sonner) mounted at root.
-  - Theme toggle (light/dark with localStorage persistence).
+- **Serving migration** (`admin_routes.py`):
+  - `GET /admin` serves the built React entry (`admin_ui_dist/index.html`).
+  - `GET /admin/ui` 308-redirects to `/admin` (legacy path).
+  - `GET /admin/assets/{filename}` serves hashed Vite chunks — traversal-safe
+    (resolve + `root in parents` check), loopback-only.
+  - Removed the vanilla allowlist (`admin.css/js`, `admin-animations.css/js`,
+    `beam.bundle.js`) and the old `_asset_response` helper.
+  - `GET /admin/assets/logos/{filename}` unchanged (provider logos).
+- **Vanilla admin deleted** — `admin.css`, `admin.js`, `admin-animations.css`, `admin-animations.js`, `beam.bundle.js`, `index.html` all removed from `admin_static/`.
+- **vite.config.ts**: `base` changed `/admin/ui/` → `/admin/` so emitted asset
+  URLs are absolute against `/admin`.
+- **Test suite rewritten** (`tests/api/test_admin.py`, 95 tests):
+  - `/admin` entry serves React (`id="root"`), no-store.
+  - `/admin/ui` → 308 `/admin`; loopback-only both ways.
+  - `/admin/assets` serves hashed chunks; rejects unknown + traversal.
+  - `no-store` enforced on all admin responses (good + error paths).
+  - React bundle carries the `cache: no-store` fetch directive (minifier-safe
+    regex) and the `_fallback.svg` custom-provider logo markers.
+  - Removed ~27 obsolete vanilla-static tests (beam, OAuth preopen, vanilla
+    markup, static file serving).
 
 ## What Changed This Iteration
 
-- Added: 15 shadcn primitives adapted to claudey tokens.
-- Added: Full typed API client (15+ endpoints).
-- Added: Config form system (field types, dirty state, validate/apply/restart).
-- Added: Providers view (grid, custom provider dialog, combo CRUD).
-- Added: Model Config view (role cards, refresh models, web tools).
-- Added: Messaging view (messaging + voice sections).
-- Rebuilt: Usage view (tremor AreaChart, heatmap, daily table, provider breakdown).
-- Added: Radix UI deps (dialog, tabs, label, checkbox, switch, select, separator, tooltip).
-- Added: sonner for toast notifications.
-- Preserved: Sidebar choreography, UsageHero ripple math (unchanged).
+- Phase 4 serving migration completed (React now IS /admin; vanilla retired).
+- Fixed the 2 failing tests:
+  - `test_admin_responses_are_never_cached` — asset paths now resolved before
+    `_set_home` chdirs into tmp_path.
+  - `test_admin_api_fetches_bypass_browser_cache` — the Vite minifier emits the
+    `no-store` directive as a backtick template literal, so the assertion now
+    matches any quote style.
+- Restarted the dev server; verified `/admin` → 200 (React), `/admin/ui` → 308,
+  `/admin/assets/index-CSI3R7ZS.js` → 200.
+- Full CI: 3 failed / 3109 passed — the 3 failures are the pre-existing,
+  unrelated ones (import boundaries ×2, provider_manager warm-refresh ×1).
 
 ## Known Issues
 
-- Bundle is ~1.1MB (320KB gzip) after removing the beam — tremor/recharts is
-  heavy; code-splitting deferred.
-- Beam removed from the React app (deferred to a future implementation); the
-  vanilla `beam.bundle.js` still serves the old `/admin` until Phase 4 sunset.
-- Connected-account OAuth flow not ported (providers view shows remote/local/custom only).
-- Fixed: main content scrolling (was clipped because `<main>` wasn't a flex column).
-- 3 pre-existing CI failures remain (import boundaries ×2, provider_manager warm-refresh ×1).
-- The eval rubric (`gan-harness/eval-rubric.md`) scores the vanilla admin animation
-  patterns, NOT the React rebuild — it's stale relative to this Phase 3 work.
+- 3 pre-existing CI failures remain (import boundaries ×2, provider_manager
+  warm-refresh ×1) — unrelated to this phase.
+- Phase 4 §13 (a11y / reduced-motion / contrast) and §15 (add admin-ui build to
+  CI gate) still open.
+- Connected-account OAuth flow not ported to React (vanilla tests removed, not
+  migrated — OAuth isn't in the bundle yet).
+- On `main`, `admin_routes.py` is a production file → needs a semver bump in
+  `pyproject.toml` + `uv lock` alongside the commit (not done on this feature
+  branch).
 
 ## Dev Server
 
-- URL: http://127.0.0.1:8090/admin/ui (React app) and http://127.0.0.1:8090/admin (vanilla)
-- Status: running
+- URL: http://127.0.0.1:8090/admin (React app, replaces vanilla)
+- /admin/ui → 308 redirect to /admin
+- Status: running (restarted after route change)
 - Command: `uv run hans-server` (background, log at `/tmp/claudey-admin-server.log`)
 - Build: `cd src/claudey/api/admin_static/admin-ui && npm run build` → copies to `admin_ui_dist`
 - Typecheck: `npm run typecheck` — passes clean
