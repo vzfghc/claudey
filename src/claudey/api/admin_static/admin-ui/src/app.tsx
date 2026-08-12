@@ -5,8 +5,12 @@ import { Moon, Sun } from "lucide-react";
 import { Sidebar, type SidebarItem } from "@/components/shared/layout/sidebar";
 import { SidebarBudget } from "@/components/shared/layout/sidebar-budget";
 import { UsageView } from "@/components/app/views/usage-view";
-import { PlaceholderView } from "@/components/app/views/placeholder-view";
+import { ProvidersView } from "@/components/app/views/providers-view";
+import { ModelConfigView } from "@/components/app/views/model-config-view";
+import { MessagingView } from "@/components/app/views/messaging-view";
 import { Button } from "@/components/ui/shadcn/button";
+import { Toaster } from "@/components/ui/shadcn/sonner";
+import { TooltipProvider } from "@/components/ui/shadcn/tooltip";
 import { useJson } from "@/hooks/use-json";
 import type { DashboardPayload } from "@/api/types";
 
@@ -17,7 +21,6 @@ const VIEWS: Array<SidebarItem & { title: string; eyebrow: string }> = [
   { id: "usage", label: "Usage", icon: <BarsGlyph />, title: "Usage", eyebrow: "Tokens · Cost · Activity" },
 ];
 
-// Inline glyphs avoid a second lucide re-export file — keep the barrel in shared/icons later.
 function BoxesGlyph() {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" width={18} height={18} aria-hidden="true">
@@ -75,7 +78,6 @@ export function App() {
     window.location.hash = id;
   }, []);
 
-  // Honor #hash deep links and the back button.
   React.useEffect(() => {
     const applyHash = () => {
       const id = window.location.hash.replace("#", "");
@@ -102,58 +104,47 @@ export function App() {
   const view = VIEWS.find((item) => item.id === activeId) ?? VIEWS[0];
 
   return (
-    <div className="flex h-screen w-full overflow-hidden bg-canvas text-ink">
-      <Sidebar
-        activeId={activeId}
-        onNavigate={navigate}
-        footer={
-          <SidebarBudget
-            monthlySpendUsd={dashboard.data?.monthly_spend_usd ?? 0}
-            monthlyLimitUsd={dashboard.data?.monthly_limit_usd ?? 0}
-            onStatClick={() => navigate("usage")}
-          />
-        }
-      />
+    <TooltipProvider>
+      <div className="flex h-screen w-full overflow-hidden bg-canvas text-ink">
+        <Sidebar
+          activeId={activeId}
+          onNavigate={navigate}
+          footer={
+            <SidebarBudget
+              monthlySpendUsd={dashboard.data?.monthly_spend_usd ?? 0}
+              monthlyLimitUsd={dashboard.data?.monthly_limit_usd ?? 0}
+              onStatClick={() => navigate("usage")}
+            />
+          }
+        />
 
-      <div className="flex min-w-0 flex-1 flex-col">
-        {/* Topbar */}
-        <header className="flex h-16 shrink-0 items-center justify-between border-b border-hairline bg-canvas/80 px-6 backdrop-blur-sm">
-          <div>
-            <p className="font-mono text-[11px] font-bold tracking-[0.08em] text-ink-muted-48 uppercase">
-              {view.eyebrow}
-            </p>
-            <h2 className="text-[17px] leading-tight font-semibold tracking-[-0.374px] text-ink">
-              {view.title}
-            </h2>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button variant="utility" size="sm" onClick={toggleTheme} aria-label="Toggle dark mode">
-              {dark ? <Sun size={14} /> : <Moon size={14} />}
-            </Button>
-          </div>
-        </header>
+        <div className="flex min-w-0 flex-1 flex-col">
+          <header className="flex h-16 shrink-0 items-center justify-between border-b border-hairline bg-canvas/80 px-6 backdrop-blur-sm">
+            <div>
+              <p className="font-mono text-[11px] font-bold tracking-[0.08em] text-ink-muted-48 uppercase">
+                {view.eyebrow}
+              </p>
+              <h2 className="text-[17px] leading-tight font-semibold tracking-[-0.374px] text-ink">
+                {view.title}
+              </h2>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button variant="utility" size="sm" onClick={toggleTheme} aria-label="Toggle dark mode">
+                {dark ? <Sun size={14} /> : <Moon size={14} />}
+              </Button>
+            </div>
+          </header>
 
-        <main className="min-h-0 flex-1 overflow-y-auto">
-          {activeId === "usage" ? <UsageView /> : <ScaffoldView view={view} />}
-        </main>
+          <main className="min-h-0 flex-1 overflow-hidden">
+            {activeId === "providers" && <ProvidersView />}
+            {activeId === "model_config" && <ModelConfigView />}
+            {activeId === "messaging" && <MessagingView />}
+            {activeId === "usage" && <UsageView />}
+          </main>
+        </div>
       </div>
-    </div>
-  );
-}
 
-function ScaffoldView({ view }: { view: { id: string; title: string; eyebrow: string } }) {
-  const noteByView: Record<string, string> = {
-    providers: "The provider grid, custom-provider form, and the beam canvas are being re-homed onto shadcn + magicui primitives.",
-    model_config: "Combo routing cards and the model picker are being rebuilt with the shadcn form system.",
-    messaging: "Messaging channels land once the Phase 3 view pass reaches this pane.",
-  };
-  return (
-    <PlaceholderView
-      title={view.title}
-      eyebrow={view.eyebrow}
-      status="coming"
-      message={`${view.title} — scaffold view`}
-      slots={[<p key="note" className="text-[14px] leading-relaxed text-ink-muted-48">{noteByView[view.id]}</p>]}
-    />
+      <Toaster />
+    </TooltipProvider>
   );
 }
