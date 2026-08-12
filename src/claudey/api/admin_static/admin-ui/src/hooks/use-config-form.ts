@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { fetchConfig, fetchModels, validateConfig, applyConfig, restartServer } from "@/api/client";
 import type { ConfigPayload, ConfigField } from "@/api/types";
@@ -38,6 +38,10 @@ export function useConfigForm(): UseConfigFormReturn {
       setIsLoading(false);
     }
   }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
 
   const setEdited = useCallback((key: string, value: string) => {
     setEditedValues((prev) => ({ ...prev, [key]: value }));

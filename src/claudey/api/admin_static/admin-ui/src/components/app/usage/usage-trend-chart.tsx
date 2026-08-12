@@ -38,7 +38,7 @@ export function UsageTrendChart({ daily }: UsageTrendChartProps) {
           data={chartData}
           index="date"
           categories={["Total tokens"]}
-          colors={["#ff4d00"]}
+          colors={["orange"]}
           showLegend={false}
           showGridLines={true}
           showXAxis={true}

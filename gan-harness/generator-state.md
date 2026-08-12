@@ -29,17 +29,24 @@
 
 ## What Changed This Iteration
 
-- Phase 4 serving migration completed (React now IS /admin; vanilla retired).
-- Fixed the 2 failing tests:
-  - `test_admin_responses_are_never_cached` — asset paths now resolved before
-    `_set_home` chdirs into tmp_path.
-  - `test_admin_api_fetches_bypass_browser_cache` — the Vite minifier emits the
-    `no-store` directive as a backtick template literal, so the assertion now
-    matches any quote style.
-- Restarted the dev server; verified `/admin` → 200 (React), `/admin/ui` → 308,
-  `/admin/assets/index-CSI3R7ZS.js` → 200.
-- Full CI: 3 failed / 3109 passed — the 3 failures are the pre-existing,
-  unrelated ones (import boundaries ×2, provider_manager warm-refresh ×1).
+### GAN Harness Iteration 003 — Evaluator + Generator
+
+- **Evaluator**: Wrote `gan-harness/feedback/feedback-003.md` scoring 5.6/10 (FAIL).
+  - 2 critical bugs identified: `useConfigForm` never calls `load()` on mount
+    (Model Config + Messaging stuck on syncing skeleton), `UsageTrendChart` passes
+    raw hex to tremor `colors` prop (chart fill invisible).
+  - 2 major issues, 2 minor issues documented.
+- **Generator**: Fixed both critical bugs:
+  1. `src/claudey/api/admin_static/admin-ui/src/hooks/use-config-form.ts` — added
+     `useEffect(() => { void load(); }, [load])` to trigger initial fetch on mount.
+     Also imported `useEffect` from react.
+  2. `src/claudey/api/admin_static/admin-ui/src/components/app/usage/usage-trend-chart.tsx` —
+     changed `colors={["#ff4d00"]}` to `colors={["orange"]}` (tremor palette color).
+- **Verification**: React build succeeded, typecheck passed, all 95 admin tests
+  passed, Playwright confirmed all 4 views load real data. Screenshot confirms
+  usage chart fill visible with tremor orange color.
+- Remaining non-blocking issues from feedback-003 deferred: y-axis tick spacing,
+  empty combos button placement, sidebar nav hash sync, favicon 404.
 
 ## Known Issues
 
