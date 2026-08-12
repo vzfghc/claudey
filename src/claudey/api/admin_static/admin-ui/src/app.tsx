@@ -135,7 +135,7 @@ export function App() {
             </div>
           </header>
 
-          <main className="min-h-0 flex-1 overflow-hidden">
+          <main className="flex min-h-0 flex-1 flex-col overflow-hidden">
             {activeId === "providers" && <ProvidersView />}
             {activeId === "model_config" && <ModelConfigView />}
             {activeId === "messaging" && <MessagingView />}
