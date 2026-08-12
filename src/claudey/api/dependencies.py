@@ -5,10 +5,10 @@ import secrets
 from fastapi import Depends, HTTPException, Request
 from loguru import logger
 
-from claudey.application.errors import UnknownProviderError
 from claudey.application.ports import ProviderPort, RequestRuntimeLease
 from claudey.config.provider_catalog import PROVIDER_CATALOG
 from claudey.config.settings import Settings
+from claudey.core.errors import UnknownProviderError
 
 from .ports import ApiServices
 

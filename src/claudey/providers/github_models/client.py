@@ -5,8 +5,8 @@ from typing import Any
 
 import httpx
 
-from claudey.application.model_metadata import ProviderModelInfo
 from claudey.core.anthropic import ReasoningReplayMode
+from claudey.core.model_metadata import ProviderModelInfo
 from claudey.providers.admission import ProviderAdmissionController
 from claudey.providers.base import ProviderConfig
 from claudey.providers.http import maybe_await_aclose

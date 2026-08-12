@@ -14,7 +14,6 @@ from pydantic import BaseModel, Field
 from claudey.application.connected_accounts import (
     ConnectedAccountLoginMode,
 )
-from claudey.application.model_metadata import ProviderModelRefreshResult
 from claudey.config import custom_provider_check
 from claudey.config.admin.manifest import FIELD_BY_KEY
 from claudey.config.admin.persistence import validate_updates
@@ -40,6 +39,7 @@ from claudey.config.provider_catalog import (
     PROVIDER_CATALOG,
     ProviderAuthKind,
 )
+from claudey.core.model_metadata import ProviderModelRefreshResult
 from claudey.core.version import asset_version
 
 from .admin_dashboard import dashboard_payload

@@ -5,10 +5,10 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from claudey.application.errors import InvalidRequestError
-from claudey.application.model_metadata import ProviderModelInfo
 from claudey.config.provider_catalog import KIMI_CODE_DEFAULT_BASE
 from claudey.core.anthropic.models import MessagesRequest
+from claudey.core.errors import InvalidRequestError
+from claudey.core.model_metadata import ProviderModelInfo
 from claudey.providers.base import ProviderConfig
 from claudey.providers.openai_chat import OpenAIChatProvider
 from tests.providers.support import (

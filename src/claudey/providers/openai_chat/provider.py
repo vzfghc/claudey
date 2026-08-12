@@ -11,7 +11,6 @@ import httpx
 from loguru import logger
 from openai import AsyncOpenAI
 
-from claudey.application.model_metadata import ProviderModelInfo
 from claudey.core.anthropic import (
     ContentType,
     HeuristicToolParser,
@@ -31,6 +30,7 @@ from claudey.core.anthropic.streaming import (
     tool_schemas_by_name,
 )
 from claudey.core.failures import ExecutionFailure
+from claudey.core.model_metadata import ProviderModelInfo
 from claudey.core.reasoning import DEFAULT_REASONING_POLICY, ReasoningPolicy
 from claudey.core.trace import provider_chat_body_snapshot, trace_event
 from claudey.providers.admission import (

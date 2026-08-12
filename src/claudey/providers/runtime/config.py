@@ -1,8 +1,8 @@
 """Provider configuration construction from neutral catalog metadata."""
 
-from claudey.application.errors import ApplicationUnavailableError
 from claudey.config.provider_catalog import ProviderDescriptor
 from claudey.config.settings import Settings
+from claudey.core.errors import ApplicationUnavailableError
 from claudey.providers.base import ProviderConfig
 
 

@@ -9,7 +9,6 @@ from claudey.api.request_errors import (
     require_non_empty_messages,
 )
 from claudey.api.request_ids import new_request_id
-from claudey.application.errors import ApplicationError
 from claudey.application.execution import TokenCounter
 from claudey.application.routing import ModelRouter
 from claudey.config.settings import Settings
@@ -20,6 +19,7 @@ from claudey.core.anthropic import (
     get_token_count,
 )
 from claudey.core.diagnostics import safe_exception_message
+from claudey.core.errors import ApplicationError
 from claudey.core.trace import trace_event
 
 

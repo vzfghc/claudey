@@ -6,7 +6,6 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from claudey.application.model_metadata import ProviderModelInfo
 from claudey.config.nim import NimSettings
 from claudey.config.provider_catalog import (
     DEEPSEEK_DEFAULT_BASE,
@@ -16,6 +15,7 @@ from claudey.config.provider_catalog import (
     WAFER_DEFAULT_BASE,
 )
 from claudey.config.settings import Settings
+from claudey.core.model_metadata import ProviderModelInfo
 from claudey.core.reasoning import DEFAULT_REASONING_POLICY, ReasoningPolicy
 from claudey.providers.base import BaseProvider, ProviderConfig
 from claudey.providers.deepseek import DeepSeekProvider

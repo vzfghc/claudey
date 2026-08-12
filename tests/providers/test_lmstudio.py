@@ -5,8 +5,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import httpx
 import pytest
 
-from claudey.application.errors import InvalidRequestError
 from claudey.config.provider_catalog import LMSTUDIO_DEFAULT_BASE
+from claudey.core.errors import InvalidRequestError
 from claudey.core.failures import ExecutionFailure, FailureKind
 from claudey.core.reasoning import ReasoningEffort, ReasoningPolicy
 from claudey.providers.base import ProviderConfig

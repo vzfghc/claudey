@@ -6,9 +6,8 @@ from typing import Protocol
 
 from claudey.config.settings import Settings
 from claudey.core.anthropic import MessagesRequest
+from claudey.core.model_metadata import ProviderModelInfo
 from claudey.core.reasoning import ReasoningPolicy
-
-from .model_metadata import ProviderModelInfo
 
 
 class ProviderPort(Protocol):

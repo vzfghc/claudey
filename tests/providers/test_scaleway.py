@@ -5,9 +5,9 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from claudey.application.model_metadata import ProviderModelInfo
 from claudey.config.provider_catalog import SCALEWAY_DEFAULT_BASE
 from claudey.core.anthropic.models import Message, MessagesRequest
+from claudey.core.model_metadata import ProviderModelInfo
 from claudey.providers.base import ProviderConfig
 from claudey.providers.openai_chat import OpenAIChatProvider
 from tests.providers.support import (

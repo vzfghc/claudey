@@ -5,8 +5,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from claudey.application.errors import InvalidRequestError
 from claudey.config.provider_catalog import COHERE_DEFAULT_BASE
+from claudey.core.errors import InvalidRequestError
 from claudey.providers.base import ProviderConfig
 from tests.providers.request_factory import make_messages_request
 from tests.providers.support import (

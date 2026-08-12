@@ -5,7 +5,6 @@ from typing import Any
 
 from loguru import logger
 
-from claudey.application.errors import InvalidRequestError
 from claudey.config.constants import ANTHROPIC_DEFAULT_MAX_OUTPUT_TOKENS
 from claudey.core.anthropic import (
     ReasoningReplayMode,
@@ -13,6 +12,7 @@ from claudey.core.anthropic import (
     serialize_tool_result_content,
 )
 from claudey.core.anthropic.models import MessagesRequest
+from claudey.core.errors import InvalidRequestError
 from claudey.core.reasoning import (
     ReasoningControl,
     ReasoningEffort,

@@ -6,13 +6,13 @@ from dataclasses import dataclass
 
 from loguru import logger
 
-from claudey.application.model_metadata import ProviderModelInfo
 from claudey.config.constants import HTTP_CONNECT_TIMEOUT_DEFAULT
 from claudey.core.anthropic.models import MessagesRequest
 from claudey.core.diagnostics import (
     exception_cause_types,
     redacted_exception_traceback,
 )
+from claudey.core.model_metadata import ProviderModelInfo
 from claudey.core.reasoning import DEFAULT_REASONING_POLICY, ReasoningPolicy
 from claudey.core.trace import trace_event
 

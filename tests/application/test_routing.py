@@ -2,7 +2,6 @@ from unittest.mock import patch
 
 import pytest
 
-from claudey.application.errors import UnknownProviderError
 from claudey.application.routing import ModelRouter
 from claudey.config.combos import (
     COMBOS_PATH_ENV,
@@ -23,6 +22,7 @@ from claudey.core.anthropic.models import (
     MessagesRequest,
     TokenCountRequest,
 )
+from claudey.core.errors import UnknownProviderError
 from claudey.core.reasoning import ReasoningControl, ReasoningEffort
 
 

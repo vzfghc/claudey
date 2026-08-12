@@ -4,9 +4,9 @@ from unittest.mock import MagicMock, patch
 import pytest
 from fastapi.testclient import TestClient
 
-from claudey.application.errors import InvalidRequestError
 from claudey.core.anthropic.stream_contracts import parse_sse_text
 from claudey.core.anthropic.streaming import format_sse_event
+from claudey.core.errors import InvalidRequestError
 from claudey.core.failures import ExecutionFailure, FailureKind
 from claudey.core.reasoning import (
     ReasoningControl,

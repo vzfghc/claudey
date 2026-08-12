@@ -2,8 +2,8 @@
 
 from collections.abc import Iterable
 
-from claudey.application.model_metadata import ProviderModelInfo
 from claudey.config.provider_catalog import SUPPORTED_PROVIDER_IDS
+from claudey.core.model_metadata import ProviderModelInfo
 
 
 class ProviderModelCache:

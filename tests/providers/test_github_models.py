@@ -8,10 +8,10 @@ from unittest.mock import AsyncMock, patch
 import httpx
 import pytest
 
-from claudey.application.model_metadata import ProviderModelInfo
 from claudey.config.provider_catalog import GITHUB_MODELS_DEFAULT_BASE
 from claudey.core.anthropic.models import Message, MessagesRequest
 from claudey.core.anthropic.stream_contracts import parse_sse_text
+from claudey.core.model_metadata import ProviderModelInfo
 from claudey.providers.base import ProviderConfig
 from claudey.providers.github_models import GitHubModelsProvider
 from claudey.providers.github_models.client import GITHUB_MODELS_CATALOG_URL

@@ -7,7 +7,6 @@ from typing import Any, Literal
 
 from loguru import logger
 
-from claudey.application.errors import InvalidRequestError
 from claudey.core.anthropic import (
     OpenAIToolNameCodec,
     ReasoningReplayMode,
@@ -15,6 +14,7 @@ from claudey.core.anthropic import (
 )
 from claudey.core.anthropic.conversion import OpenAIConversionError
 from claudey.core.anthropic.models import MessagesRequest
+from claudey.core.errors import InvalidRequestError
 from claudey.core.reasoning import ReasoningPolicy
 
 MaxTokensField = Literal["max_tokens", "max_completion_tokens"]

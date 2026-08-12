@@ -7,11 +7,11 @@ from unittest.mock import AsyncMock, patch
 import httpx
 import pytest
 
-from claudey.application.errors import ApplicationUnavailableError
-from claudey.application.model_metadata import ProviderModelInfo
 from claudey.config.provider_catalog import CLOUDFLARE_AI_REST_ROOT
 from claudey.core.anthropic.models import Message, MessagesRequest
 from claudey.core.anthropic.stream_contracts import parse_sse_text
+from claudey.core.errors import ApplicationUnavailableError
+from claudey.core.model_metadata import ProviderModelInfo
 from claudey.providers.base import ProviderConfig
 from claudey.providers.cloudflare import (
     CloudflareProvider,

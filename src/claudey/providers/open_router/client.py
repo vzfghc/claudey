@@ -1,8 +1,8 @@
 """OpenRouter provider implementation."""
 
-from claudey.application.model_metadata import ProviderModelInfo
 from claudey.config.constants import ANTHROPIC_DEFAULT_MAX_OUTPUT_TOKENS
 from claudey.core.anthropic import ReasoningReplayMode
+from claudey.core.model_metadata import ProviderModelInfo
 from claudey.core.reasoning import ReasoningEffort
 from claudey.providers.admission import ProviderAdmissionController
 from claudey.providers.base import ProviderConfig

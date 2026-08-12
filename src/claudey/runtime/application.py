@@ -19,8 +19,6 @@ from claudey.application.connected_accounts import (
     ConnectedAccountPort,
     ConnectedAccountStatus,
 )
-from claudey.application.errors import ApplicationUnavailableError
-from claudey.application.model_metadata import ProviderModelRefreshResult
 from claudey.application.ports import StopResult
 from claudey.config.admin.persistence import (
     PreparedAdminUpdate,
@@ -37,6 +35,8 @@ from claudey.config.model_refs import parse_provider_type
 from claudey.config.paths import messaging_state_dir_path
 from claudey.config.server_urls import local_admin_url, local_proxy_root_url
 from claudey.config.settings import Settings, get_settings
+from claudey.core.errors import ApplicationUnavailableError
+from claudey.core.model_metadata import ProviderModelRefreshResult
 from claudey.core.version import package_version
 from claudey.messaging.platforms import factory as messaging_platform_factory
 from claudey.messaging.platforms.factory import MessagingPlatformOptions

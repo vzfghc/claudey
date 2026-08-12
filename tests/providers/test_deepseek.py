@@ -9,7 +9,6 @@ import httpx
 import pytest
 from openai import AsyncOpenAI
 
-from claudey.application.errors import InvalidRequestError
 from claudey.config.constants import ANTHROPIC_DEFAULT_MAX_OUTPUT_TOKENS
 from claudey.config.provider_catalog import DEEPSEEK_DEFAULT_BASE
 from claudey.core.anthropic.models import (
@@ -19,6 +18,7 @@ from claudey.core.anthropic.models import (
     Tool,
 )
 from claudey.core.anthropic.stream_contracts import parse_sse_text
+from claudey.core.errors import InvalidRequestError
 from claudey.providers.base import ProviderConfig
 from claudey.providers.deepseek import DeepSeekProvider
 from tests.providers.support import (

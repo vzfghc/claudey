@@ -3,7 +3,7 @@
 from collections.abc import Mapping, Sequence
 from typing import Any
 
-from claudey.application.model_metadata import ProviderModelInfo
+from claudey.core.model_metadata import ProviderModelInfo
 from claudey.providers.model_listing import (
     extract_tool_capable_model_infos,
     model_list_items,

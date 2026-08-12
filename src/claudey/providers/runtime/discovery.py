@@ -6,15 +6,15 @@ from collections.abc import Callable
 import httpx
 from loguru import logger
 
-from claudey.application.errors import ApplicationUnavailableError
-from claudey.application.model_metadata import (
-    ProviderModelInfo,
-    ProviderModelRefreshResult,
-)
 from claudey.config.model_refs import configured_chat_model_refs
 from claudey.config.provider_catalog import PROVIDER_CATALOG
 from claudey.config.settings import Settings
+from claudey.core.errors import ApplicationUnavailableError
 from claudey.core.failures import ExecutionFailure
+from claudey.core.model_metadata import (
+    ProviderModelInfo,
+    ProviderModelRefreshResult,
+)
 from claudey.providers.base import BaseProvider
 from claudey.providers.model_listing import ModelListResponseError
 

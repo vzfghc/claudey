@@ -1,4 +1,4 @@
-"""Application-owned model metadata."""
+"""Provider-neutral model metadata shared across the application and providers."""
 
 from dataclasses import dataclass
 

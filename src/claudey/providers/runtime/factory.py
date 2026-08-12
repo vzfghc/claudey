@@ -2,10 +2,6 @@
 
 from collections.abc import Callable, Mapping
 
-from claudey.application.errors import (
-    ApplicationUnavailableError,
-    UnknownProviderError,
-)
 from claudey.config.custom_providers import (
     CustomProviderRecord,
     effective_api_key,
@@ -17,6 +13,10 @@ from claudey.config.provider_catalog import (
     ProviderAuthKind,
 )
 from claudey.config.settings import Settings
+from claudey.core.errors import (
+    ApplicationUnavailableError,
+    UnknownProviderError,
+)
 from claudey.providers.admission import ProviderAdmissionController
 from claudey.providers.base import BaseProvider, ProviderConfig
 from claudey.providers.openai_chat import (

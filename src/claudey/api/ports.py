@@ -8,8 +8,8 @@ from claudey.application.connected_accounts import (
     ConnectedAccountLoginMode,
     ConnectedAccountStatus,
 )
-from claudey.application.model_metadata import ProviderModelRefreshResult
 from claudey.application.ports import RequestRuntimePort, TaskController
+from claudey.core.model_metadata import ProviderModelRefreshResult
 
 
 class AdminRuntimePort(Protocol):

@@ -4,8 +4,8 @@ from collections.abc import AsyncIterator
 
 import pytest
 
-from claudey.application.model_metadata import ProviderModelInfo
 from claudey.core.anthropic.models import Message, MessagesRequest
+from claudey.core.model_metadata import ProviderModelInfo
 from claudey.core.reasoning import DEFAULT_REASONING_POLICY, ReasoningPolicy
 from claudey.providers.base import BaseProvider, ProviderConfig
 from claudey.providers.openai_chat import OpenAIChatProvider

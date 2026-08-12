@@ -5,8 +5,8 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from claudey.application.model_metadata import ProviderModelInfo
 from claudey.config.provider_catalog import BEDROCK_DEFAULT_BASE
+from claudey.core.model_metadata import ProviderModelInfo
 from claudey.providers.base import ProviderConfig
 from claudey.providers.openai_chat import OpenAIChatProvider
 from tests.providers.request_factory import make_messages_request

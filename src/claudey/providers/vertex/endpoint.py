@@ -3,8 +3,8 @@
 import re
 from urllib.parse import quote
 
-from claudey.application.errors import ApplicationUnavailableError
 from claudey.config.provider_catalog import VERTEX_AI_API_ROOT
+from claudey.core.errors import ApplicationUnavailableError
 
 _LOCATION_PATTERN = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*")
 

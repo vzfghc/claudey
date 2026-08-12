@@ -9,8 +9,6 @@ from typing import Any
 
 import httpx
 
-from claudey.application.errors import InvalidRequestError
-from claudey.application.model_metadata import ProviderModelInfo
 from claudey.core.anthropic.models import MessagesRequest
 from claudey.core.anthropic.openai_tool_names import OpenAIToolNameCodec
 from claudey.core.diagnostics import (
@@ -18,7 +16,9 @@ from claudey.core.diagnostics import (
     attach_upstream_error_body,
     extract_upstream_error_detail,
 )
+from claudey.core.errors import InvalidRequestError
 from claudey.core.failures import ExecutionFailure, FailureKind
+from claudey.core.model_metadata import ProviderModelInfo
 from claudey.core.openai_responses import (
     ResponsesConversionError,
     ResponsesProviderStream,

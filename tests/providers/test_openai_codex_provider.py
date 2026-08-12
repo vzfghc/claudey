@@ -5,7 +5,6 @@ from typing import Any
 import httpx
 import pytest
 
-from claudey.application.errors import InvalidRequestError
 from claudey.core.anthropic.models import MessagesRequest
 from claudey.core.anthropic.stream_contracts import (
     assert_anthropic_stream_contract,
@@ -13,6 +12,7 @@ from claudey.core.anthropic.stream_contracts import (
     text_content,
 )
 from claudey.core.diagnostics import ERROR_DETAIL_DISPLAY_CAP_BYTES
+from claudey.core.errors import InvalidRequestError
 from claudey.core.failures import ExecutionFailure
 from claudey.core.reasoning import ReasoningEffort, ReasoningPolicy
 from claudey.providers.admission import ProviderAdmissionController

@@ -10,9 +10,9 @@ from claudey.api.dependencies import (
     resolve_provider,
 )
 from claudey.api.ports import ApiServices
-from claudey.application.errors import ApplicationUnavailableError
 from claudey.application.ports import RequestRuntimeLease
 from claudey.config.settings import Settings
+from claudey.core.errors import ApplicationUnavailableError
 from tests.api.support import create_test_app
 
 

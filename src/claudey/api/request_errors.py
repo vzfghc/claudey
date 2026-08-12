@@ -6,7 +6,6 @@ from fastapi import HTTPException
 from fastapi.responses import JSONResponse
 from loguru import logger
 
-from claudey.application.errors import ApplicationError, InvalidRequestError
 from claudey.config.settings import Settings
 from claudey.core.anthropic import (
     anthropic_error_payload,
@@ -16,6 +15,7 @@ from claudey.core.diagnostics import (
     redacted_exception_traceback,
     safe_exception_message,
 )
+from claudey.core.errors import ApplicationError, InvalidRequestError
 from claudey.core.openai_responses import (
     openai_error_payload,
     openai_error_type_for_failure,

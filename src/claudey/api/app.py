@@ -8,12 +8,12 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from loguru import logger
 
-from claudey.application.errors import ApplicationError
 from claudey.core.anthropic import anthropic_error_payload
 from claudey.core.diagnostics import (
     redacted_exception_traceback,
     safe_exception_message,
 )
+from claudey.core.errors import ApplicationError
 from claudey.core.openai_responses import openai_error_payload
 from claudey.core.trace import (
     extract_claude_session_id_from_headers,

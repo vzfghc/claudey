@@ -3,7 +3,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from loguru import logger
 
-from claudey.application.errors import ApplicationError
 from claudey.application.ports import ProviderResolver, RequestRuntimeLease
 from claudey.config.model_refs import parse_provider_type
 from claudey.config.settings import Settings
@@ -12,6 +11,7 @@ from claudey.core.anthropic import (
     TokenCountRequest,
     get_token_count,
 )
+from claudey.core.errors import ApplicationError
 from claudey.core.openai_responses import OpenAIResponsesRequest
 from claudey.core.trace import trace_event
 

@@ -6,13 +6,13 @@ import httpx
 import pytest
 from fastapi.testclient import TestClient
 
-from claudey.application.errors import (
+from claudey.config.settings import Settings
+from claudey.core.errors import (
     ApplicationError,
     ApplicationUnavailableError,
     InvalidRequestError,
     UnknownProviderError,
 )
-from claudey.config.settings import Settings
 from tests.api.support import create_test_app
 
 _PRODUCT_REQUESTS = (

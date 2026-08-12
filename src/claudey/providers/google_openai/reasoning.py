@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 from typing import Any, cast
 
-from claudey.application.errors import InvalidRequestError
+from claudey.core.errors import InvalidRequestError
 from claudey.core.reasoning import (
     DEFAULT_REASONING_POLICY,
     ReasoningControl,

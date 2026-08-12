@@ -14,10 +14,10 @@ from collections.abc import AsyncIterator
 
 import httpx
 
-from claudey.application.model_metadata import ProviderModelInfo
 from claudey.core.anthropic import MessagesRequest
 from claudey.core.anthropic.request_serialization import dump_messages_request
 from claudey.core.anthropic.urls import ANTHROPIC_VERSION_HEADER, anthropic_messages_url
+from claudey.core.model_metadata import ProviderModelInfo
 from claudey.core.reasoning import DEFAULT_REASONING_POLICY, ReasoningPolicy
 from claudey.providers.admission import ProviderAdmissionController
 from claudey.providers.base import BaseProvider, ProviderConfig

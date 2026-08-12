@@ -9,13 +9,13 @@ from google.auth.credentials import Credentials
 from google.auth.exceptions import DefaultCredentialsError, TransportError
 from google.auth.transport.requests import Request
 
-from claudey.application.errors import (
+from claudey.config.provider_catalog import VERTEX_AI_API_ROOT
+from claudey.core.errors import (
     ApplicationUnavailableError,
     InvalidRequestError,
 )
-from claudey.application.model_metadata import ProviderModelInfo
-from claudey.config.provider_catalog import VERTEX_AI_API_ROOT
 from claudey.core.failures import ExecutionFailure, FailureKind
+from claudey.core.model_metadata import ProviderModelInfo
 from claudey.core.reasoning import ReasoningEffort, ReasoningPolicy
 from claudey.providers.base import ProviderConfig
 from claudey.providers.model_listing import ModelListResponseError

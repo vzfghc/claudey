@@ -9,9 +9,9 @@ from claudey.application.connected_accounts import (
     ConnectedAccountState,
     ConnectedAccountStatus,
 )
-from claudey.application.model_metadata import ProviderModelInfo
 from claudey.config.admin.persistence import PreparedAdminUpdate
 from claudey.config.settings import Settings
+from claudey.core.model_metadata import ProviderModelInfo
 from claudey.messaging.command_context import StopOutcome
 from claudey.messaging.platforms.ports import (
     InboundMessageHandler,

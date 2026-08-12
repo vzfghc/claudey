@@ -4,7 +4,6 @@ from dataclasses import dataclass
 
 from loguru import logger
 
-from claudey.application.errors import UnknownProviderError
 from claudey.config.custom_providers import custom_provider_ids
 from claudey.config.model_refs import (
     parse_chain_refs,
@@ -20,6 +19,7 @@ from claudey.config.provider_catalog import (
 from claudey.config.reasoning import ReasoningPreference
 from claudey.config.settings import Settings
 from claudey.core.anthropic import MessagesRequest, TokenCountRequest
+from claudey.core.errors import UnknownProviderError
 from claudey.core.gateway_model_ids import (
     decode_gateway_model_id,
     strip_context_window_suffix,

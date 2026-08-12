@@ -6,8 +6,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from claudey.application.errors import InvalidRequestError
-from claudey.application.model_metadata import ProviderModelInfo
 from claudey.config.provider_catalog import KILO_DEFAULT_BASE
 from claudey.core.anthropic.models import Message, MessagesRequest
 from claudey.core.anthropic.stream_contracts import (
@@ -15,6 +13,8 @@ from claudey.core.anthropic.stream_contracts import (
     text_content,
     thinking_content,
 )
+from claudey.core.errors import InvalidRequestError
+from claudey.core.model_metadata import ProviderModelInfo
 from claudey.core.reasoning import ReasoningPolicy
 from claudey.providers.base import ProviderConfig
 from claudey.providers.kilo import KiloProvider

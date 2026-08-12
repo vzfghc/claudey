@@ -14,13 +14,13 @@ from claudey.application.connected_accounts import (
     ConnectedAccountState,
     ConnectedAccountStatus,
 )
-from claudey.application.model_metadata import (
-    ProviderModelInfo,
-    ProviderModelRefreshResult,
-)
 from claudey.config.admin.values import MASKED_SECRET
 from claudey.config.server_urls import local_admin_url
 from claudey.config.settings import Settings
+from claudey.core.model_metadata import (
+    ProviderModelInfo,
+    ProviderModelRefreshResult,
+)
 from tests.api.support import create_test_app, provider_manager_for_app
 
 

@@ -21,7 +21,6 @@ from claudey.api.web_tools.outbound import (
 )
 from claudey.api.web_tools.request import is_web_server_tool_request
 from claudey.api.web_tools.streaming import stream_web_server_tool_response
-from claudey.application.errors import InvalidRequestError
 from claudey.application.routing import (
     ModelRouter,
     ResolvedModel,
@@ -36,6 +35,7 @@ from claudey.core.anthropic.stream_contracts import (
     parse_sse_text,
     text_content,
 )
+from claudey.core.errors import InvalidRequestError
 from claudey.core.reasoning import ReasoningPolicy
 from claudey.core.version import package_version
 from claudey.messaging.event_parser import parse_cli_event

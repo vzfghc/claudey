@@ -4,8 +4,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from claudey.application.errors import InvalidRequestError
 from claudey.config.provider_catalog import GEMINI_DEFAULT_BASE
+from claudey.core.errors import InvalidRequestError
 from claudey.core.reasoning import ReasoningEffort, ReasoningPolicy
 from claudey.providers.base import ProviderConfig
 from claudey.providers.gemini import GeminiProvider

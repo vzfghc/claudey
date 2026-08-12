@@ -7,12 +7,12 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from claudey.application.errors import (
+from claudey.config.settings import Settings
+from claudey.core.errors import (
     ApplicationUnavailableError,
     InvalidRequestError,
 )
-from claudey.application.model_metadata import ProviderModelInfo
-from claudey.config.settings import Settings
+from claudey.core.model_metadata import ProviderModelInfo
 from claudey.messaging.transcription import TranscriptionService
 from claudey.providers.nvidia_nim.client import NvidiaNimProvider
 from claudey.providers.nvidia_nim.voice import NvidiaNimTranscriber

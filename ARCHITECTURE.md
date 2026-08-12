@@ -46,10 +46,9 @@ flowchart LR
 The installable wheel packages are declared in [pyproject.toml](pyproject.toml):
 
 - [src/claudey/application/](src/claudey/application/) is the dependency-leaf application boundary. It
-  owns immutable routing/model-metadata values, model routing, shared provider
-  execution, the consumer-facing `ProviderPort`, request-runtime lease ports,
-  task control, and deterministic request/readiness errors. It depends only on
-  configuration and core protocol-neutral logic.
+  owns immutable routing values, model routing, shared provider execution, the
+  consumer-facing `ProviderPort`, request-runtime lease ports, and task control.
+  It depends only on configuration and core protocol-neutral logic.
 - [src/claudey/api/](src/claudey/api/) is the HTTP adapter. It owns the FastAPI app, routes, API product
   handlers, local optimizations, model-catalog responses, HTTP error mapping,
   response commit timing, and Admin-specific ports. It consumes application and
@@ -61,7 +60,8 @@ The installable wheel packages are declared in [pyproject.toml](pyproject.toml):
 - [src/claudey/core/](src/claudey/core/) owns provider-neutral protocol logic: wire request and response
   models, Anthropic conversion, SSE construction, OpenAI Responses conversion,
   canonical execution-failure semantics, credential-safe diagnostics, token
-  counting, and structured trace helpers. It never classifies provider SDK or
+  counting, model metadata, deterministic request/readiness errors, and
+  structured trace helpers. It never classifies provider SDK or
   HTTP client exceptions.
 - [src/claudey/messaging/](src/claudey/messaging/) owns optional platform adapters, incoming message
   handling, tree queues, transcript rendering, persistence, commands, and voice
@@ -620,10 +620,11 @@ and discovery orchestration belong to `ProviderRuntimeManager` in the runtime
 package. This separates a single generation's resources from process-lifetime
 state.
 
-[application/model_metadata.py](src/claudey/application/model_metadata.py) owns the immutable
-`ProviderModelInfo` value consumed by the application catalog. Provider-specific
-model-list modules retain response parsing and construct that value directly;
-there is no provider-layer alias for the former owner.
+[core/model_metadata.py](src/claudey/core/model_metadata.py) owns the immutable
+`ProviderModelInfo` and `ProviderModelRefreshResult` values consumed by the
+application catalog. Provider-specific model-list modules retain response
+parsing and construct that value directly; there is no provider-layer alias for
+the former owner.
 
 [application/ports.py](src/claudey/application/ports.py) defines the two provider operations consumed by request
 execution: synchronous `preflight_stream()` and lazy `stream_response()`. API

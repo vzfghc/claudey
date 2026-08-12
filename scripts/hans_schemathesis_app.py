@@ -9,8 +9,8 @@ import json
 import os
 import tempfile
 
-from claudey.application.model_metadata import ProviderModelInfo
 from claudey.core.anthropic.models import MessagesRequest
+from claudey.core.model_metadata import ProviderModelInfo
 from claudey.core.reasoning import DEFAULT_REASONING_POLICY, ReasoningPolicy
 from claudey.providers.base import BaseProvider, ProviderConfig
 from tests.api.support import create_test_app

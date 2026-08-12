@@ -4,12 +4,12 @@ from unittest.mock import patch
 
 import pytest
 
-from claudey.application.model_metadata import ProviderModelInfo
 from claudey.application.ports import (
     RequestRuntimeLease,
     RequestRuntimePort,
 )
 from claudey.config.settings import Settings
+from claudey.core.model_metadata import ProviderModelInfo
 from claudey.runtime.codex_catalog import CodexModelCatalogPublisher
 
 

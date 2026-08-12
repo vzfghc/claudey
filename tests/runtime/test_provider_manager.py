@@ -4,10 +4,10 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from claudey.application.errors import ApplicationUnavailableError
-from claudey.application.model_metadata import ProviderModelInfo
 from claudey.application.ports import RequestRuntimePort
 from claudey.config.settings import Settings
+from claudey.core.errors import ApplicationUnavailableError
+from claudey.core.model_metadata import ProviderModelInfo
 from claudey.providers.base import BaseProvider
 from claudey.providers.nvidia_nim import NvidiaNimProvider
 from claudey.providers.runtime import ProviderRuntime

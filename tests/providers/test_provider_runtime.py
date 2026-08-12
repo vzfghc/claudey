@@ -5,10 +5,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from claudey.application.errors import (
-    ApplicationUnavailableError,
-    UnknownProviderError,
-)
 from claudey.config.nim import NimSettings
 from claudey.config.provider_catalog import (
     BEDROCK_DEFAULT_BASE,
@@ -22,6 +18,10 @@ from claudey.config.provider_catalog import (
     SUPPORTED_PROVIDER_IDS,
     VERCEL_AI_GATEWAY_DEFAULT_BASE,
     ZAI_DEFAULT_BASE,
+)
+from claudey.core.errors import (
+    ApplicationUnavailableError,
+    UnknownProviderError,
 )
 from claudey.providers.admission import ProviderAdmissionController
 from claudey.providers.cloudflare import CloudflareProvider

@@ -6,7 +6,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from claudey.application.errors import InvalidRequestError
 from claudey.config.constants import ANTHROPIC_DEFAULT_MAX_OUTPUT_TOKENS
 from claudey.core.anthropic.models import MessagesRequest
 from claudey.core.anthropic.stream_contracts import (
@@ -14,6 +13,7 @@ from claudey.core.anthropic.stream_contracts import (
     text_content,
     thinking_content,
 )
+from claudey.core.errors import InvalidRequestError
 from claudey.providers.base import ProviderConfig
 from claudey.providers.open_router import OpenRouterProvider
 from claudey.providers.openai_chat import OpenAIChatProvider

@@ -4,10 +4,10 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from claudey.application.errors import InvalidRequestError
 from claudey.config.constants import ANTHROPIC_DEFAULT_MAX_OUTPUT_TOKENS
 from claudey.config.provider_catalog import FIREWORKS_DEFAULT_BASE
 from claudey.core.anthropic.models import Message, MessagesRequest
+from claudey.core.errors import InvalidRequestError
 from claudey.providers.base import ProviderConfig
 from claudey.providers.openai_chat import OpenAIChatProvider
 from tests.providers.support import (

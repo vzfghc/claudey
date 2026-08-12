@@ -12,8 +12,6 @@ from claudey.api.handlers import (
     ResponsesHandler,
     TokenCountHandler,
 )
-from claudey.application.errors import InvalidRequestError
-from claudey.application.model_metadata import ProviderModelInfo
 from claudey.config.settings import Settings
 from claudey.core.anthropic.models import (
     Message,
@@ -21,7 +19,9 @@ from claudey.core.anthropic.models import (
     TokenCountRequest,
 )
 from claudey.core.anthropic.streaming import format_sse_event
+from claudey.core.errors import InvalidRequestError
 from claudey.core.failures import ExecutionFailure, FailureKind
+from claudey.core.model_metadata import ProviderModelInfo
 from claudey.core.openai_responses import OpenAIResponsesRequest
 from claudey.core.reasoning import ReasoningPolicy
 
