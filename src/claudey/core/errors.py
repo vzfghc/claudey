@@ -1,4 +1,4 @@
-"""Deterministic application and readiness errors."""
+"""Canonical SDK-free error types shared across layers."""
 
 from collections.abc import Iterable
 

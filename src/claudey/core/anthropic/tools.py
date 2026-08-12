@@ -38,15 +38,17 @@ class HeuristicToolParser:
 
     def __init__(self):
         self._state = ParserState.TEXT
-        self._buffer = ""
+        self._chunks: list[str] = []
         self._current_tool_id = None
         self._current_function_name = None
         self._current_parameters = {}
 
-    def _extract_web_tool_json_calls(self) -> tuple[str, list[dict[str, Any]]]:
+    def _extract_web_tool_json_calls(
+        self, buffer: str
+    ) -> tuple[str, list[dict[str, Any]]]:
         detected_tools: list[dict[str, Any]] = []
 
-        for match in self._WEB_TOOL_JSON_PATTERN.finditer(self._buffer):
+        for match in self._WEB_TOOL_JSON_PATTERN.finditer(buffer):
             try:
                 tool_input = json.loads(match.group("json"))
             except json.JSONDecodeError:
@@ -74,64 +76,68 @@ class HeuristicToolParser:
             )
 
         if not detected_tools:
-            return self._buffer, []
+            return buffer, []
 
         return "", detected_tools
 
     def _strip_control_tokens(self, text: str) -> str:
         return _CONTROL_TOKEN_RE.sub("", text)
 
-    def _split_incomplete_control_token_tail(self) -> str:
-        start = self._buffer.rfind(_CONTROL_TOKEN_START)
+    def _split_incomplete_control_token_tail(self, buffer: str) -> tuple[str, str]:
+        start = buffer.rfind(_CONTROL_TOKEN_START)
         if start == -1:
-            return ""
-        end = self._buffer.find(_CONTROL_TOKEN_END, start)
+            return "", buffer
+        end = buffer.find(_CONTROL_TOKEN_END, start)
         if end != -1:
-            return ""
+            return "", buffer
 
-        prefix = self._buffer[:start]
-        self._buffer = self._buffer[start:]
-        return prefix
+        prefix = buffer[:start]
+        buffer = buffer[start:]
+        return prefix, buffer
 
     def feed(self, text: str) -> tuple[str, list[dict[str, Any]]]:
         """Feed text and return safe text plus detected tool calls."""
-        self._buffer += text
-        self._buffer = self._strip_control_tokens(self._buffer)
-        self._buffer, detected_tools = self._extract_web_tool_json_calls()
+        self._chunks.append(text)
+        buffer = "".join(self._chunks)
+        self._chunks = []
+        buffer = self._strip_control_tokens(buffer)
+        buffer, detected_tools = self._extract_web_tool_json_calls(buffer)
         filtered_output_parts: list[str] = []
 
         while True:
             if self._state == ParserState.TEXT:
-                if "●" in self._buffer:
-                    idx = self._buffer.find("●")
-                    filtered_output_parts.append(self._buffer[:idx])
-                    self._buffer = self._buffer[idx:]
+                if "●" in buffer:
+                    idx = buffer.find("●")
+                    filtered_output_parts.append(buffer[:idx])
+                    buffer = buffer[idx:]
                     self._state = ParserState.MATCHING_FUNCTION
                 else:
-                    safe_prefix = self._split_incomplete_control_token_tail()
+                    safe_prefix, buffer = self._split_incomplete_control_token_tail(
+                        buffer
+                    )
                     if safe_prefix:
                         filtered_output_parts.append(safe_prefix)
                         break
 
-                    filtered_output_parts.append(self._buffer)
-                    self._buffer = ""
+                    filtered_output_parts.append(buffer)
+                    buffer = ""
                     break
 
             if self._state == ParserState.MATCHING_FUNCTION:
-                match = self._FUNC_START_PATTERN.search(self._buffer)
+                match = self._FUNC_START_PATTERN.search(buffer)
                 if match:
                     self._current_function_name = match.group(1).strip()
                     self._current_tool_id = f"toolu_heuristic_{uuid.uuid4().hex[:8]}"
                     self._current_parameters = {}
-                    self._buffer = self._buffer[match.end() :]
+                    buffer = buffer[match.end() :]
                     self._state = ParserState.PARSING_PARAMETERS
                     logger.debug(
                         "Heuristic bypass: Detected start of tool call '{}'",
                         self._current_function_name,
                     )
-                elif len(self._buffer) > 100:
-                    filtered_output_parts.append(self._buffer[0])
-                    self._buffer = self._buffer[1:]
+                elif len(buffer) > 100:
+                    filtered_output_parts.append(buffer[0])
+                    buffer = buffer[1:]
                     self._state = ParserState.TEXT
                 else:
                     break
@@ -140,29 +146,29 @@ class HeuristicToolParser:
                 finished_tool_call = False
 
                 while True:
-                    param_match = self._PARAM_PATTERN.search(self._buffer)
+                    param_match = self._PARAM_PATTERN.search(buffer)
                     if param_match and "</parameter>" in param_match.group(0):
-                        pre_match_text = self._buffer[: param_match.start()]
+                        pre_match_text = buffer[: param_match.start()]
                         if pre_match_text:
                             filtered_output_parts.append(pre_match_text)
 
                         key = param_match.group(1).strip()
                         val = param_match.group(2).strip()
                         self._current_parameters[key] = val
-                        self._buffer = self._buffer[param_match.end() :]
+                        buffer = buffer[param_match.end() :]
                     else:
                         break
 
-                if "●" in self._buffer:
-                    idx = self._buffer.find("●")
+                if "●" in buffer:
+                    idx = buffer.find("●")
                     if idx > 0:
-                        filtered_output_parts.append(self._buffer[:idx])
-                        self._buffer = self._buffer[idx:]
+                        filtered_output_parts.append(buffer[:idx])
+                        buffer = buffer[idx:]
                     finished_tool_call = True
-                elif len(self._buffer) > 0 and not self._buffer.strip().startswith("<"):
-                    if "<parameter=" not in self._buffer:
-                        filtered_output_parts.append(self._buffer)
-                        self._buffer = ""
+                elif len(buffer) > 0 and not buffer.strip().startswith("<"):
+                    if "<parameter=" not in buffer:
+                        filtered_output_parts.append(buffer)
+                        buffer = ""
                         finished_tool_call = True
 
                 if finished_tool_call:
@@ -183,15 +189,18 @@ class HeuristicToolParser:
                 else:
                     break
 
+        if buffer:
+            self._chunks.append(buffer)
         return "".join(filtered_output_parts), detected_tools
 
     def flush(self) -> list[dict[str, Any]]:
         """Flush any remaining tool call in the buffer."""
-        self._buffer = self._strip_control_tokens(self._buffer)
+        buffer = self._strip_control_tokens("".join(self._chunks))
+        self._chunks = []
         detected_tools = []
         if self._state == ParserState.PARSING_PARAMETERS:
             partial_matches = re.finditer(
-                r"<parameter=([^>]+)>(.*)$", self._buffer, re.DOTALL
+                r"<parameter=([^>]+)>(.*)$", buffer, re.DOTALL
             )
             for match in partial_matches:
                 key = match.group(1).strip()
@@ -207,6 +216,7 @@ class HeuristicToolParser:
                 }
             )
             self._state = ParserState.TEXT
-            self._buffer = ""
+        elif buffer:
+            self._chunks.append(buffer)
 
         return detected_tools

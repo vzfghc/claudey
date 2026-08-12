@@ -37,9 +37,9 @@ class ToolBlockState:
     name: str
     extra_content: dict[str, Any] | None = None
     started: bool = False
-    task_arg_buffer: str = ""
+    task_arg_buffer: list[str] = field(default_factory=list)
     task_args_emitted: bool = False
-    pre_start_args: str = ""
+    pre_start_args: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -114,9 +114,9 @@ class StreamBlockLedger:
         if state is None or state.task_args_emitted:
             return None
 
-        state.task_arg_buffer += args
+        state.task_arg_buffer.append(args)
         try:
-            args_json = json.loads(state.task_arg_buffer)
+            args_json = json.loads("".join(state.task_arg_buffer))
         except Exception:
             return None
         if not isinstance(args_json, dict):
@@ -124,7 +124,7 @@ class StreamBlockLedger:
 
         _normalize_task_run_in_background(args_json)
         state.task_args_emitted = True
-        state.task_arg_buffer = ""
+        state.task_arg_buffer = []
         return args_json
 
     def flush_task_arg_buffers(self) -> list[tuple[int, str]]:
@@ -133,26 +133,27 @@ class StreamBlockLedger:
             if not state.task_arg_buffer or state.task_args_emitted:
                 continue
 
+            joined = "".join(state.task_arg_buffer)
             out = "{}"
             try:
-                args_json = json.loads(state.task_arg_buffer)
+                args_json = json.loads(joined)
                 if isinstance(args_json, dict):
                     _normalize_task_run_in_background(args_json)
                     out = json.dumps(args_json)
             except (json.JSONDecodeError, TypeError, ValueError) as exc:
                 digest = hashlib.sha256(
-                    state.task_arg_buffer.encode("utf-8", errors="replace")
+                    joined.encode("utf-8", errors="replace")
                 ).hexdigest()[:16]
                 logger.warning(
                     "Task args invalid JSON (id={} len={} buffer_sha256_prefix={}): {}",
                     state.tool_id or "unknown",
-                    len(state.task_arg_buffer),
+                    len(joined),
                     digest,
                     exc,
                 )
 
             state.task_args_emitted = True
-            state.task_arg_buffer = ""
+            state.task_arg_buffer = []
             results.append((tool_index, out))
         return results
 

@@ -21,6 +21,7 @@ from pathlib import Path
 from typing import Any
 
 from claudey.config.paths import config_dir_path
+from claudey.core.anthropic.sse_parser import SseEventSplitter
 from claudey.core.anthropic.stream_contracts import SSEEvent, parse_sse_text
 from claudey.core.trace import close_stream_input, trace_event
 
@@ -116,7 +117,7 @@ async def observe_usage(
     still records. ``GeneratorExit``/``CancelledError`` re-raise untouched
     without recording. Parse and record failures are traced, never raised.
     """
-    buffer = ""
+    splitter = SseEventSplitter()
     recorded = False
 
     def handle_events(events: list[SSEEvent]) -> None:
@@ -161,9 +162,7 @@ async def observe_usage(
     try:
         async for chunk in stream:
             yield chunk
-            buffer += chunk
-            while "\n\n" in buffer:
-                raw_event, buffer = buffer.split("\n\n", 1)
+            for raw_event in splitter.feed(chunk):
                 parse_and_handle(raw_event)
     except GeneratorExit:
         raise
@@ -171,8 +170,10 @@ async def observe_usage(
         raise
     finally:
         pending = sys.exception()
-        if not isinstance(pending, GeneratorExit | asyncio.CancelledError) and buffer:
-            parse_and_handle(buffer)
+        if not isinstance(pending, GeneratorExit | asyncio.CancelledError):
+            trailing = splitter.trailing()
+            if trailing is not None:
+                parse_and_handle(trailing)
         await close_stream_input(
             stream,
             owner="usage_observer",

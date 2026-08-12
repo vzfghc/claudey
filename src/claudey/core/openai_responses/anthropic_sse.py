@@ -6,6 +6,7 @@ from collections.abc import AsyncIterable, AsyncIterator
 from dataclasses import dataclass
 from typing import Any
 
+from claudey.core.anthropic.sse_parser import iter_raw_sse_events
 from claudey.core.trace import close_stream_input
 
 
@@ -18,23 +19,10 @@ class AnthropicSseEvent:
 async def iter_sse_events(
     chunks: AsyncIterable[Any],
 ) -> AsyncIterator[AnthropicSseEvent]:
-    buffer = ""
     iterator = aiter(chunks)
     try:
-        async for chunk in iterator:
-            if isinstance(chunk, bytes):
-                buffer += chunk.decode("utf-8", errors="replace")
-            else:
-                buffer += str(chunk)
-
-            while "\n\n" in buffer:
-                raw, buffer = buffer.split("\n\n", 1)
-                event = parse_sse_event(raw)
-                if event is not None:
-                    yield event
-
-        if buffer.strip():
-            event = parse_sse_event(buffer)
+        async for raw in iter_raw_sse_events(iterator, flush_trailing=True):
+            event = parse_sse_event(raw)
             if event is not None:
                 yield event
     finally:

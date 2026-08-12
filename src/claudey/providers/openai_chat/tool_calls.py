@@ -257,8 +257,8 @@ class OpenAIToolCallAssembler:
                 )
                 state = ledger.blocks.tool_states[tc_index]
                 if state.pre_start_args:
-                    pre = state.pre_start_args
-                    state.pre_start_args = ""
+                    pre = "".join(state.pre_start_args)
+                    state.pre_start_args = []
                     yield from self._emit_tool_arg_delta(
                         ledger,
                         tc_index,
@@ -275,7 +275,7 @@ class OpenAIToolCallAssembler:
         if state is None or not state.started:
             state = ledger.blocks.ensure_tool_state(tc_index)
             if not (resolved_name or "").strip():
-                state.pre_start_args += arguments
+                state.pre_start_args.append(arguments)
                 return
 
         yield from self._emit_tool_arg_delta(

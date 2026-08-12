@@ -12,6 +12,7 @@ import uuid
 from collections.abc import AsyncIterator
 from typing import Any
 
+from .sse_parser import iter_raw_sse_events
 from .stream_contracts import parse_sse_text
 
 __all__ = ["aggregate_anthropic_sse_to_message"]
@@ -25,7 +26,6 @@ async def aggregate_anthropic_sse_to_message(
     Returns ``(message_body, error)`` where ``error`` is the payload of a
     top-level ``event: error`` if one arrived, else ``None``.
     """
-    buffer = ""
     message: dict[str, Any] = {}
     blocks: dict[int, dict[str, Any]] = {}
     parts: dict[int, list[str]] = {}
@@ -87,12 +87,9 @@ async def aggregate_anthropic_sse_to_message(
                 else {"type": "api_error", "message": "provider error"}
             )
 
-    async for chunk in stream:
-        buffer += chunk
-        while "\n\n" in buffer:
-            raw_event, buffer = buffer.split("\n\n", 1)
-            for event in parse_sse_text(raw_event + "\n\n"):
-                handle_payload(event.data)
+    async for raw_event in iter_raw_sse_events(stream):
+        for event in parse_sse_text(raw_event + "\n\n"):
+            handle_payload(event.data)
 
     content: list[dict[str, Any]] = []
     for idx in sorted(blocks):
