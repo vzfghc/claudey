@@ -7,12 +7,12 @@ from unittest.mock import MagicMock
 import pytest
 
 from claudey.application.failover import FallbackExecutor, format_route_header
+from claudey.application.health import HealthRegistry
 from claudey.application.routing import ChainResolution, ModelRouter, ResolvedModel
 from claudey.config.reasoning import ReasoningPreference
 from claudey.config.settings import Settings
 from claudey.core.anthropic import Message, MessagesRequest
 from claudey.core.failures import ExecutionFailure, FailureKind, find_execution_failure
-from claudey.providers.health import HealthRegistry
 
 _NODE_A = ("provider_a", "model-a")
 _NODE_B = ("provider_b", "model-b")

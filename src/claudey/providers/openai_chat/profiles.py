@@ -9,9 +9,9 @@ from claudey.application.errors import InvalidRequestError
 from claudey.config.constants import ANTHROPIC_DEFAULT_MAX_OUTPUT_TOKENS
 from claudey.core.anthropic import ReasoningReplayMode
 from claudey.core.anthropic.models import MessagesRequest
+from claudey.core.anthropic.urls import openai_v1_base_url
 from claudey.core.reasoning import ReasoningEffort, ReasoningPolicy
 
-from .base_url import openai_v1_base_url
 from .extra_body import (
     validate_extra_body_does_not_override_canonical_fields,
     validate_extra_body_does_not_override_reasoning_fields,

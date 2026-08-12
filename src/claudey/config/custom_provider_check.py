@@ -13,11 +13,11 @@ from typing import Any
 
 import httpx
 
-from claudey.providers.anthropic.messages import (
+from claudey.core.anthropic.urls import (
     ANTHROPIC_VERSION_HEADER,
     anthropic_messages_url,
+    openai_v1_base_url,
 )
-from claudey.providers.openai_chat.base_url import openai_v1_base_url
 
 from .custom_providers import is_valid_compatible_type, validate_base_url
 

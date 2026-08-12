@@ -24,8 +24,8 @@ from claudey.core.anthropic import MessagesRequest, get_token_count
 from claudey.core.failures import ExecutionFailure, FailureKind, find_execution_failure
 from claudey.core.reasoning import ReasoningPolicy
 from claudey.core.trace import trace_event
-from claudey.providers.health import HealthRegistry, health_registry
 
+from .health import HealthRegistry, health_registry
 from .reasoning import resolve_reasoning_policy
 
 WireApi = Literal["messages", "responses"]

@@ -11,7 +11,11 @@ _PACKAGE_ROOT = _REPO_ROOT / "src" / "claudey"
 _PACKAGE_NAME = "claudey"
 
 ALLOWED_PACKAGE_DEPENDENCIES: dict[str, set[str]] = {
-    "config": set(),
+    # config -> core is a legitimate downward edge to a true leaf: the admin
+    # connectivity probe (config/custom_provider_check.py -> core.anthropic.urls)
+    # and secret handling (config/custom_providers.py -> core.secret_crypto)
+    # consume core modules, which import nothing.
+    "config": {"core"},
     "core": set(),
     "application": {"config", "core"},
     "messaging": {"core"},

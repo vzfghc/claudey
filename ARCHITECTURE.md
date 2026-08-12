@@ -83,7 +83,7 @@ also removes that permission:
 
 | Package | Exact allowed direct dependencies |
 | --- | --- |
-| `config` | none |
+| `config` | `core` |
 | `core` | none |
 | `application` | `config`, `core` |
 | `messaging` | `core` |
@@ -98,6 +98,11 @@ There is one exact exception:
 delegates construction to the process composition root. The exception does not
 permit any broader dependency from `cli` to `runtime`. Every new top-level
 package or cross-package edge must be added to the policy deliberately.
+
+`config` may depend on `core` because that edge is a deliberate downward one to
+a true leaf: the admin connectivity probe (`config/custom_provider_check.py`)
+consumes the shared wire URL helpers (`core.anthropic.urls`) and secret handling
+uses `core.secret_crypto`; `core` itself imports nothing.
 
 Internal modules do not import an ancestor package facade; package initializers
 may import dependency leaves to publish supported exports. Code outside

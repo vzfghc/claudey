@@ -17,6 +17,7 @@ import httpx
 from claudey.application.model_metadata import ProviderModelInfo
 from claudey.core.anthropic import MessagesRequest
 from claudey.core.anthropic.request_serialization import dump_messages_request
+from claudey.core.anthropic.urls import ANTHROPIC_VERSION_HEADER, anthropic_messages_url
 from claudey.core.reasoning import DEFAULT_REASONING_POLICY, ReasoningPolicy
 from claudey.providers.admission import ProviderAdmissionController
 from claudey.providers.base import BaseProvider, ProviderConfig
@@ -28,21 +29,6 @@ from claudey.providers.http import close_provider_stream
 from claudey.providers.model_listing import extract_openai_model_infos
 
 ANTHROPIC_COMPATIBLE_TAG = "ANTHROPIC_COMPATIBLE"
-ANTHROPIC_VERSION_HEADER = "2023-06-01"
-
-
-def anthropic_messages_url(base_url: str) -> str:
-    """Compose the Messages endpoint from a user-supplied base URL.
-
-    Anthropic's SDK appends ``/v1/messages`` to the host, so a base URL that
-    already carries ``/v1`` is not doubled.
-    """
-    value = base_url.strip().rstrip("/")
-    if value.endswith("/messages"):
-        return value
-    if value.endswith("/v1"):
-        return value + "/messages"
-    return value + "/v1/messages"
 
 
 class AnthropicMessagesProvider(BaseProvider):

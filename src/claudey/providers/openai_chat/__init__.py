@@ -1,9 +1,9 @@
 """OpenAI-compatible provider family."""
 
+from claudey.core.anthropic.urls import openai_v1_base_url
 from claudey.providers.admission import ProviderAdmissionController
 from claudey.providers.base import ProviderConfig
 
-from .base_url import openai_v1_base_url
 from .extra_body import (
     validate_extra_body_does_not_override_canonical_fields,
     validate_extra_body_does_not_override_reasoning_fields,

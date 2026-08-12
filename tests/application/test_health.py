@@ -2,12 +2,12 @@
 
 import pytest
 
-from claudey.core.failures import FailureKind
-from claudey.providers.health import (
+from claudey.application.health import (
     MODEL_LOCKOUT_BASE,
     HealthRegistry,
     ProviderHealthState,
 )
+from claudey.core.failures import FailureKind
 
 
 def _registry(now_holder: list[float]) -> HealthRegistry:
