@@ -42,6 +42,7 @@ from claudey.providers.base import BaseProvider, ProviderConfig
 from claudey.providers.failure_policy import (
     RetryableToolProtocolError,
     classify_provider_failure,
+    is_retryable_error,
     underlying_provider_error,
 )
 from claudey.providers.http import (
@@ -53,7 +54,6 @@ from claudey.providers.stream_recovery import (
     RecoveryController,
     RecoveryFailureAction,
     TruncatedProviderStreamError,
-    is_retryable_stream_error,
 )
 
 from .output_cap import clamp_output_tokens, parse_output_token_cap
@@ -852,7 +852,7 @@ class _OpenAIChatStreamRunner:
                 )
             except Exception as error:
                 last_error = error
-                retryable = is_retryable_stream_error(error)
+                retryable = is_retryable_error(error, recovery=True)
                 if attempt is not None and not attempt.accepted:
                     await attempt.retry(
                         error,
@@ -894,7 +894,7 @@ class _OpenAIChatStreamRunner:
         retry_session: ProviderRetrySession,
     ) -> list[str] | None:
         """Build terminal recovery events when the interrupted stream permits it."""
-        if not is_retryable_stream_error(error):
+        if not is_retryable_error(error, recovery=True):
             return None
 
         if ledger.has_emitted_tool_block():

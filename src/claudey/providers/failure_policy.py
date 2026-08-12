@@ -157,36 +157,66 @@ def transient_error_text(exc: BaseException) -> str:
     return " ".join(part for part in parts if part).lower()
 
 
-def is_retryable_provider_error(exc: BaseException) -> bool:
-    """Return whether provider policy permits stream retry or recovery."""
-    if isinstance(exc, ProviderRecoveryExhausted):
+#: Transport exception families eligible for retry, per execution context.
+#: The stream-recovery context (True) narrows the timeout family to
+#: ``httpx.ReadTimeout`` and drops the explicit protocol-error member (its
+#: leading membership check already covers protocol errors unconditionally).
+#: ``httpx.WriteError`` stays retryable in both contexts via the shared
+#: ``httpx.NetworkError`` member.
+_RETRYABLE_TRANSPORT_ERRORS: dict[bool, tuple[type[BaseException], ...]] = {
+    False: (
+        TimeoutError,
+        httpx.TimeoutException,
+        httpx.ConnectError,
+        httpx.ReadError,
+        httpx.WriteError,
+        httpx.RemoteProtocolError,
+        httpx.NetworkError,
+        openai.APITimeoutError,
+        openai.APIConnectionError,
+        RetryableProviderProtocolError,
+    ),
+    True: (
+        TimeoutError,
+        httpx.ReadTimeout,
+        httpx.ReadError,
+        httpx.RemoteProtocolError,
+        httpx.ConnectError,
+        httpx.NetworkError,
+        openai.APITimeoutError,
+        openai.APIConnectionError,
+    ),
+}
+
+
+def is_retryable_error(exc: BaseException, *, recovery: bool = False) -> bool:
+    """Return whether one failure qualifies for retry in its execution context.
+
+    ``recovery=False`` reproduces the provider-retry context (admission-level
+    retries and post-retry classification). ``recovery=True`` reproduces the
+    stream-recovery context: protocol errors are unconditionally retryable,
+    permission errors are not short-circuited before transient-status
+    inference, and the write-family timeout variants are omitted.
+    """
+    if recovery:
+        if isinstance(exc, RetryableProviderProtocolError):
+            return True
+    elif isinstance(exc, ProviderRecoveryExhausted):
         return False
     if isinstance(exc, ExecutionFailure):
         return exc.retryable
-    if isinstance(
-        exc,
-        openai.AuthenticationError
-        | openai.PermissionDeniedError
-        | openai.BadRequestError,
-    ):
+    if isinstance(exc, openai.AuthenticationError | openai.BadRequestError):
+        return False
+    if not recovery and isinstance(exc, openai.PermissionDeniedError):
         return False
     if retryable_transient_status(exc) is not None:
         return True
-    return isinstance(
-        exc,
-        (
-            TimeoutError,
-            httpx.TimeoutException,
-            httpx.ConnectError,
-            httpx.ReadError,
-            httpx.WriteError,
-            httpx.RemoteProtocolError,
-            httpx.NetworkError,
-            openai.APITimeoutError,
-            openai.APIConnectionError,
-            RetryableProviderProtocolError,
-        ),
-    )
+    return isinstance(exc, _RETRYABLE_TRANSPORT_ERRORS[recovery])
+
+
+def is_retryable_provider_error(exc: BaseException) -> bool:
+    """Return whether provider policy permits stream retry or recovery."""
+    return is_retryable_error(exc)
 
 
 def retryable_upstream_status(exc: BaseException) -> int | None:

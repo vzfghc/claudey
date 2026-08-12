@@ -3,12 +3,12 @@
 import httpx
 import openai
 
+from claudey.providers.failure_policy import is_retryable_error
 from claudey.providers.stream_recovery import (
     RecoveryController,
     RecoveryFailureAction,
     RecoveryHoldbackBuffer,
     TruncatedProviderStreamError,
-    is_retryable_stream_error,
 )
 
 
@@ -23,70 +23,80 @@ def _statusless_openai_api_error(
 
 
 def test_retryable_stream_error_classifies_protocol_transport_and_status() -> None:
-    assert is_retryable_stream_error(
-        TruncatedProviderStreamError("missing terminal marker")
+    assert is_retryable_error(
+        TruncatedProviderStreamError("missing terminal marker"), recovery=True
     )
-    assert is_retryable_stream_error(httpx.ReadError("cut off"))
+    assert is_retryable_error(httpx.ReadError("cut off"), recovery=True)
 
     request = httpx.Request("GET", "https://example.test")
-    assert is_retryable_stream_error(
+    assert is_retryable_error(
         httpx.HTTPStatusError(
             "server error", request=request, response=httpx.Response(503)
-        )
+        ),
+        recovery=True,
     )
-    assert not is_retryable_stream_error(
+    assert not is_retryable_error(
         httpx.HTTPStatusError(
             "bad request", request=request, response=httpx.Response(400)
-        )
+        ),
+        recovery=True,
     )
 
 
 def test_stream_retry_preserves_timeout_scope() -> None:
     request = httpx.Request("POST", "https://provider.test/messages")
 
-    assert is_retryable_stream_error(httpx.ReadTimeout("read", request=request))
-    assert not is_retryable_stream_error(
-        httpx.ConnectTimeout("connect", request=request)
+    assert is_retryable_error(httpx.ReadTimeout("read", request=request), recovery=True)
+    assert not is_retryable_error(
+        httpx.ConnectTimeout("connect", request=request), recovery=True
     )
-    assert not is_retryable_stream_error(httpx.WriteTimeout("write", request=request))
-    assert not is_retryable_stream_error(httpx.PoolTimeout("pool", request=request))
+    assert not is_retryable_error(
+        httpx.WriteTimeout("write", request=request), recovery=True
+    )
+    assert not is_retryable_error(
+        httpx.PoolTimeout("pool", request=request), recovery=True
+    )
 
 
 def test_retryable_stream_error_classifies_statusless_api_error_body_status() -> None:
-    assert is_retryable_stream_error(
+    assert is_retryable_error(
         _statusless_openai_api_error(
             "stream embedded error",
             {"error": {"message": "internal failure", "code": 500}},
-        )
+        ),
+        recovery=True,
     )
 
 
 def test_retryable_stream_error_classifies_statusless_internal_error_type() -> None:
-    assert is_retryable_stream_error(
+    assert is_retryable_error(
         _statusless_openai_api_error(
             "stream embedded error",
             {"error": {"message": "internal failure", "type": "internal_server_error"}},
-        )
+        ),
+        recovery=True,
     )
 
 
 def test_retryable_stream_error_classifies_resource_exhausted_text() -> None:
-    assert is_retryable_stream_error(
+    assert is_retryable_error(
         _statusless_openai_api_error(
             "ResourceExhausted: limit reached while generating response",
             {"error": {"message": "ResourceExhausted: limit reached"}},
-        )
+        ),
+        recovery=True,
     )
 
 
 def test_retryable_stream_error_does_not_retry_bad_request_status() -> None:
     request = httpx.Request("POST", "https://provider.test/messages")
-    assert not is_retryable_stream_error(
+    assert not is_retryable_error(
         openai.BadRequestError(
             "bad request",
             response=httpx.Response(400, request=request),
             body={"error": {"message": "bad request"}},
-        )
+        ),
+        recovery=True,
     )
 
 
