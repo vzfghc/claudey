@@ -35,6 +35,23 @@
   --color-hairline: var(--hairline);
   --color-divider-soft: var(--divider-soft);
 
+  /* shadcn-primitive aliases → claudey tokens (only used by the ported
+     chart.tsx / bar-list.tsx; heat stays the single product accent) */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-border: var(--border);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+
   /* Fonts (apple stacks) */
   --font-display: var(--font-display);
   --font-body: var(--font-body);

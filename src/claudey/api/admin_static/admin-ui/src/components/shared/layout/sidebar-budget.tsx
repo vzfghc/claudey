@@ -1,3 +1,4 @@
+import { BarChart3 } from "lucide-react";
 import { useMemo } from "react";
 
 import { formatUsd } from "@/lib/utils";
@@ -36,7 +37,7 @@ export function SidebarBudget({
 
   return (
     <div
-      className="sidebar-budget"
+      className="sidebar-budget space-y-3 px-1"
       style={{
         opacity: "var(--sidebar-budget-opacity, 1)",
       }}
@@ -45,25 +46,23 @@ export function SidebarBudget({
       <button
         type="button"
         onClick={onStatClick}
-        className="flex w-full flex-col gap-1 rounded-lg bg-tile-1 p-2.5 text-left transition-colors duration-200 hover:bg-tile-2"
+        className="group flex w-full items-center justify-between gap-3 text-left text-ink transition-colors duration-200 hover:text-heat"
         data-sidebar-budget-stat
       >
-        <div className="flex w-full items-start justify-between gap-2">
-          <span className="text-[12px] font-medium text-white/90">
-            ${spend.toFixed(2)} spent
-          </span>
-          <span className="text-[12px] font-medium text-ink-muted-48">
-            {formatUsd(remaining)} left
-          </span>
-        </div>
-        <span className="text-[11px] font-normal text-white/60" data-sidebar-budget-reset>
-          Resets {resetLabel}
+        <span className="text-[17px] leading-tight font-normal tracking-[-0.374px]">
+          {formatUsd(remaining)} left
         </span>
+        <BarChart3
+          className="size-5 shrink-0 text-ink-muted-48 transition-colors duration-200 group-hover:text-heat"
+          strokeWidth={1.8}
+          aria-hidden="true"
+        />
       </button>
 
       <div
-        className="mt-1.5 h-1 w-full overflow-hidden rounded-pill bg-tile-3"
+        className="h-3 w-full overflow-hidden rounded-pill bg-hairline"
         role="progressbar"
+        aria-label="Monthly budget used"
         aria-valuemin={0}
         aria-valuemax={100}
         aria-valuenow={Math.round(ratio * 100)}
@@ -72,6 +71,13 @@ export function SidebarBudget({
           className="h-full rounded-pill bg-heat transition-[width] duration-500 ease-default"
           style={{ width: `${(ratio * 100).toFixed(1)}%` }}
         />
+      </div>
+
+      <div className="flex items-center justify-between gap-3 text-[14px] leading-tight">
+        <span className="text-ink-muted-48" data-sidebar-budget-reset>
+          Resets {resetLabel}
+        </span>
+        <span className="shrink-0 font-normal text-heat">Upgrade</span>
       </div>
     </div>
   );

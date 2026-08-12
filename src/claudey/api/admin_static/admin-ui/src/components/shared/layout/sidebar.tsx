@@ -1,5 +1,5 @@
 import * as React from "react";
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef } from "react";
 import {
   BarChart3,
   Boxes,
@@ -60,10 +60,10 @@ export interface SidebarItem {
 }
 
 const DEFAULT_ITEMS: SidebarItem[] = [
+  { id: "usage", label: "Usage", icon: <BarChart3 size={18} strokeWidth={2} /> },
   { id: "providers", label: "Providers", icon: <Boxes size={18} strokeWidth={2} /> },
   { id: "model_config", label: "Model Config", icon: <SlidersHorizontal size={18} strokeWidth={2} /> },
   { id: "messaging", label: "Messaging", icon: <MessageSquareText size={18} strokeWidth={2} /> },
-  { id: "usage", label: "Usage", icon: <BarChart3 size={18} strokeWidth={2} /> },
 ];
 
 const BRAND_MARK_PATH =
@@ -226,6 +226,86 @@ export function Sidebar({ items = DEFAULT_ITEMS, activeId, onNavigate, footer }:
   }, [cancelTween, collapsed, snap]);
 
   // ---- Nav pill glide (travel-anchored sine dip) ----
+  // Both the active (heat) and hover (grey) pills share one glide; each keeps
+  // its own tween state so they never interrupt each other.
+  interface PillGlideState {
+    tweenId: React.MutableRefObject<number | null>;
+    fromY: React.MutableRefObject<number>;
+    fromScale: React.MutableRefObject<number>;
+    targetIndex: React.MutableRefObject<number>;
+    y: React.MutableRefObject<number>;
+    scale: React.MutableRefObject<number>;
+  }
+
+  const hoverPillState: PillGlideState = {
+    tweenId: pillTweenId,
+    fromY: pillFromY,
+    fromScale: pillFromScale,
+    targetIndex: pillTargetIndex,
+    y: pillY,
+    scale: pillScale,
+  };
+
+  const activePillTweenId = useRef<number | null>(null);
+  const activePillFromY = useRef(0);
+  const activePillFromScale = useRef(1);
+  const activePillTargetIndex = useRef(-1);
+  const activePillY = useRef(0);
+  const activePillScale = useRef(1);
+  const activePillInitialized = useRef(false);
+  const activePillState: PillGlideState = {
+    tweenId: activePillTweenId,
+    fromY: activePillFromY,
+    fromScale: activePillFromScale,
+    targetIndex: activePillTargetIndex,
+    y: activePillY,
+    scale: activePillScale,
+  };
+
+  const glideTo = useCallback(
+    (el: HTMLDivElement | null, s: PillGlideState, index: number) => {
+      if (!el || index === s.targetIndex.current) return;
+      if (s.tweenId.current !== null) {
+        cancelAnimationFrame(s.tweenId.current);
+        s.tweenId.current = null;
+      }
+      if (reducedMotion) {
+        s.targetIndex.current = index;
+        s.y.current = s.fromY.current = index * NAV_PITCH;
+        s.scale.current = s.fromScale.current = 1;
+        el.style.transform = `translateY(${s.y.current}px)`;
+        return;
+      }
+      s.fromY.current = s.y.current;
+      s.fromScale.current = Math.min(s.scale.current, 1);
+      s.targetIndex.current = index;
+      const start = performance.now();
+
+      const tick = (now: number) => {
+        const progress = Math.max(0, Math.min(1, (now - start) / PILL_GLIDE_MS));
+        const eased = easeOutQuart(progress);
+        s.y.current = s.fromY.current + (index * NAV_PITCH - s.fromY.current) * eased;
+        const span = index * NAV_PITCH - s.fromY.current;
+        const travel = span === 0 ? 0 : (s.y.current - s.fromY.current) / span;
+        s.scale.current =
+          s.fromScale.current +
+          (1 - s.fromScale.current) * eased -
+          PILL_DIP * Math.sin(travel * Math.PI);
+        el.style.transform = `translateY(${s.y.current}px) scale(${s.scale.current.toFixed(4)})`;
+        if (progress < 1) {
+          s.tweenId.current = requestAnimationFrame(tick);
+        } else {
+          s.tweenId.current = null;
+          s.fromY.current = s.y.current;
+          s.fromScale.current = 1;
+        }
+      };
+      s.tweenId.current = requestAnimationFrame(tick);
+    },
+    [reducedMotion],
+  );
+
+  /** Park the hover pill at an index (no tween) — used when the active view changes. */
   const resetPillTween = useCallback((index: number) => {
     if (pillTweenId.current !== null) {
       cancelAnimationFrame(pillTweenId.current);
@@ -239,51 +319,32 @@ export function Sidebar({ items = DEFAULT_ITEMS, activeId, onNavigate, footer }:
     }
   }, []);
 
-  const glidePillTo = useCallback(
+  const hoverGlide = useCallback(
     (index: number) => {
-      const hoverPill = hoverPillRef.current;
-      if (!hoverPill || index === pillTargetIndex.current) return;
-      if (reducedMotion) {
-        resetPillTween(index);
-        return;
-      }
-      pillFromY.current = pillY.current;
-      pillFromScale.current = Math.min(pillScale.current, 1);
-      pillTargetIndex.current = index;
-      const pillStart = performance.now();
-
-      const tick = (now: number) => {
-        const progress = Math.max(0, Math.min(1, (now - pillStart) / PILL_GLIDE_MS));
-        const eased = easeOutQuart(progress);
-        pillY.current = pillFromY.current + (pillTargetIndex.current * NAV_PITCH - pillFromY.current) * eased;
-        const span = pillTargetIndex.current * NAV_PITCH - pillFromY.current;
-        const travel = span === 0 ? 0 : (pillY.current - pillFromY.current) / span;
-        pillScale.current =
-          pillFromScale.current +
-          (1 - pillFromScale.current) * eased -
-          PILL_DIP * Math.sin(travel * Math.PI);
-        hoverPill.style.transform = `translateY(${pillY.current}px) scale(${pillScale.current.toFixed(4)})`;
-        if (progress < 1) {
-          pillTweenId.current = requestAnimationFrame(tick);
-        } else {
-          pillTweenId.current = null;
-          pillFromY.current = pillY.current;
-          pillFromScale.current = 1;
-        }
-      };
-      pillTweenId.current = requestAnimationFrame(tick);
+      glideTo(hoverPillRef.current, hoverPillState, index);
     },
-    [reducedMotion, resetPillTween],
+    [glideTo],
   );
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const activeIndex = Math.max(0, items.findIndex((item) => item.id === activeId));
-    if (activePillRef.current) {
-      activePillRef.current.style.transform = `translateY(${activeIndex * NAV_PITCH}px)`;
+    if (!activePillInitialized.current) {
+      // First mount: snap the active pill into place before paint (no flash).
+      activePillInitialized.current = true;
+      activePillY.current = activeIndex * NAV_PITCH;
+      activePillTargetIndex.current = activeIndex;
+      if (activePillRef.current) {
+        activePillRef.current.style.transform = `translateY(${activePillY.current}px)`;
+      }
+    } else {
+      // Active view changed: glide the heat pill to its new slot.
+      glideTo(activePillRef.current, activePillState, activeIndex);
     }
+    // Keep the hover pill parked at the active slot (hidden) so it glides from
+    // the right place the next time the pointer moves.
     resetPillTween(activeIndex);
     if (hoverPillRef.current) hoverPillRef.current.style.opacity = "0";
-  }, [activeId, items, resetPillTween]);
+  }, [activeId, items, glideTo, resetPillTween]);
 
   const activeIndex = Math.max(0, items.findIndex((item) => item.id === activeId));
 
@@ -330,8 +391,8 @@ export function Sidebar({ items = DEFAULT_ITEMS, activeId, onNavigate, footer }:
             hoverPill.style.opacity = "0";
             return;
           }
-          hoverPill.style.opacity = "";
-          glidePillTo(index);
+          hoverPill.style.opacity = "1";
+          hoverGlide(index);
         }}
         onPointerLeave={() => {
           if (hoverPillRef.current) hoverPillRef.current.style.opacity = "0";
@@ -341,14 +402,12 @@ export function Sidebar({ items = DEFAULT_ITEMS, activeId, onNavigate, footer }:
         <div
           ref={activePillRef}
           aria-hidden="true"
-          className="nav-pill pointer-events-none absolute left-0 top-0 z-0 h-10 w-full rounded-lg bg-heat/12 transition-none"
-          style={{ transform: `translateY(${activeIndex * NAV_PITCH}px)` }}
+          className="nav-pill pointer-events-none absolute left-0 top-0 z-0 h-10 w-full rounded-sm bg-heat/12 transition-none"
         />
         <div
           ref={hoverPillRef}
           aria-hidden="true"
-          className="nav-pill pointer-events-none absolute left-0 top-0 z-0 h-10 w-full rounded-lg bg-black/[0.045] opacity-0 transition-none"
-          style={{ transform: `translateY(${activeIndex * NAV_PITCH}px)` }}
+          className="nav-pill pointer-events-none absolute left-0 top-0 z-0 h-10 w-full rounded-sm bg-black/[0.045] opacity-0 transition-none"
         />
         <ul className="relative z-10 m-0 list-none p-0">
           {items.map((item, index) => {
@@ -359,14 +418,13 @@ export function Sidebar({ items = DEFAULT_ITEMS, activeId, onNavigate, footer }:
                   href={`#${item.id}`}
                   data-nav-link
                   data-index={index}
-                  data-sidebar-label=""
                   onClick={(event) => {
                     event.preventDefault();
                     onNavigate(item.id);
                   }}
                   aria-current={isActive ? "page" : undefined}
                   className={cn(
-                    "flex h-10 items-center gap-2.5 rounded-lg px-3 text-[14px] leading-none transition-colors duration-200",
+                    "flex h-10 items-center gap-2.5 rounded-sm px-3 text-[14px] leading-none transition-colors duration-200",
                     isActive ? "text-heat" : "text-ink-muted-48 hover:text-ink",
                   )}
                   style={{ paddingLeft: 14 }}

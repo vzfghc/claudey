@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { ProviderCard } from "@/components/app/providers/provider-card";
 import { CustomProviderDialog } from "@/components/app/providers/custom-provider-dialog";
 import { ComboDialog } from "@/components/app/providers/combo-dialog";
+import { ProviderKeyDialog } from "@/components/app/providers/provider-key-dialog";
 import { Card, CardContent, CardHeader, CardTitle, CardAction } from "@/components/ui/shadcn/card";
 import { Button } from "@/components/ui/shadcn/button";
 import { Badge } from "@/components/ui/shadcn/badge";
@@ -12,7 +13,7 @@ import { Skeleton } from "@/components/ui/shadcn/skeleton";
 import { PlaceholderView } from "@/components/app/views/placeholder-view";
 import { useJson } from "@/hooks/use-json";
 import { deleteCombo } from "@/api/client";
-import type { Combo, ConfigPayload } from "@/api/types";
+import type { Combo, ConfigField, ConfigPayload } from "@/api/types";
 
 export function ProvidersView() {
   const config = useJson<ConfigPayload>("/admin/api/config");
@@ -20,6 +21,8 @@ export function ProvidersView() {
   const [showCustomDialog, setShowCustomDialog] = useState(false);
   const [comboDialogOpen, setComboDialogOpen] = useState(false);
   const [editingCombo, setEditingCombo] = useState<Combo | null>(null);
+  const [keyDialogField, setKeyDialogField] = useState<ConfigField | null>(null);
+  const [keyDialogProvider, setKeyDialogProvider] = useState("");
   const [reloadKey, setReloadKey] = useState(0);
 
   const reload = useCallback(() => setReloadKey((k) => k + 1), []);
@@ -56,6 +59,16 @@ export function ProvidersView() {
   const combos = combosRes.data?.combos ?? [];
   const fields = config.data.fields ?? [];
   const fieldByKey = (key: string) => fields.find((f) => f.key === key);
+
+  const openKeyDialog = (fieldKey: string, providerName: string) => {
+    const field = fieldByKey(fieldKey);
+    if (!field) {
+      toast.error(`No config field found for ${fieldKey}`);
+      return;
+    }
+    setKeyDialogField(field);
+    setKeyDialogProvider(providerName);
+  };
 
   const remoteAndLocal = providers.filter(
     (p) => p.kind !== "connected_account" && p.kind !== "custom",
@@ -96,9 +109,7 @@ export function ProvidersView() {
                   key={provider.provider_id}
                   provider={provider}
                   primaryField={primaryField}
-                  onConfigure={(key) => {
-                    toast.info(`Configure ${key} in the Model Config view`);
-                  }}
+                  onConfigure={(key) => openKeyDialog(key, provider.display_name)}
                   onChanged={reload}
                 />
               );
@@ -180,6 +191,15 @@ export function ProvidersView() {
         open={comboDialogOpen}
         onOpenChange={setComboDialogOpen}
         combo={editingCombo}
+        onSaved={reload}
+      />
+      <ProviderKeyDialog
+        open={keyDialogField !== null}
+        field={keyDialogField}
+        providerName={keyDialogProvider}
+        onOpenChange={(open) => {
+          if (!open) setKeyDialogField(null);
+        }}
         onSaved={reload}
       />
     </div>

@@ -15,10 +15,10 @@ import { useJson } from "@/hooks/use-json";
 import type { DashboardPayload } from "@/api/types";
 
 const VIEWS: Array<SidebarItem & { title: string; eyebrow: string }> = [
+  { id: "usage", label: "Usage", icon: <BarsGlyph />, title: "Usage", eyebrow: "Tokens · Cost · Activity" },
   { id: "providers", label: "Providers", icon: <BoxesGlyph />, title: "Providers", eyebrow: "Connections · Keys · Status" },
   { id: "model_config", label: "Model Config", icon: <SlidersGlyph />, title: "Model Config", eyebrow: "Combo Routes · Fallbacks" },
   { id: "messaging", label: "Messaging", icon: <MessageGlyph />, title: "Messaging", eyebrow: "Channels · Agents" },
-  { id: "usage", label: "Usage", icon: <BarsGlyph />, title: "Usage", eyebrow: "Tokens · Cost · Activity" },
 ];
 
 function BoxesGlyph() {
@@ -63,7 +63,7 @@ function BarsGlyph() {
 }
 
 export function App() {
-  const [activeId, setActiveId] = useState<string>("providers");
+  const [activeId, setActiveId] = useState<string>("usage");
   const [dark, setDark] = useState<boolean>(() => {
     try {
       return document.documentElement.classList.contains("dark");

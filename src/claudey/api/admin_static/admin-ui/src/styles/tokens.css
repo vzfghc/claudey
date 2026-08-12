@@ -50,6 +50,23 @@
   --font-body: "SF Pro Text", Inter, system-ui, -apple-system, sans-serif;
   --font-mono: "Geist Mono", "Roboto Mono", ui-monospace, SFMono-Regular, monospace;
 
+  /* shadcn-primitive aliases → claudey tokens (keeps heat the single accent;
+     used only by ported shadcn chart.tsx / bar-list.tsx, not product chrome) */
+  --background: var(--canvas);
+  --foreground: var(--ink);
+  --card-foreground: var(--ink);
+  --muted: var(--parchment);
+  --muted-foreground: var(--ink-muted-48);
+  --primary: var(--heat);
+  --primary-foreground: #ffffff;
+  --border: var(--hairline);
+  /* chart palette — heat family so any chart reads warm, never stock shadcn */
+  --chart-1: var(--heat);
+  --chart-2: var(--heat);
+  --chart-3: var(--heat-focus);
+  --chart-4: var(--heat-soft);
+  --chart-5: var(--heat);
+
   /* Elevation — exactly one soft tool-surface card shadow (2-step ramp) */
   --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.04), 0 1px 3px rgba(0, 0, 0, 0.05);
   --shadow-float: 0 4px 12px -2px rgba(0, 0, 0, 0.08), 0 2px 6px -1px rgba(0, 0, 0, 0.05);
@@ -77,4 +94,19 @@
   --hairline: #3a3a3d;
   --line: #3a3a3d;
   --divider-soft: rgba(255, 255, 255, 0.08);
+
+  /* shadcn-primitive aliases (dark) */
+  --background: var(--canvas);
+  --foreground: var(--ink);
+  --card-foreground: var(--ink);
+  --muted: var(--parchment);
+  --muted-foreground: var(--ink-muted-48);
+  --primary: var(--heat);
+  --primary-foreground: #ffffff;
+  --border: var(--hairline);
+  --chart-1: var(--heat);
+  --chart-2: var(--heat);
+  --chart-3: var(--heat-focus);
+  --chart-4: var(--heat-soft);
+  --chart-5: var(--heat);
 }
