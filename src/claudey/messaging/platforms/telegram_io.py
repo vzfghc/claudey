@@ -120,10 +120,6 @@ class TelegramMessenger(QueuedMessenger):
                 raise
         return None
 
-    def _default_parse_mode(self) -> str | None:
-        """Return the parse mode applied when a queue call omits one."""
-        return "MarkdownV2"
-
     async def send_message(
         self,
         chat_id: str,
@@ -227,3 +223,39 @@ class TelegramMessenger(QueuedMessenger):
 
         for mid in mids:
             await self.delete_message(chat_id, str(mid))
+
+    async def queue_send_message(
+        self,
+        chat_id: str,
+        text: str,
+        reply_to: str | None = None,
+        parse_mode: str | None = "MarkdownV2",
+        fire_and_forget: bool = True,
+        message_thread_id: str | None = None,
+    ) -> str | None:
+        """Queue a Telegram send with MarkdownV2 as the default parse mode."""
+        return await super().queue_send_message(
+            chat_id,
+            text,
+            reply_to,
+            parse_mode,
+            fire_and_forget,
+            message_thread_id,
+        )
+
+    async def queue_edit_message(
+        self,
+        chat_id: str,
+        message_id: str,
+        text: str,
+        parse_mode: str | None = "MarkdownV2",
+        fire_and_forget: bool = True,
+    ) -> None:
+        """Queue a Telegram edit with MarkdownV2 as the default parse mode."""
+        await super().queue_edit_message(
+            chat_id,
+            message_id,
+            text,
+            parse_mode,
+            fire_and_forget,
+        )

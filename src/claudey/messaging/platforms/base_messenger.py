@@ -2,8 +2,7 @@
 
 Owns the queue/edit-batching/delete-coalescing/timer/fire-and-forget policy
 layer that is identical across platform messengers. Platform subclasses supply
-the send/edit/delete primitives through abstract methods and may specialize the
-parse mode applied to queued sends/edits via ``_default_parse_mode``.
+the send/edit/delete primitives through abstract methods.
 """
 
 from abc import ABC, abstractmethod
@@ -54,10 +53,6 @@ class QueuedMessenger(ABC):
     async def delete_messages(self, chat_id: str, message_ids: list[str]) -> None:
         """Delete multiple platform messages best-effort."""
 
-    def _default_parse_mode(self) -> str | None:
-        """Return the parse mode applied when a queue call omits one."""
-        return None
-
     async def queue_send_message(
         self,
         chat_id: str,
@@ -68,8 +63,6 @@ class QueuedMessenger(ABC):
         message_thread_id: str | None = None,
     ) -> str | None:
         """Queue a platform send."""
-        if parse_mode is None:
-            parse_mode = self._default_parse_mode()
         return await self._outbox.queue_send_message(
             chat_id,
             text,
@@ -88,8 +81,6 @@ class QueuedMessenger(ABC):
         fire_and_forget: bool = True,
     ) -> None:
         """Queue a platform edit."""
-        if parse_mode is None:
-            parse_mode = self._default_parse_mode()
         await self._outbox.queue_edit_message(
             chat_id,
             message_id,
