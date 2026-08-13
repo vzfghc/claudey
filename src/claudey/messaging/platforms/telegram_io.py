@@ -8,7 +8,7 @@ from typing import Any
 from loguru import logger
 
 from ..limiter import MessagingRateLimiter
-from .outbox import PlatformOutbox
+from .base_messenger import QueuedMessenger
 
 TELEGRAM_DELETE_MESSAGES_BATCH_SIZE = 100
 
@@ -37,7 +37,7 @@ except ImportError:
 ApplicationGetter = Callable[[], Any | None]
 
 
-class TelegramMessenger:
+class TelegramMessenger(QueuedMessenger):
     """Owns Telegram sends, edits, deletes, and queued delivery."""
 
     def __init__(
@@ -47,12 +47,7 @@ class TelegramMessenger:
         limiter: MessagingRateLimiter,
     ) -> None:
         self._get_application = get_application
-        self._outbox = PlatformOutbox(
-            limiter=limiter,
-            send=self.send_message,
-            edit=self.edit_message,
-            delete_many=self.delete_messages,
-        )
+        super().__init__(limiter=limiter)
 
     async def _with_retry(
         self,
@@ -229,59 +224,33 @@ class TelegramMessenger:
         for mid in mids:
             await self.delete_message(chat_id, str(mid))
 
-    async def queue_send_message(
+    async def _send_via_retry(
         self,
-        chat_id: str,
-        text: str,
-        reply_to: str | None = None,
-        parse_mode: str | None = "MarkdownV2",
-        fire_and_forget: bool = True,
-        message_thread_id: str | None = None,
-    ) -> str | None:
-        """Queue a Telegram send."""
-        return await self._outbox.queue_send_message(
-            chat_id,
-            text,
-            reply_to,
-            parse_mode,
-            fire_and_forget,
-            message_thread_id,
-        )
+        func: Callable[..., Awaitable[Any]],
+        *args: Any,
+        **kwargs: Any,
+    ) -> Any:
+        """Run a send primitive under the Telegram retry policy."""
+        return await self._with_retry(func, *args, **kwargs)
 
-    async def queue_edit_message(
+    async def _edit_via_retry(
         self,
-        chat_id: str,
-        message_id: str,
-        text: str,
-        parse_mode: str | None = "MarkdownV2",
-        fire_and_forget: bool = True,
-    ) -> None:
-        """Queue a Telegram edit."""
-        await self._outbox.queue_edit_message(
-            chat_id,
-            message_id,
-            text,
-            parse_mode,
-            fire_and_forget,
-        )
+        func: Callable[..., Awaitable[Any]],
+        *args: Any,
+        **kwargs: Any,
+    ) -> Any:
+        """Run an edit primitive under the Telegram retry policy."""
+        return await self._with_retry(func, *args, **kwargs)
 
-    async def queue_delete_messages(
+    async def _delete_via_retry(
         self,
-        chat_id: str,
-        message_ids: list[str],
-        fire_and_forget: bool = True,
-    ) -> None:
-        """Queue a Telegram bulk delete."""
-        await self._outbox.queue_delete_messages(
-            chat_id,
-            message_ids,
-            fire_and_forget,
-        )
+        func: Callable[..., Awaitable[Any]],
+        *args: Any,
+        **kwargs: Any,
+    ) -> Any:
+        """Run a delete primitive under the Telegram retry policy."""
+        return await self._with_retry(func, *args, **kwargs)
 
-    def fire_and_forget(self, task: Awaitable[Any]) -> None:
-        """Execute a coroutine without awaiting it."""
-        self._outbox.fire_and_forget(task)
-
-    async def close(self) -> None:
-        """Cancel outstanding outbound work."""
-        await self._outbox.close()
+    async def _delete_many_fallback(self, chat_id: str, message_ids: list[str]) -> None:
+        """Delete many Telegram messages by falling back to per-message deletes."""
+        await super()._delete_many_fallback(chat_id, message_ids)

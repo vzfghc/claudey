@@ -2,10 +2,9 @@
 
 from typing import Any
 
-from loguru import logger
-
 from ..models import IncomingMessage
 from ..rendering.discord_markdown import format_status_discord
+from .inbound_utils import log_incoming_text_message
 from .voice_flow import (
     VoiceNoteRequest,
     audio_suffix_from_metadata,
@@ -42,25 +41,14 @@ def discord_text_message_from_event(
         else None
     )
     raw_content = message.content or ""
-    if log_raw_messaging_content:
-        text_preview = raw_content[:80]
-        if len(raw_content) > 80:
-            text_preview += "..."
-        logger.info(
-            "DISCORD_MSG: chat_id={} message_id={} reply_to={} text_preview={!r}",
-            channel_id,
-            message_id,
-            reply_to,
-            text_preview,
-        )
-    else:
-        logger.info(
-            "DISCORD_MSG: chat_id={} message_id={} reply_to={} text_len={}",
-            channel_id,
-            message_id,
-            reply_to,
-            len(raw_content),
-        )
+    log_incoming_text_message(
+        platform_label="DISCORD",
+        chat_id=channel_id,
+        message_id=message_id,
+        reply_to=reply_to,
+        raw_content=raw_content,
+        log_raw_messaging_content=log_raw_messaging_content,
+    )
 
     return IncomingMessage(
         text=message.content,

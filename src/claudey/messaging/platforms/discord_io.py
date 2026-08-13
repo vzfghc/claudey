@@ -1,10 +1,10 @@
 """Discord outbound delivery."""
 
-from collections.abc import Awaitable, Callable
+from collections.abc import Callable
 from typing import Any, cast
 
 from ..limiter import MessagingRateLimiter
-from .outbox import PlatformOutbox
+from .base_messenger import QueuedMessenger
 
 DISCORD_MESSAGE_LIMIT = 2000
 
@@ -19,7 +19,7 @@ def truncate_discord_message(text: str, limit: int = DISCORD_MESSAGE_LIMIT) -> s
     return text[: limit - 3] + "..."
 
 
-class DiscordMessenger:
+class DiscordMessenger(QueuedMessenger):
     """Owns Discord sends, edits, deletes, and queued delivery."""
 
     def __init__(
@@ -31,12 +31,7 @@ class DiscordMessenger:
     ) -> None:
         self._get_client = get_client
         self._get_discord = get_discord
-        self._outbox = PlatformOutbox(
-            limiter=limiter,
-            send=self.send_message,
-            edit=self.edit_message,
-            delete_many=self.delete_messages,
-        )
+        super().__init__(limiter=limiter)
 
     async def send_message(
         self,
@@ -108,60 +103,3 @@ class DiscordMessenger:
         """Delete multiple Discord messages best-effort."""
         for mid in message_ids:
             await self.delete_message(chat_id, mid)
-
-    async def queue_send_message(
-        self,
-        chat_id: str,
-        text: str,
-        reply_to: str | None = None,
-        parse_mode: str | None = None,
-        fire_and_forget: bool = True,
-        message_thread_id: str | None = None,
-    ) -> str | None:
-        """Queue a Discord send."""
-        return await self._outbox.queue_send_message(
-            chat_id,
-            text,
-            reply_to,
-            parse_mode,
-            fire_and_forget,
-            message_thread_id,
-        )
-
-    async def queue_edit_message(
-        self,
-        chat_id: str,
-        message_id: str,
-        text: str,
-        parse_mode: str | None = None,
-        fire_and_forget: bool = True,
-    ) -> None:
-        """Queue a Discord edit."""
-        await self._outbox.queue_edit_message(
-            chat_id,
-            message_id,
-            text,
-            parse_mode,
-            fire_and_forget,
-        )
-
-    async def queue_delete_messages(
-        self,
-        chat_id: str,
-        message_ids: list[str],
-        fire_and_forget: bool = True,
-    ) -> None:
-        """Queue a Discord bulk delete."""
-        await self._outbox.queue_delete_messages(
-            chat_id,
-            message_ids,
-            fire_and_forget,
-        )
-
-    def fire_and_forget(self, task: Awaitable[Any]) -> None:
-        """Execute a coroutine without awaiting it."""
-        self._outbox.fire_and_forget(task)
-
-    async def close(self) -> None:
-        """Cancel outstanding outbound work."""
-        await self._outbox.close()

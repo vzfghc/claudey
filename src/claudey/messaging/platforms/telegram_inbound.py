@@ -6,6 +6,7 @@ from telegram.ext import ContextTypes
 
 from ..models import IncomingMessage
 from ..rendering.telegram_markdown import format_status
+from .inbound_utils import log_incoming_text_message
 from .voice_flow import VoiceNoteRequest, audio_suffix_from_metadata
 
 
@@ -41,25 +42,14 @@ def telegram_text_message_from_update(
         else None
     )
     raw_text = message.text or ""
-    if log_raw_messaging_content:
-        text_preview = raw_text[:80]
-        if len(raw_text) > 80:
-            text_preview += "..."
-        logger.info(
-            "TELEGRAM_MSG: chat_id={} message_id={} reply_to={} text_preview={!r}",
-            chat_id,
-            message_id,
-            reply_to,
-            text_preview,
-        )
-    else:
-        logger.info(
-            "TELEGRAM_MSG: chat_id={} message_id={} reply_to={} text_len={}",
-            chat_id,
-            message_id,
-            reply_to,
-            len(raw_text),
-        )
+    log_incoming_text_message(
+        platform_label="TELEGRAM",
+        chat_id=chat_id,
+        message_id=message_id,
+        reply_to=reply_to,
+        raw_content=raw_text,
+        log_raw_messaging_content=log_raw_messaging_content,
+    )
 
     return IncomingMessage(
         text=raw_text,
