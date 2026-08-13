@@ -7,6 +7,7 @@ Used by the message handler and Telegram platform adapter.
 from markdown_it import MarkdownIt
 
 from .markdown_tables import normalize_gfm_tables
+from .markdown_walk import InlineRenderProfile, render_inline_tokens
 
 MDV2_SPECIAL_CHARS = set("\\_*[]()~`>#+-=|{}.!")
 MDV2_LINK_ESCAPE = set("\\)")
@@ -78,64 +79,17 @@ def render_markdown_to_mdv2(text: str) -> str:
         return "".join(out)
 
     def render_inline(children) -> str:
-        out: list[str] = []
-        i = 0
-        while i < len(children):
-            tok = children[i]
-            t = tok.type
-            if t == "text":
-                out.append(escape_md_v2(tok.content))
-            elif t in {"softbreak", "hardbreak"}:
-                out.append("\n")
-            elif t == "em_open" or t == "em_close":
-                out.append("_")
-            elif t == "strong_open" or t == "strong_close":
-                out.append("*")
-            elif t == "s_open" or t == "s_close":
-                out.append("~")
-            elif t == "code_inline":
-                out.append(f"`{escape_md_v2_code(tok.content)}`")
-            elif t == "link_open":
-                href = ""
-                if tok.attrs:
-                    if isinstance(tok.attrs, dict):
-                        href = tok.attrs.get("href", "")
-                    else:
-                        for key, val in tok.attrs:
-                            if key == "href":
-                                href = val
-                                break
-                inner_tokens = []
-                i += 1
-                while i < len(children) and children[i].type != "link_close":
-                    inner_tokens.append(children[i])
-                    i += 1
-                link_text = ""
-                for child in inner_tokens:
-                    if child.type == "text" or child.type == "code_inline":
-                        link_text += child.content
-                out.append(
-                    f"[{escape_md_v2(link_text)}]({escape_md_v2_link_url(href)})"
-                )
-            elif t == "image":
-                href = ""
-                alt = tok.content or ""
-                if tok.attrs:
-                    if isinstance(tok.attrs, dict):
-                        href = tok.attrs.get("src", "")
-                    else:
-                        for key, val in tok.attrs:
-                            if key == "src":
-                                href = val
-                                break
-                if alt:
-                    out.append(f"{escape_md_v2(alt)} ({escape_md_v2_link_url(href)})")
-                else:
-                    out.append(escape_md_v2_link_url(href))
-            else:
-                out.append(escape_md_v2(tok.content or ""))
-            i += 1
-        return "".join(out)
+        return render_inline_tokens(
+            children,
+            InlineRenderProfile(
+                escape_text=escape_md_v2,
+                escape_code=escape_md_v2_code,
+                escape_url=escape_md_v2_link_url,
+                emphasis="_",
+                strong="*",
+                strikethrough="~",
+            ),
+        )
 
     out: list[str] = []
     list_stack: list[dict] = []
