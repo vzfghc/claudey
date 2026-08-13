@@ -120,6 +120,10 @@ class TelegramMessenger(QueuedMessenger):
                 raise
         return None
 
+    def _default_parse_mode(self) -> str | None:
+        """Return the parse mode applied when a queue call omits one."""
+        return "MarkdownV2"
+
     async def send_message(
         self,
         chat_id: str,
@@ -223,34 +227,3 @@ class TelegramMessenger(QueuedMessenger):
 
         for mid in mids:
             await self.delete_message(chat_id, str(mid))
-
-    async def _send_via_retry(
-        self,
-        func: Callable[..., Awaitable[Any]],
-        *args: Any,
-        **kwargs: Any,
-    ) -> Any:
-        """Run a send primitive under the Telegram retry policy."""
-        return await self._with_retry(func, *args, **kwargs)
-
-    async def _edit_via_retry(
-        self,
-        func: Callable[..., Awaitable[Any]],
-        *args: Any,
-        **kwargs: Any,
-    ) -> Any:
-        """Run an edit primitive under the Telegram retry policy."""
-        return await self._with_retry(func, *args, **kwargs)
-
-    async def _delete_via_retry(
-        self,
-        func: Callable[..., Awaitable[Any]],
-        *args: Any,
-        **kwargs: Any,
-    ) -> Any:
-        """Run a delete primitive under the Telegram retry policy."""
-        return await self._with_retry(func, *args, **kwargs)
-
-    async def _delete_many_fallback(self, chat_id: str, message_ids: list[str]) -> None:
-        """Delete many Telegram messages by falling back to per-message deletes."""
-        await super()._delete_many_fallback(chat_id, message_ids)

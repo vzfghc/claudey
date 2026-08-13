@@ -1,8 +1,10 @@
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from telegram.error import TelegramError
+import pytest_asyncio
+from telegram.error import NetworkError, TelegramError
 
+from claudey.messaging.limiter import MessagingRateLimiter
 from claudey.messaging.platforms.telegram import TelegramRuntime
 
 
@@ -11,6 +13,34 @@ def _limiter_mock() -> MagicMock:
     limiter.start = MagicMock()
     limiter.shutdown = AsyncMock()
     return limiter
+
+
+@pytest_asyncio.fixture
+async def telegram_platform_with_real_limiter():
+    """A TelegramRuntime with a started real limiter (stopped after each test)."""
+    limiter = MessagingRateLimiter(rate_limit=1, rate_window=1.0)
+    limiter.start()
+    with patch("claudey.messaging.platforms.telegram.TELEGRAM_AVAILABLE", True):
+        platform = TelegramRuntime(
+            bot_token="test_token",
+            allowed_user_id="12345",
+            limiter=limiter,
+            transcriber=None,
+        )
+    try:
+        yield platform
+    finally:
+        await limiter.shutdown(timeout=0.1)
+
+
+def _wire_application(platform) -> MagicMock:
+    mock_bot = AsyncMock()
+    mock_msg = MagicMock()
+    mock_msg.message_id = 999
+    mock_bot.send_message.return_value = mock_msg
+    platform._application = MagicMock()
+    platform._application.bot = mock_bot
+    return mock_bot
 
 
 def _telegram_runtime(
@@ -271,6 +301,83 @@ async def test_telegram_platform_queue_send_message(telegram_platform):
     )
 
     mock_limiter.enqueue.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_telegram_queued_send_uses_markdown_v2_default(
+    telegram_platform_with_real_limiter,
+):
+    """A queued send without parse_mode must reach the bot with MarkdownV2.
+
+    Regression for HIGH-1: the sprint-5 base flattened the Telegram queued
+    default to None, which would have sent MarkdownV2-escaped text with
+    parse_mode=None (literal asterisks on the wire).
+    """
+    platform = telegram_platform_with_real_limiter
+    mock_bot = _wire_application(platform)
+
+    msg_id = await platform.outbound.queue_send_message(
+        "chat_1", "hello", fire_and_forget=False
+    )
+
+    assert msg_id == "999"
+    mock_bot.send_message.assert_awaited_once_with(
+        chat_id="chat_1",
+        text="hello",
+        reply_to_message_id=None,
+        parse_mode="MarkdownV2",
+    )
+
+
+@pytest.mark.asyncio
+async def test_telegram_queued_edit_uses_markdown_v2_default(
+    telegram_platform_with_real_limiter,
+):
+    """A queued edit without parse_mode must reach the bot with MarkdownV2."""
+    platform = telegram_platform_with_real_limiter
+    mock_bot = AsyncMock()
+    platform._application = MagicMock()
+    platform._application.bot = mock_bot
+
+    await platform.outbound.queue_edit_message(
+        "chat_1", "999", "new text", fire_and_forget=False
+    )
+
+    mock_bot.edit_message_text.assert_awaited_once_with(
+        chat_id="chat_1", message_id=999, text="new text", parse_mode="MarkdownV2"
+    )
+
+
+@pytest.mark.asyncio
+async def test_telegram_queued_send_retries_once_per_primitive(
+    telegram_platform_with_real_limiter,
+):
+    """A queued send hits exactly one retry stack (3 attempts, not ~9).
+
+    Regression for HIGH-2: the sprint-5 base wrapped queued sends in an extra
+    retry loop; the fix wires the outbox straight to the primitives so a
+    transient network error retries only inside Telegram's own _with_retry.
+    """
+    platform = telegram_platform_with_real_limiter
+    mock_bot = AsyncMock()
+    mock_msg = MagicMock()
+    mock_msg.message_id = 999
+    mock_bot.send_message.side_effect = [
+        NetworkError("Connection failed"),
+        NetworkError("Connection failed"),
+        mock_msg,
+    ]
+    platform._application = MagicMock()
+    platform._application.bot = mock_bot
+
+    with patch("asyncio.sleep", AsyncMock()) as mock_sleep:
+        msg_id = await platform.outbound.queue_send_message(
+            "chat_1", "hello", fire_and_forget=False
+        )
+
+    assert msg_id == "999"
+    assert mock_bot.send_message.call_count == 3
+    assert mock_sleep.call_count == 2
 
 
 @pytest.mark.asyncio
