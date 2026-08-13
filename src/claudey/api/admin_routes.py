@@ -1,5 +1,6 @@
 """Local admin UI routes and APIs."""
 
+import asyncio
 import ipaddress
 from datetime import UTC, datetime
 from pathlib import Path
@@ -204,7 +205,7 @@ async def admin_logo_asset(filename: str, request: Request):
 @router.get("/admin/api/dashboard")
 async def get_admin_dashboard(request: Request):
     require_loopback_admin(request)
-    return dashboard_payload()
+    return await asyncio.to_thread(dashboard_payload)
 
 
 @router.get("/admin/api/usage")
