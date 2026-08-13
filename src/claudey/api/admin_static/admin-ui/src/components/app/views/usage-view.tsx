@@ -34,7 +34,7 @@ interface ProviderRow {
   model_count?: number;
 }
 
-/** Usage view — hero preserved; tremor chart, heatmap, table, provider breakdown rebuilt. */
+/** Usage view — hero, charts, heatmap, table, and provider breakdown. */
 export function UsageView() {
   const [reloadKey, setReloadKey] = useState(0);
   const usage = useJson<AdminUsagePayload>("/admin/api/usage");

@@ -37,13 +37,7 @@
   --info-aux: #9061ff;
 
   /* Legacy admin alias remap → new tokens */
-  --panel: var(--canvas);
-  --card: var(--canvas);
-  --line: var(--hairline);
   --muted: var(--ink-muted-48);
-  --text-primary: var(--ink);
-  --text-secondary: var(--ink-muted-48);
-  --text-strong: var(--ink);
 
   /* Typography (apple scale, font stacks) */
   --font-display: "SF Pro Display", Inter, system-ui, -apple-system, sans-serif;
@@ -73,8 +67,6 @@
 
   /* Motion — durations are n×50ms; default ease cubic-bezier(0.25,0.1,0.25,1) */
   --ease-default: cubic-bezier(0.25, 0.1, 0.25, 1);
-  --duration-4: 200ms;
-  --duration-10: 500ms;
 
   /* Sidebar (preserved choreography) */
   --sidebar-w: 256px;
@@ -82,17 +74,13 @@
 
 .dark {
   --canvas: #272729;
-  --panel: #272729;
   --card: #2a2a2c;
   --parchment: #2a2a2c;
   --pearl: #2a2a2c;
   --ink: #ffffff;
   --ink-muted-48: #cccccc;
-  --text-primary: #ffffff;
-  --text-secondary: #cccccc;
   --muted: #cccccc;
   --hairline: #3a3a3d;
-  --line: #3a3a3d;
   --divider-soft: rgba(255, 255, 255, 0.08);
 
   /* shadcn-primitive aliases (dark) */

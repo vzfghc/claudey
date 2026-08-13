@@ -1,15 +1,11 @@
 import type {
   ApiErrorShape,
   ApplyResponse,
-  AuthStatus,
-  Combo,
   ComboPayload,
   ComboValidateResult,
   ConfigPayload,
   CustomProviderPayload,
   CustomProviderValidateResult,
-  DashboardPayload,
-  LocalStatusResponse,
   ModelsResponse,
   ProviderTestResult,
   UsagePayload,
@@ -57,35 +53,12 @@ function post<T>(path: string, body?: unknown): Promise<T> {
 }
 
 /* GETs */
-export function fetchDashboard(signal?: AbortSignal): Promise<DashboardPayload> {
-  return request<DashboardPayload>("/admin/api/dashboard", { signal });
-}
-
-export function fetchUsage(signal?: AbortSignal): Promise<AdminUsagePayload> {
-  return request<AdminUsagePayload>("/admin/api/usage", { signal });
-}
-
 export function fetchConfig(signal?: AbortSignal): Promise<ConfigPayload> {
   return request<ConfigPayload>("/admin/api/config", { signal });
 }
 
 export function fetchModels(signal?: AbortSignal): Promise<ModelsResponse> {
   return request<ModelsResponse>("/admin/api/models", { signal });
-}
-
-export function fetchCombos(signal?: AbortSignal): Promise<{ combos: Combo[] }> {
-  return request<{ combos: Combo[] }>("/admin/api/combos", { signal });
-}
-
-export function fetchCustomProviders(signal?: AbortSignal): Promise<ConfigPayload["provider_status"]> {
-  return request<ConfigPayload["provider_status"]>("/admin/api/providers/custom", { signal });
-}
-
-export function fetchProviderAuth(
-  providerId: string,
-  signal?: AbortSignal,
-): Promise<AuthStatus> {
-  return request<AuthStatus>(`/admin/api/providers/${providerId}/auth`, { signal });
 }
 
 /* POSTs */
@@ -107,25 +80,6 @@ export function restartServer(): Promise<{ restarting: boolean; admin_url: strin
 
 export function testProvider(providerId: string): Promise<ProviderTestResult> {
   return post<ProviderTestResult>(`/admin/api/providers/${providerId}/test`, {});
-}
-
-export function refreshLocalStatus(): Promise<LocalStatusResponse> {
-  return post<LocalStatusResponse>("/admin/api/providers/local-status");
-}
-
-export function startAuthLogin(
-  providerId: string,
-  mode: "browser" | "device",
-): Promise<AuthStatus> {
-  return post<AuthStatus>(`/admin/api/providers/${providerId}/auth/login`, { mode });
-}
-
-export function cancelAuthLogin(providerId: string): Promise<AuthStatus> {
-  return post<AuthStatus>(`/admin/api/providers/${providerId}/auth/cancel`);
-}
-
-export function disconnectProvider(providerId: string): Promise<AuthStatus> {
-  return request<AuthStatus>(`/admin/api/providers/${providerId}/auth`, { method: "DELETE" });
 }
 
 export function validateCustomProvider(

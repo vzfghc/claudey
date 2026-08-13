@@ -25,7 +25,7 @@
 | Surface | Stack | Build | Serve |
 |---|---|---|---|
 | `admin_static/index.html`, `admin.css`, `admin.js`, `admin-animations.*` | Vanilla JS + hand CSS | none | static whitelist, `?v=__ASSET_VERSION__` |
-| `admin_static/beam/` | React 19 + motion + tailwind-merge, esbuild | `build.mjs` → committed `beam.bundle.js` | single committed IIFE, shadow-root CSS |
+| `admin_static/beam/` | Removed in Sprint 8; no longer part of the serving surface | retired | none |
 
 No Tailwind engine (only `tailwind-merge`), no shadcn/magicui/tremor yet.
 
@@ -80,7 +80,7 @@ src/claudey/api/admin_static/admin-ui/
 - `admin-ui` builds with Vite 8; `build.mjs` copies the emitted `dist/` (hashed JS/CSS chunks) into `admin_ui_dist/` under `admin_static/`.
 - `admin_routes.py`: add `admin_ui_dist/` to the administrable asset directory (served via `/admin/assets/*`); keep the `?v=__ASSET_VERSION__` cache-bust on the entry HTML. The `asset_version()` mechanism already reads `pyproject.toml` at serve time.
 - Offline-safe: all JS/CSS self-hosted; no runtime CDN.
-- beam bundle: unchanged and still served at `beam.bundle.js` until re-homed (Phase 3).
+- The former beam prototype was removed in Sprint 8; its planned bundle is no longer served.
 
 ## 5. Preservation contract (components NOT redesignable)
 
@@ -127,7 +127,7 @@ Provider grid, config forms, combo cards → shadcn primitives + heat buttons. U
 
 ### Phase 4 — Polish, a11y, CI, sunset
 13. Reduced-motion audit, keyboard nav, contrast.
-14. Retire vanilla `admin.js`/`admin.css`/`admin-animations.*`; retire `beam.bundle.js` only after re-home.
+14. Retire vanilla `admin.js`/`admin.css`/`admin-animations.*`; beam was removed in Sprint 8.
 15. `./scripts/ci.sh` green; add admin-ui build to CI as committed-artifact check.
 
 ## 7. Testing

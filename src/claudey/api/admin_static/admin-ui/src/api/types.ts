@@ -132,37 +132,8 @@ export interface ConfigPayload {
 }
 
 /* ------------------------------------------------------------------ */
-/* Connected-account auth state (GET/POST/DELETE /providers/{id}/auth) */
-/* ------------------------------------------------------------------ */
-
-export interface AuthStatus {
-  provider_id?: string;
-  state: "disconnected" | "connecting" | "connected" | "error";
-  connected?: boolean;
-  label?: string;
-  email?: string;
-  mode?: "browser" | "device";
-  user_code?: string;
-  message?: string;
-  authorization_url?: string;
-  verification_url?: string;
-}
-
-/* ------------------------------------------------------------------ */
 /* Providers: local-status, test, models                              */
 /* ------------------------------------------------------------------ */
-
-export interface LocalStatusEntry {
-  provider_id: string;
-  status: string;
-  label: string;
-  base_url: string;
-  status_code?: number;
-}
-
-export interface LocalStatusResponse {
-  providers: LocalStatusEntry[];
-}
 
 export interface ProviderTestResult {
   ok: boolean;

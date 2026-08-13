@@ -23,6 +23,12 @@ mutant-tests/
 # npm dev dependency for scripts/fetch_provider_logos.py
 node_modules/
 
+# Playwright MCP driver artifacts
+.playwright-mcp/
+
+# Screenshot scratch dir (harness eval captures, never tracked)
+assets/screenshots/
+
 # admin-ui intermediate Vite output (admin_ui_dist is the committed serving dir)
 src/claudey/api/admin_static/admin-ui/dist/
 

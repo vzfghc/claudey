@@ -8,17 +8,6 @@ import type { ConfigField } from "@/api/types";
 /** The server's mask for configured secrets (src/claudey/config/admin/values.py). */
 export const MASKED_SECRET = "********";
 
-export const REASONING_OPTION_ORDER: Record<string, number> = {
-  inherit: 0,
-  off: 1,
-  client: 2,
-  low: 3,
-  medium: 4,
-  high: 5,
-  xhigh: 6,
-  max: 7,
-};
-
 /** Present a config value as the value an editable input should show. */
 export function inputValue(field: ConfigField): string {
   if (field.type === "secret") return "";
