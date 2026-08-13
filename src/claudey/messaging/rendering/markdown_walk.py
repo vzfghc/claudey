@@ -31,7 +31,7 @@ def render_inline_tokens(
             output.append(link)
         else:
             output.append(_render_token(token, profile))
-        index += 1
+        index = index + 1
     return "".join(output)
 
 
@@ -41,14 +41,14 @@ def _render_link(
     token = children[index]
     href = _string_attr(token, "href")
     inner_tokens: list[Token] = []
-    index += 1
-    while index < len(children) and children[index].type != "link_close":
-        inner_tokens.append(children[index])
-        index += 1
+    link_index = index + 1
+    while link_index < len(children) and children[link_index].type != "link_close":
+        inner_tokens.append(children[link_index])
+        link_index = link_index + 1
     text = "".join(
         child.content for child in inner_tokens if child.type in {"text", "code_inline"}
     )
-    return f"[{profile.escape_text(text)}]({profile.escape_url(href)})", index
+    return f"[{profile.escape_text(text)}]({profile.escape_url(href)})", link_index
 
 
 def _render_token(token: Token, profile: InlineRenderProfile) -> str:
