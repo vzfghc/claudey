@@ -14,7 +14,9 @@ def log_incoming_text_message(
 ) -> None:
     """Log an inbound text message with a preview or its raw length."""
     if log_raw_messaging_content:
-        text_preview = "".join([raw_content[:80], "..."])[:80]
+        text_preview = raw_content[:80]
+        if len(raw_content) > 80:
+            text_preview += "..."
         logger.info(
             "{}_MSG: chat_id={} message_id={} reply_to={} text_preview={!r}",
             platform_label,
