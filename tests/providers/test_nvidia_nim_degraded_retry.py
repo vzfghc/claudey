@@ -167,7 +167,7 @@ async def test_degraded_function_exhaustion_is_detailed_redacted_overload() -> N
             new_callable=AsyncMock,
             side_effect=error,
         ) as create,
-        patch("claudey.providers.openai_chat.provider.trace_event") as trace,
+        patch("claudey.providers.openai_chat.streaming.trace_event") as trace,
         pytest.raises(ExecutionFailure) as exc_info,
     ):
         [

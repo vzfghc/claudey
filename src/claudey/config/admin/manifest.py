@@ -4,6 +4,7 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 from typing import Literal
 
+from claudey.config.constants import NIM_WHISPER_DEVICE
 from claudey.config.reasoning import (
     ROOT_REASONING_PREFERENCES,
     ROUTE_REASONING_PREFERENCES,
@@ -421,8 +422,8 @@ _NON_PROVIDER_FIELDS: tuple[ConfigFieldSpec, ...] = (
         "voice",
         "select",
         settings_attr="whisper_device",
-        default="nvidia_nim",
-        options=("cpu", "cuda", "nvidia_nim"),
+        default=NIM_WHISPER_DEVICE,
+        options=("cpu", "cuda", NIM_WHISPER_DEVICE),
         session_sensitive=True,
     ),
     ConfigFieldSpec(

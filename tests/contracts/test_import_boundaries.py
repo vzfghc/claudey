@@ -711,7 +711,7 @@ def _provider_backchannel_offenders(provider_root: Path) -> list[str]:
                     and _annotation_is_any(argument.annotation)
                 )
             if (
-                path.name != "provider.py"
+                path.name not in {"provider.py", "streaming.py"}
                 and isinstance(node, ast.Attribute)
                 and node.attr.startswith("_")
                 and _is_provider_reference(node.value)

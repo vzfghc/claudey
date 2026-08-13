@@ -178,8 +178,8 @@ def doctor() -> int:
         return 1
 
     module_path = Path(__file__).resolve().parents[1]
-    config_dir = f"~/{paths.HANS_CONFIG_DIRNAME}"
-    env_file = f"{config_dir}/{paths.HANS_ENV_FILENAME}"
+    config_dir = f"~/{paths.CLAUDEY_CONFIG_DIRNAME}"
+    env_file = f"{config_dir}/{paths.CLAUDEY_ENV_FILENAME}"
     with_keys = _providers_with_keys(settings)
     checks = _ci_checks()
 

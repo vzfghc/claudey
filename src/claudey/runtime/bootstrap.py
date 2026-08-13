@@ -6,6 +6,7 @@ from pathlib import Path
 
 from claudey.api.app import create_app
 from claudey.api.ports import ApiServices
+from claudey.config.constants import NIM_WHISPER_DEVICE
 from claudey.config.logging_config import configure_logging
 from claudey.config.paths import server_log_path
 from claudey.config.settings import Settings
@@ -99,7 +100,7 @@ def _create_openai_provider(
 def _create_transcriber(settings: Settings) -> Transcriber | None:
     if not settings.voice_note_enabled:
         return None
-    if settings.whisper_device == "nvidia_nim":
+    if settings.whisper_device == NIM_WHISPER_DEVICE:
         return NvidiaNimTranscriber(
             model=settings.whisper_model,
             api_key=settings.nvidia_nim_api_key,

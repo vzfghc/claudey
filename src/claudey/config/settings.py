@@ -6,7 +6,7 @@ from typing import Any
 from pydantic import AliasChoices, Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from .constants import HTTP_CONNECT_TIMEOUT_DEFAULT
+from .constants import HTTP_CONNECT_TIMEOUT_DEFAULT, NIM_WHISPER_DEVICE
 from .env_files import (
     ANTHROPIC_AUTH_TOKEN_ENV,
     env_file_override,
@@ -417,9 +417,9 @@ class Settings(BaseSettings):
     @field_validator("whisper_device")
     @classmethod
     def validate_whisper_device(cls, v: str) -> str:
-        if v not in ("cpu", "cuda", "nvidia_nim"):
+        if v not in ("cpu", "cuda", NIM_WHISPER_DEVICE):
             raise ValueError(
-                f"whisper_device must be 'cpu', 'cuda', or 'nvidia_nim', got {v!r}"
+                f"whisper_device must be 'cpu', 'cuda', or '{NIM_WHISPER_DEVICE}', got {v!r}"
             )
         return v
 
@@ -496,12 +496,12 @@ class Settings(BaseSettings):
     def check_nvidia_nim_api_key(self) -> Settings:
         if (
             self.voice_note_enabled
-            and self.whisper_device == "nvidia_nim"
+            and self.whisper_device == NIM_WHISPER_DEVICE
             and not self.nvidia_nim_api_key.strip()
         ):
             raise ValueError(
-                "NVIDIA_NIM_API_KEY is required when WHISPER_DEVICE is 'nvidia_nim'. "
-                "Set it in your .env file."
+                "NVIDIA_NIM_API_KEY is required when WHISPER_DEVICE is "
+                f"'{NIM_WHISPER_DEVICE}'. Set it in your .env file."
             )
         return self
 

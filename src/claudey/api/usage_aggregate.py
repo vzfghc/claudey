@@ -23,7 +23,7 @@ from pathlib import Path
 from typing import Any
 
 from claudey.application.usage_recorder import TOKEN_FIELDS, USAGE_LOG_FILENAME
-from claudey.config.paths import HANS_CONFIG_DIRNAME
+from claudey.config.paths import CLAUDEY_CONFIG_DIRNAME
 
 MAX_LOG_BYTES = 10_000_000  # read only the recent tail of the usage log
 
@@ -89,7 +89,7 @@ def parse_line(line: str) -> dict[str, Any] | None:
 
 
 def _usage_file(home: Path) -> Path:
-    return home / HANS_CONFIG_DIRNAME / USAGE_LOG_FILENAME
+    return home / CLAUDEY_CONFIG_DIRNAME / USAGE_LOG_FILENAME
 
 
 def parse_entries(home: Path) -> list[dict[str, Any]]:

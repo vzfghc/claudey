@@ -642,6 +642,17 @@ compatibility layer.
   `list_model_infos()`. Providers return application-owned `ProviderModelInfo`
   values directly; there is no parallel IDs-only catalog contract.
 
+`NimSettings` deliberately remains in
+[config/nim.py](src/claudey/config/nim.py), with
+[config/settings.py](src/claudey/config/settings.py) typing its `nim` field.
+Moving that settings model under `providers/nvidia_nim/` would introduce a
+forbidden `config` → `providers` dependency under the Sprint 0
+`config: {"core"}` import policy. The protocol-neutral `core` package must not
+own vendor settings either. The provider-specific configuration principle is
+satisfied at the provider boundary: `ProviderConfig` in `providers/base.py`
+contains no NIM fields, and resolved NIM settings are supplied only to the NIM
+provider constructor.
+
 There are two upstream transport families:
 [providers/openai_chat/](src/claudey/providers/openai_chat/) implements the concrete
 `OpenAIChatProvider` used by every OpenAI-compatible `/chat/completions`

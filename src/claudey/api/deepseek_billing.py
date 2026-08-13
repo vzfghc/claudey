@@ -30,7 +30,7 @@ from typing import Any
 
 import httpx
 
-from claudey.config.paths import HANS_CONFIG_DIRNAME, config_dir_path
+from claudey.config.paths import CLAUDEY_CONFIG_DIRNAME, config_dir_path
 from claudey.config.settings import get_settings
 from claudey.core.trace import trace_event
 
@@ -70,7 +70,7 @@ def _billing_store_path(home: Path | None = None) -> Path:
     isolated directory; the default reuses ``config_dir_path()``.
     """
     if home is not None:
-        return home / HANS_CONFIG_DIRNAME / STORE_NAME
+        return home / CLAUDEY_CONFIG_DIRNAME / STORE_NAME
     return config_dir_path() / STORE_NAME
 
 

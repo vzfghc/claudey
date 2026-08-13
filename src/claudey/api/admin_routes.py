@@ -26,6 +26,7 @@ from claudey.config.combos import (
     make_unique_combo_id,
     validate_provider_model_ref,
 )
+from claudey.config.constants import LOCAL_PROVIDER_PATHS
 from claudey.config.custom_providers import (
     CustomProviderRecord,
     custom_provider_ids,
@@ -55,11 +56,6 @@ STATIC_DIR = Path(__file__).resolve().parent / "admin_static"
 # micro-frontend. Hashed assets are cache-busting on their own; the entry HTML
 # is served with a no-cache header so a rebuild is picked up immediately.
 ADMIN_UI_DIR = STATIC_DIR / "admin_ui_dist"
-LOCAL_PROVIDER_PATHS = {
-    "lmstudio": "/models",
-    "llamacpp": "/models",
-    "ollama": "/api/tags",
-}
 
 
 class AdminConfigPayload(BaseModel):
@@ -272,7 +268,7 @@ async def local_provider_status(request: Request):
     config = load_config_response()
     values = {field["key"]: field["value"] for field in config["fields"]}
     checks = []
-    for provider_id, path in LOCAL_PROVIDER_PATHS.items():
+    for provider_id, (_env_var, path) in LOCAL_PROVIDER_PATHS.items():
         base_url = _local_provider_url(provider_id, values)
         checks.append(await _check_local_provider(provider_id, base_url, path))
     return {"providers": checks}
@@ -390,13 +386,11 @@ def _filtered_values(values: dict[str, Any]) -> dict[str, Any]:
 
 
 def _local_provider_url(provider_id: str, values: dict[str, str]) -> str:
-    if provider_id == "lmstudio":
-        return values.get("LM_STUDIO_BASE_URL", "")
-    if provider_id == "llamacpp":
-        return values.get("LLAMACPP_BASE_URL", "")
-    if provider_id == "ollama":
-        return values.get("OLLAMA_BASE_URL", "")
-    return ""
+    entry = LOCAL_PROVIDER_PATHS.get(provider_id)
+    if entry is None:
+        return ""
+    env_var, _path = entry
+    return values.get(env_var, "")
 
 
 async def _check_local_provider(

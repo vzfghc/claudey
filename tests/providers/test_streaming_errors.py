@@ -23,9 +23,7 @@ from claudey.core.reasoning import DEFAULT_REASONING_POLICY, ReasoningPolicy
 from claudey.providers.admission import UPSTREAM_TRANSIENT_TOTAL_ATTEMPTS
 from claudey.providers.base import ProviderConfig
 from claudey.providers.nvidia_nim import NvidiaNimProvider
-from claudey.providers.openai_chat.provider import (
-    _OpenAIChatStreamRunner,
-)
+from claudey.providers.openai_chat.streaming import OpenAIChatStreamRunner
 from claudey.providers.openai_chat.tool_calls import (
     OpenAIToolCallAssembler,
     OpenAIToolCallCollector,
@@ -116,8 +114,8 @@ def _make_stream_runner(
     *,
     request=None,
     request_id: str | None = None,
-) -> _OpenAIChatStreamRunner:
-    return _OpenAIChatStreamRunner(
+) -> OpenAIChatStreamRunner:
+    return OpenAIChatStreamRunner(
         provider,
         request=request or _make_request(),
         input_tokens=0,
@@ -888,7 +886,7 @@ class TestStreamingExceptionHandling:
                 return_value=stream_mock,
             ),
             patch.object(
-                _OpenAIChatStreamRunner,
+                OpenAIChatStreamRunner,
                 "_collect_recovery_output",
                 new_callable=AsyncMock,
                 return_value=_recovery_output(text="world"),
@@ -1203,7 +1201,7 @@ class TestStreamingExceptionHandling:
                 return_value=original_stream,
             ) as mock_create,
             patch.object(
-                _OpenAIChatStreamRunner,
+                OpenAIChatStreamRunner,
                 "_collect_recovery_output",
                 new_callable=AsyncMock,
                 side_effect=TruncatedProviderStreamError(
@@ -1261,7 +1259,7 @@ class TestStreamingExceptionHandling:
                 return_value=stream_mock,
             ),
             patch.object(
-                _OpenAIChatStreamRunner,
+                OpenAIChatStreamRunner,
                 "_collect_recovery_output",
                 new_callable=AsyncMock,
                 return_value=_recovery_output(text='"ok"}'),

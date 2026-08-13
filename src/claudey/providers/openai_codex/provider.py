@@ -45,9 +45,9 @@ from .auth import OpenAIAccess, OpenAIAuthManager, OpenAIReconnectRequired
 from .login import OPENAI_CODEX_ORIGINATOR
 
 try:
-    HANS_VERSION = version("claudey")
+    CLAUDEY_VERSION = version("claudey")
 except PackageNotFoundError:
-    HANS_VERSION = "dev"
+    CLAUDEY_VERSION = "dev"
 
 
 class _TruncatedResponsesStream(RetryableProviderProtocolError):
@@ -69,9 +69,9 @@ class OpenAICodexProvider(BaseProvider):
         self._auth = auth
         self._admission = admission
         self._client_headers = {
-            "User-Agent": f"{OPENAI_CODEX_ORIGINATOR}/{HANS_VERSION}",
+            "User-Agent": f"{OPENAI_CODEX_ORIGINATOR}/{CLAUDEY_VERSION}",
             "originator": OPENAI_CODEX_ORIGINATOR,
-            "version": HANS_VERSION,
+            "version": CLAUDEY_VERSION,
         }
         self._client = client or httpx.AsyncClient(
             base_url=f"{config.base_url.rstrip('/')}/",
@@ -108,14 +108,14 @@ class OpenAICodexProvider(BaseProvider):
             access = await self._auth.access()
             response = await self._client.get(
                 "models",
-                params={"client_version": HANS_VERSION},
+                params={"client_version": CLAUDEY_VERSION},
                 headers={**self._client_headers, **_auth_headers(access)},
             )
             if response.status_code == 401:
                 access = await self._auth.recover_unauthorized(access.access_token)
                 response = await self._client.get(
                     "models",
-                    params={"client_version": HANS_VERSION},
+                    params={"client_version": CLAUDEY_VERSION},
                     headers={**self._client_headers, **_auth_headers(access)},
                 )
             response.raise_for_status()

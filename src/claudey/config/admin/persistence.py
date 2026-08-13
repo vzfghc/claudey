@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from claudey.config.constants import NIM_WHISPER_DEVICE
 from claudey.config.paths import managed_env_path
 from claudey.config.settings import Settings
 
@@ -135,7 +136,7 @@ def changed_pending_fields(
 def _active_voice_credential(settings: Settings) -> str | None:
     if not settings.voice_note_enabled:
         return None
-    if settings.whisper_device == "nvidia_nim":
+    if settings.whisper_device == NIM_WHISPER_DEVICE:
         return "NVIDIA_NIM_API_KEY"
     return "HUGGINGFACE_API_KEY"
 

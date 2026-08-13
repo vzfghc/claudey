@@ -2,10 +2,10 @@
 
 from pathlib import Path
 
-HANS_CONFIG_DIRNAME = ".claudey"
-HANS_ENV_FILENAME = ".env"
+CLAUDEY_CONFIG_DIRNAME = ".claudey"
+CLAUDEY_ENV_FILENAME = ".env"
 MESSAGING_STATE_DIRNAME = "agent_workspace"
-HANS_LOGS_DIRNAME = "logs"
+CLAUDEY_LOGS_DIRNAME = "logs"
 SERVER_LOG_FILENAME = "server.log"
 CODEX_MODEL_CATALOG_FILENAME = "codex-model-catalog.json"
 AUTH_DIRNAME = "auth"
@@ -16,13 +16,13 @@ OPENAI_AUTH_LOCK_FILENAME = "openai.lock"
 def config_dir_path() -> Path:
     """Return the default user config directory."""
 
-    return Path.home() / HANS_CONFIG_DIRNAME
+    return Path.home() / CLAUDEY_CONFIG_DIRNAME
 
 
 def managed_env_path() -> Path:
     """Return the default user-managed env file path."""
 
-    return config_dir_path() / HANS_ENV_FILENAME
+    return config_dir_path() / CLAUDEY_ENV_FILENAME
 
 
 def messaging_state_dir_path() -> Path:
@@ -34,7 +34,7 @@ def messaging_state_dir_path() -> Path:
 def server_log_path() -> Path:
     """Return the canonical server log path."""
 
-    return config_dir_path() / HANS_LOGS_DIRNAME / SERVER_LOG_FILENAME
+    return config_dir_path() / CLAUDEY_LOGS_DIRNAME / SERVER_LOG_FILENAME
 
 
 def codex_model_catalog_path() -> Path:

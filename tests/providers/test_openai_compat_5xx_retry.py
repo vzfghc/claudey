@@ -146,7 +146,7 @@ async def test_nim_stream_connection_error_exhausted_emits_cause_chain():
             new_callable=AsyncMock,
             side_effect=error,
         ) as mock_create,
-        patch("claudey.providers.openai_chat.provider.trace_event") as trace,
+        patch("claudey.providers.openai_chat.streaming.trace_event") as trace,
         pytest.raises(ExecutionFailure) as exc_info,
     ):
         [e async for e in provider.stream_response(req, request_id="req_conn")]

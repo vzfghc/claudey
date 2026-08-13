@@ -1,36 +1,32 @@
-# Generator State — Sprint 6 (messaging dedup II: markdown token-walk)
+# Generator State — Sprint 7 (literals, naming, provider split)
 
-> Track: refactor foundation sprints (docs/plans/refactor/REFACTOR_PLAN.md §218).
+> Track: refactor foundation sprints (docs/plans/refactor/REFACTOR_PLAN.md §236).
 > Branch: `feat/phase-a-free-providers`.
-> Status: Sprint 6 complete — full gate green (3169 passed, 73 skipped).
+> Status: Sprint 7 complete — full gate green (3169 passed, 73 skipped).
 
 ## What Was Built
 
-- Added `src/claudey/messaging/rendering/markdown_walk.py` with the single inline
-  markdown-it token walk.
-- Added immutable `InlineRenderProfile` hooks for text/code/URL escaping and
-  emphasis delimiters.
-- Telegram and Discord converters now delegate inline rendering to the shared
-  walker while retaining platform-specific escaping and block rendering.
-- Added 22 characterization cases pinning exact output for headings, emphasis,
-  code, links, images, lists, blockquotes, entities, tables, breaks, and mixed
-  content on both platforms.
+- Added `NIM_WHISPER_DEVICE` and the zero-import `LOCAL_PROVIDER_PATHS` map to
+  `config/constants.py`; admin local-status now derives both env names and paths
+  from that map.
+- Renamed internal filesystem constants from `HANS_*` to `CLAUDEY_*`, preserving
+  all values and user-facing environment aliases.
+- Extracted the private OpenAI-compatible stream runner into
+  `providers/openai_chat/streaming.py`; `provider.py` is now 294 lines while its
+  public `OpenAIChatProvider` surface is unchanged.
+- Updated private-runner and trace-event test imports to their new owning module.
 
-## What Changed This Iteration
+## Justified Deviations
 
-- Removed duplicate inline token iteration, link collection, image rendering,
-  and string `+=` accumulation from both platform modules.
-- Kept table, list, heading, blockquote, and fenced-code block walks local; they
-  remain outside Sprint 6's inline skeleton and differ in platform output.
-- Golden suite passed before and after extraction: 22/22 both times.
+- L1 was skipped: merging custom-provider and provider failure classifiers risks
+  changing frozen user-visible wording without a trivial shared owner.
+- M3 remains resolved as planned: `NimSettings` stays in `config/nim.py` to avoid
+  a forbidden config-to-providers dependency.
 
-## Known Issues
+## Verification
 
-- None in sprint scope. The pre-existing installed-Codex schema test failed once
-  under xdist and passed individually and on two full-suite reruns.
-
-## Dev Server
-
-- URL: n/a (Python package refactor sprint; no dev server).
-- Status: verification green.
-- Command: `uv run pytest -q`
+- `uv run ruff format` and `uv run ruff check --fix` passed.
+- `uv run ty check` passed.
+- `uv run pytest -q` passed: 3169 passed, 73 skipped.
+- Sprint grep gates passed: no old internal HANS constants; no non-declaration
+  NVIDIA NIM code literals; `provider.py` remains below 800 lines.
