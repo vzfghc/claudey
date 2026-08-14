@@ -2,7 +2,7 @@
 
 import asyncio
 import hashlib
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Coroutine
 from typing import Any, cast
 
 from loguru import logger
@@ -105,10 +105,14 @@ class PlatformOutbox:
 
     def fire_and_forget(self, task: Awaitable[Any]) -> None:
         """Run and retain arbitrary outbound work until completion or shutdown."""
-        future = asyncio.ensure_future(task)
         if self._closed:
-            future.cancel()
+            # Reject before scheduling so a coroutine handed to a closed outbox
+            # is never driven on the loop; close the coroutine to avoid a
+            # "coroutine was never awaited" warning.
+            if isinstance(task, Coroutine):
+                task.close()
             raise RuntimeError("Platform outbox is closed.")
+        future = asyncio.ensure_future(task)
         self._background_tasks.add(future)
         future.add_done_callback(self._complete_background_task)
 
