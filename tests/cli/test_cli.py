@@ -156,11 +156,11 @@ class TestManagedClaudeSession:
 
         session = ManagedClaudeSession(
             workspace_path="/tmp/test",
-            proxy_root_url="http://localhost:8082",
+            proxy_root_url="http://localhost:8090",
             allowed_dirs=["/home/user/projects"],
         )
         assert session.workspace == os.path.normpath(os.path.abspath("/tmp/test"))
-        assert session.proxy_root_url == "http://localhost:8082"
+        assert session.proxy_root_url == "http://localhost:8090"
         assert not session.is_busy
 
     def test_session_extract_session_id(self):
@@ -200,7 +200,7 @@ class TestManagedClaudeSession:
         """Test start_task running a basic command flow."""
         from claudey.cli.managed.session import ManagedClaudeSession
 
-        session = ManagedClaudeSession("/tmp", "http://localhost:8082")
+        session = ManagedClaudeSession("/tmp", "http://localhost:8090")
 
         # Mock subprocess
         mock_process = AsyncMock()
@@ -244,7 +244,7 @@ class TestManagedClaudeSession:
         """Test resuming an existing session."""
         from claudey.cli.managed.session import ManagedClaudeSession
 
-        session = ManagedClaudeSession("/tmp", "http://localhost:8082")
+        session = ManagedClaudeSession("/tmp", "http://localhost:8090")
 
         mock_process = AsyncMock()
         mock_process.stdout.read.side_effect = [
@@ -271,7 +271,7 @@ class TestManagedClaudeSession:
         """Test resuming an existing session and forking."""
         from claudey.cli.managed.session import ManagedClaudeSession
 
-        session = ManagedClaudeSession("/tmp", "http://localhost:8082")
+        session = ManagedClaudeSession("/tmp", "http://localhost:8090")
 
         mock_process = AsyncMock()
         mock_process.stdout.read.side_effect = [b""]  # Immediate EOF
@@ -298,7 +298,7 @@ class TestManagedClaudeSession:
         """Test process exit with error code and stderr output."""
         from claudey.cli.managed.session import ManagedClaudeSession
 
-        session = ManagedClaudeSession("/tmp", "http://localhost:8082")
+        session = ManagedClaudeSession("/tmp", "http://localhost:8090")
 
         mock_process = AsyncMock()
         mock_process.stdout.read.side_effect = [b""]  # No stdout
@@ -326,7 +326,7 @@ class TestManagedClaudeSession:
         """Stderr is drained concurrently so stdout streaming is not blocked."""
         from claudey.cli.managed.session import ManagedClaudeSession
 
-        session = ManagedClaudeSession("/tmp", "http://localhost:8082")
+        session = ManagedClaudeSession("/tmp", "http://localhost:8090")
 
         mock_process = AsyncMock()
         mock_process.stdout.read.side_effect = [
@@ -355,7 +355,7 @@ class TestManagedClaudeSession:
         """Known Claude diagnostics on stderr are not surfaced as task failures."""
         from claudey.cli.managed.session import ManagedClaudeSession
 
-        session = ManagedClaudeSession("/tmp", "http://localhost:8082")
+        session = ManagedClaudeSession("/tmp", "http://localhost:8090")
 
         mock_process = AsyncMock()
         mock_process.stdout.read.side_effect = [
@@ -383,7 +383,7 @@ class TestManagedClaudeSession:
         """Benign stderr diagnostics are filtered without hiding real failures."""
         from claudey.cli.managed.session import ManagedClaudeSession
 
-        session = ManagedClaudeSession("/tmp", "http://localhost:8082")
+        session = ManagedClaudeSession("/tmp", "http://localhost:8090")
 
         mock_process = AsyncMock()
         mock_process.stdout.read.side_effect = [b""]
@@ -411,7 +411,7 @@ class TestManagedClaudeSession:
         """A benign stderr line is not duplicated as the process failure reason."""
         from claudey.cli.managed.session import ManagedClaudeSession
 
-        session = ManagedClaudeSession("/tmp", "http://localhost:8082")
+        session = ManagedClaudeSession("/tmp", "http://localhost:8090")
 
         mock_process = AsyncMock()
         mock_process.stdout.read.side_effect = [b""]
@@ -465,7 +465,7 @@ class TestManagedClaudeSession:
         """Test stopping the session process."""
         from claudey.cli.managed.session import ManagedClaudeSession
 
-        session = ManagedClaudeSession("/tmp", "http://localhost:8082")
+        session = ManagedClaudeSession("/tmp", "http://localhost:8090")
 
         mock_process = MagicMock()
         mock_process.returncode = None  # Running
@@ -488,7 +488,7 @@ class TestManagedClaudeSession:
         """Test force kill if terminate times out."""
         from claudey.cli.managed.session import ManagedClaudeSession
 
-        session = ManagedClaudeSession("/tmp", "http://localhost:8082")
+        session = ManagedClaudeSession("/tmp", "http://localhost:8090")
 
         mock_process = MagicMock()
         mock_process.returncode = None
@@ -518,7 +518,7 @@ class TestManagedClaudeSession:
         """Test handling of JSON split across chunks."""
         from claudey.cli.managed.session import ManagedClaudeSession
 
-        session = ManagedClaudeSession("/tmp", "http://localhost:8082")
+        session = ManagedClaudeSession("/tmp", "http://localhost:8090")
 
         mock_process = AsyncMock()
         # Split json: {"type": "mess... age"}
@@ -547,7 +547,7 @@ class TestManagedClaudeSession:
         """Test handling of buffer remnant at EOF (no newline at end)."""
         from claudey.cli.managed.session import ManagedClaudeSession
 
-        session = ManagedClaudeSession("/tmp", "http://localhost:8082")
+        session = ManagedClaudeSession("/tmp", "http://localhost:8090")
 
         mock_process = AsyncMock()
         mock_process.stdout.read.side_effect = [
@@ -574,7 +574,7 @@ class TestManagedClaudeSession:
         """Test start_task passes the configured proxy root to Claude Code."""
         from claudey.cli.managed.session import ManagedClaudeSession
 
-        session = ManagedClaudeSession("/tmp", "http://localhost:8082")
+        session = ManagedClaudeSession("/tmp", "http://localhost:8090")
 
         mock_process = AsyncMock()
         mock_process.stdout.read.side_effect = [b""]
@@ -591,7 +591,7 @@ class TestManagedClaudeSession:
             # Check env var
             kwargs = mock_exec.call_args[1]
             env = kwargs["env"]
-            assert env["ANTHROPIC_BASE_URL"] == "http://localhost:8082"
+            assert env["ANTHROPIC_BASE_URL"] == "http://localhost:8090"
 
     @pytest.mark.asyncio
     async def test_start_task_sets_proxy_auth_token(self):
@@ -599,7 +599,7 @@ class TestManagedClaudeSession:
         from claudey.cli.managed.session import ManagedClaudeSession
 
         session = ManagedClaudeSession(
-            "/tmp", "http://localhost:8082", auth_token="proxy-token"
+            "/tmp", "http://localhost:8090", auth_token="proxy-token"
         )
 
         mock_process = AsyncMock()
@@ -630,7 +630,7 @@ class TestManagedClaudeSession:
         """Test start_task does not leak inherited Claude auth into proxy calls."""
         from claudey.cli.managed.session import ManagedClaudeSession
 
-        session = ManagedClaudeSession("/tmp", "http://localhost:8082", auth_token="")
+        session = ManagedClaudeSession("/tmp", "http://localhost:8090", auth_token="")
 
         mock_process = AsyncMock()
         mock_process.stdout.read.side_effect = [b""]
@@ -648,7 +648,7 @@ class TestManagedClaudeSession:
                 pass
 
             env = mock_exec.call_args.kwargs["env"]
-            assert env["ANTHROPIC_AUTH_TOKEN"] == "hans-no-auth"
+            assert env["ANTHROPIC_AUTH_TOKEN"] == "claudey-no-auth"
 
     @pytest.mark.asyncio
     async def test_start_task_allowed_dirs(self):
@@ -656,7 +656,7 @@ class TestManagedClaudeSession:
         from claudey.cli.managed.session import ManagedClaudeSession
 
         session = ManagedClaudeSession(
-            "/tmp", "http://localhost:8082", allowed_dirs=["/dir1", "/dir2"]
+            "/tmp", "http://localhost:8090", allowed_dirs=["/dir1", "/dir2"]
         )
 
         mock_process = AsyncMock()
@@ -681,7 +681,7 @@ class TestManagedClaudeSession:
         """Test handling of non-JSON output from claudey.cli."""
         from claudey.cli.managed.session import ManagedClaudeSession
 
-        session = ManagedClaudeSession("/tmp", "http://localhost:8082")
+        session = ManagedClaudeSession("/tmp", "http://localhost:8090")
 
         mock_process = AsyncMock()
         mock_process.stdout.read.side_effect = [b"Not valid json\n", b""]
@@ -703,7 +703,7 @@ class TestManagedClaudeSession:
         """Test exception handling during stop."""
         from claudey.cli.managed.session import ManagedClaudeSession
 
-        session = ManagedClaudeSession("/tmp", "http://localhost:8082")
+        session = ManagedClaudeSession("/tmp", "http://localhost:8090")
 
         mock_process = MagicMock()
         mock_process.returncode = None
@@ -728,7 +728,7 @@ class TestManagedClaudeSessionManager:
 
         manager = ManagedClaudeSessionManager(
             workspace_path="/tmp/test",
-            proxy_root_url="http://localhost:8082",
+            proxy_root_url="http://localhost:8090",
         )
 
         session, sid, is_new = await manager.get_or_create_session()
@@ -743,7 +743,7 @@ class TestManagedClaudeSessionManager:
 
         manager = ManagedClaudeSessionManager(
             workspace_path="/tmp/test",
-            proxy_root_url="http://localhost:8082",
+            proxy_root_url="http://localhost:8090",
         )
 
         # Create first session
@@ -762,7 +762,7 @@ class TestManagedClaudeSessionManager:
 
         manager = ManagedClaudeSessionManager(
             workspace_path="/tmp/test",
-            proxy_root_url="http://localhost:8082",
+            proxy_root_url="http://localhost:8090",
         )
 
         stats = manager.get_stats()

@@ -16,7 +16,7 @@ from claudey.cli.managed.diagnostics import classify_managed_claude_stderr
 
 def _config(**overrides: object) -> ManagedClaudeConfig:
     workspace_path = overrides.get("workspace_path", os.path.normpath("/tmp/workspace"))
-    proxy_root_url = overrides.get("proxy_root_url", "http://localhost:8082")
+    proxy_root_url = overrides.get("proxy_root_url", "http://localhost:8090")
     raw_allowed_dirs = overrides.get("allowed_dirs")
     allowed_dirs: list[str] = []
     if raw_allowed_dirs is not None:
@@ -64,7 +64,7 @@ def test_managed_claude_builds_new_task_command_and_env() -> None:
     assert os.path.normpath("/tmp/extra") in invocation.argv
     assert "--settings" not in invocation.argv
     assert invocation.env["PATH"] == "keep"
-    assert invocation.env["ANTHROPIC_BASE_URL"] == "http://localhost:8082"
+    assert invocation.env["ANTHROPIC_BASE_URL"] == "http://localhost:8090"
     assert invocation.env["ANTHROPIC_AUTH_TOKEN"] == "proxy-token"
     assert invocation.env["CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY"] == "1"
     assert invocation.env["CLAUDE_CODE_AUTO_COMPACT_WINDOW"] == "190000"
@@ -129,12 +129,12 @@ def test_managed_claude_uses_native_plan_storage() -> None:
 
 def test_managed_claude_env_uses_sentinel_when_proxy_auth_blank() -> None:
     env = build_managed_claude_env(
-        proxy_root_url="http://localhost:8082",
+        proxy_root_url="http://localhost:8090",
         auth_token="",
         base_env={"ANTHROPIC_AUTH_TOKEN": "stale"},
     )
 
-    assert env["ANTHROPIC_AUTH_TOKEN"] == "hans-no-auth"
+    assert env["ANTHROPIC_AUTH_TOKEN"] == "claudey-no-auth"
 
 
 def test_managed_claude_env_adds_noninteractive_process_policy() -> None:
@@ -146,13 +146,13 @@ def test_managed_claude_env_adds_noninteractive_process_policy() -> None:
         "DISABLE_TELEMETRY": "0",
     }
     proxy_env = build_claude_proxy_env(
-        proxy_root_url="http://localhost:8082",
+        proxy_root_url="http://localhost:8090",
         auth_token="proxy-token",
         base_env=base_env,
     )
 
     managed_env = build_managed_claude_env(
-        proxy_root_url="http://localhost:8082",
+        proxy_root_url="http://localhost:8090",
         auth_token="proxy-token",
         base_env=base_env,
     )

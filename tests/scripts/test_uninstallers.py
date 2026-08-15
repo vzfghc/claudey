@@ -6,13 +6,13 @@ from pathlib import Path
 
 import pytest
 
-HANS_COMMANDS = (
-    "hans-desktop",
-    "hans-server",
-    "hans-claude",
-    "hans-codex",
-    "hans-pi",
-    "hans-init",
+CLAUDEY_COMMANDS = (
+    "claudey-desktop",
+    "claudey-server",
+    "claudey-claude",
+    "claudey-codex",
+    "claudey-pi",
+    "claudey-init",
     "claudey",
 )
 
@@ -39,8 +39,8 @@ def _create_windows_shortcut(
 ) -> None:
     shortcut_path.parent.mkdir(parents=True, exist_ok=True)
     env = os.environ | {
-        "HANS_TEST_SHORTCUT": str(shortcut_path),
-        "HANS_TEST_TARGET": str(target_path),
+        "CLAUDEY_TEST_SHORTCUT": str(shortcut_path),
+        "CLAUDEY_TEST_TARGET": str(target_path),
     }
     subprocess.run(
         [
@@ -49,8 +49,8 @@ def _create_windows_shortcut(
             "-Command",
             (
                 "$shell = New-Object -ComObject WScript.Shell; "
-                "$shortcut = $shell.CreateShortcut($env:HANS_TEST_SHORTCUT); "
-                "$shortcut.TargetPath = $env:HANS_TEST_TARGET; "
+                "$shortcut = $shell.CreateShortcut($env:CLAUDEY_TEST_SHORTCUT); "
+                "$shortcut.TargetPath = $env:CLAUDEY_TEST_TARGET; "
                 "$shortcut.Save()"
             ),
         ],
@@ -66,7 +66,7 @@ class PosixUninstallHarness:
     home: Path
     bin_dir: Path
     tool_bin: Path
-    hans_home: Path
+    claudey_home: Path
     log: Path
     env: dict[str, str]
 
@@ -93,7 +93,7 @@ class PosixUninstallHarness:
         return self.log.read_text(encoding="utf-8").splitlines()
 
     def remove_entry_points(self) -> None:
-        for name in HANS_COMMANDS:
+        for name in CLAUDEY_COMMANDS:
             (self.tool_bin / name).unlink(missing_ok=True)
 
     def use_process_list_fallback(self, process_line: str) -> None:
@@ -102,7 +102,7 @@ class PosixUninstallHarness:
         _write_executable(
             fallback_bin / "ps",
             """#!/bin/sh
-printf '%s\n' "$HANS_PS_OUTPUT"
+printf '%s\n' "$CLAUDEY_PS_OUTPUT"
 """,
         )
         awk = shutil.which("awk", path=self.env["PATH"])
@@ -111,7 +111,7 @@ printf '%s\n' "$HANS_PS_OUTPUT"
         # Symlink, not copy: copying the system awk breaks its arm64e code
         # signature, so the copied binary is killed on execution on macOS.
         os.symlink(awk, fallback_bin / "awk")
-        self.env["HANS_PS_OUTPUT"] = process_line
+        self.env["CLAUDEY_PS_OUTPUT"] = process_line
         self.env["PATH"] = str(fallback_bin)
 
 
@@ -123,12 +123,12 @@ def posix_uninstall_harness(tmp_path: Path) -> PosixUninstallHarness:
     home = tmp_path / "home"
     bin_dir = home / ".local" / "bin"
     tool_bin = tmp_path / "tool-bin"
-    hans_home = home / ".claudey"
+    claudey_home = home / ".claudey"
     log = tmp_path / "calls.log"
-    for path in (bin_dir, tool_bin, hans_home):
+    for path in (bin_dir, tool_bin, claudey_home):
         path.mkdir(parents=True)
-    (hans_home / "config.json").write_text("{}", encoding="utf-8")
-    for name in HANS_COMMANDS:
+    (claudey_home / "config.json").write_text("{}", encoding="utf-8")
+    for name in CLAUDEY_COMMANDS:
         _write_executable(tool_bin / name, "#!/bin/sh\nexit 0\n")
 
     _write_executable(bin_dir / "claude", "#!/bin/sh\nexit 0\n")
@@ -138,10 +138,10 @@ def posix_uninstall_harness(tmp_path: Path) -> PosixUninstallHarness:
         bin_dir / "pgrep",
         """#!/bin/sh
 # Hermetic pgrep: never consult the real process table, which races with
-# concurrent installer-test subprocesses named like hans-* in CI workers.
-[ -n "${HANS_RUNNING_COMMAND:-}" ] || exit 1
+# concurrent installer-test subprocesses named like claudey-* in CI workers.
+[ -n "${CLAUDEY_RUNNING_COMMAND:-}" ] || exit 1
 case "$*" in
-    *"$HANS_RUNNING_COMMAND"*) printf '4242\n'; exit 0 ;;
+    *"$CLAUDEY_RUNNING_COMMAND"*) printf '4242\n'; exit 0 ;;
     *) exit 1 ;;
 esac
 """,
@@ -167,7 +167,7 @@ if [ "${1:-}" = "tool" ] && [ "${2:-}" = "uninstall" ]; then
         echo 'Tool `claudey` is not installed' >&2
         exit 2
     fi
-    for name in hans-desktop hans-server hans-claude hans-codex hans-pi hans-init claudey; do
+    for name in claudey-desktop claudey-server claudey-claude claudey-codex claudey-pi claudey-init claudey; do
         /bin/rm -f "$FAKE_TOOL_BIN/$name"
     done
     echo "Uninstalled claudey"
@@ -217,19 +217,20 @@ printf '%s\n' "$FAKE_UNAME"
         }
     )
     env.pop("XDG_BIN_HOME", None)
-    return PosixUninstallHarness(home, bin_dir, tool_bin, hans_home, log, env)
+    return PosixUninstallHarness(home, bin_dir, tool_bin, claudey_home, log, env)
 
 
-def test_uninstall_sh_removes_and_verifies_only_hans(
+def test_uninstall_sh_removes_and_verifies_only_claudey(
     posix_uninstall_harness: PosixUninstallHarness,
 ) -> None:
     result = posix_uninstall_harness.run()
 
     assert result.returncode == 0, result.stderr
     assert "Claudey has been removed and verified." in result.stdout
-    assert not posix_uninstall_harness.hans_home.exists()
+    assert not posix_uninstall_harness.claudey_home.exists()
     assert all(
-        not (posix_uninstall_harness.tool_bin / name).exists() for name in HANS_COMMANDS
+        not (posix_uninstall_harness.tool_bin / name).exists()
+        for name in CLAUDEY_COMMANDS
     )
     assert (posix_uninstall_harness.bin_dir / "uv").exists()
     assert (posix_uninstall_harness.bin_dir / "claude").exists()
@@ -240,7 +241,7 @@ def test_uninstall_sh_removes_and_verifies_only_hans(
         "uv:tool uninstall claudey",
         f"rm:-f {posix_uninstall_harness.home / 'Desktop' / 'Claudey.app'}",
         f"rm:-rf {posix_uninstall_harness.home / 'Applications' / 'Claudey.app'}",
-        f"rm:-rf {posix_uninstall_harness.hans_home}",
+        f"rm:-rf {posix_uninstall_harness.claudey_home}",
     ]
 
 
@@ -251,7 +252,7 @@ def test_uninstall_sh_removes_legacy_fcc_shims(
     for name in ("fcc-server", "fcc-claude", "fcc-codex", "fcc-pi", "fcc-desktop"):
         _write_executable(
             tool_bin / name,
-            f"#!/bin/sh\nprintf '%s\\n' '{name} is deprecated: use hans-server' >&2\nexit 2\n",
+            f"#!/bin/sh\nprintf '%s\\n' '{name} is deprecated: use claudey-server' >&2\nexit 2\n",
         )
     foreign = tool_bin / "fcc-other"
     foreign.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
@@ -263,7 +264,7 @@ def test_uninstall_sh_removes_legacy_fcc_shims(
     for name in ("fcc-server", "fcc-claude", "fcc-codex", "fcc-pi", "fcc-desktop"):
         assert not (tool_bin / name).exists(), name
     assert foreign.exists()
-    assert not posix_uninstall_harness.hans_home.exists()
+    assert not posix_uninstall_harness.claudey_home.exists()
 
 
 def test_uninstall_sh_is_idempotent_when_tool_is_already_absent(
@@ -274,7 +275,7 @@ def test_uninstall_sh_is_idempotent_when_tool_is_already_absent(
     result = posix_uninstall_harness.run(fail_step="missing")
 
     assert result.returncode == 0, result.stderr
-    assert not posix_uninstall_harness.hans_home.exists()
+    assert not posix_uninstall_harness.claudey_home.exists()
     assert "already absent" in result.stdout
 
 
@@ -334,7 +335,7 @@ def test_uninstall_sh_preserves_config_when_tool_removal_is_unconfirmed(
     result = posix_uninstall_harness.run(fail_step=failure)
 
     assert result.returncode != 0
-    assert posix_uninstall_harness.hans_home.exists()
+    assert posix_uninstall_harness.claudey_home.exists()
     assert "Claudey has been removed and verified." not in result.stdout
     assert not any(call.startswith("rm:") for call in posix_uninstall_harness.calls())
 
@@ -345,7 +346,7 @@ def test_uninstall_sh_requires_uv_before_deleting_config(
     result = posix_uninstall_harness.run(include_uv=False)
 
     assert result.returncode != 0
-    assert posix_uninstall_harness.hans_home.exists()
+    assert posix_uninstall_harness.claudey_home.exists()
     assert "uv is required" in result.stderr
     assert posix_uninstall_harness.calls() == []
 
@@ -356,9 +357,10 @@ def test_uninstall_sh_reports_purge_failure_after_verified_tool_removal(
     result = posix_uninstall_harness.run(fail_step="purge")
 
     assert result.returncode != 0
-    assert posix_uninstall_harness.hans_home.exists()
+    assert posix_uninstall_harness.claudey_home.exists()
     assert all(
-        not (posix_uninstall_harness.tool_bin / name).exists() for name in HANS_COMMANDS
+        not (posix_uninstall_harness.tool_bin / name).exists()
+        for name in CLAUDEY_COMMANDS
     )
     assert "Claudey has been removed and verified." not in result.stdout
 
@@ -369,9 +371,9 @@ def test_uninstall_sh_dry_run_is_non_mutating(
     result = posix_uninstall_harness.run("--dry-run")
 
     assert result.returncode == 0, result.stderr
-    assert posix_uninstall_harness.hans_home.exists()
+    assert posix_uninstall_harness.claudey_home.exists()
     assert all(
-        (posix_uninstall_harness.tool_bin / name).exists() for name in HANS_COMMANDS
+        (posix_uninstall_harness.tool_bin / name).exists() for name in CLAUDEY_COMMANDS
     )
     assert posix_uninstall_harness.calls() == []
     assert "Dry run complete. No changes were made." in result.stdout
@@ -383,7 +385,7 @@ def test_uninstall_sh_rejects_invalid_options_before_mutation(
     result = posix_uninstall_harness.run("--unknown")
 
     assert result.returncode != 0
-    assert posix_uninstall_harness.hans_home.exists()
+    assert posix_uninstall_harness.claudey_home.exists()
     assert posix_uninstall_harness.calls() == []
 
 
@@ -391,7 +393,7 @@ def test_uninstall_sh_rejects_invalid_options_before_mutation(
     ("command_name", "process_args"),
     (
         ("claudey", "/home/user/.local/bin/claudey"),
-        ("hans-server", "/usr/bin/python3 /home/user/.local/bin/hans-server"),
+        ("claudey-server", "/usr/bin/python3 /home/user/.local/bin/claudey-server"),
     ),
 )
 def test_uninstall_sh_process_fallback_reads_full_command_line(
@@ -404,7 +406,7 @@ def test_uninstall_sh_process_fallback_reads_full_command_line(
     result = posix_uninstall_harness.run()
 
     assert result.returncode != 0
-    assert posix_uninstall_harness.hans_home.exists()
+    assert posix_uninstall_harness.claudey_home.exists()
     assert posix_uninstall_harness.calls() == []
     assert command_name in result.stderr
 
@@ -414,7 +416,7 @@ class PowerShellUninstallHarness:
     home: Path
     bin_dir: Path
     tool_bin: Path
-    hans_home: Path
+    claudey_home: Path
     log: Path
     env: dict[str, str]
     powershell: str
@@ -455,7 +457,7 @@ class PowerShellUninstallHarness:
         return self.log.read_text(encoding="utf-8").splitlines()
 
     def remove_entry_points(self) -> None:
-        for name in HANS_COMMANDS:
+        for name in CLAUDEY_COMMANDS:
             (self.tool_bin / f"{name}.cmd").unlink(missing_ok=True)
 
 
@@ -474,20 +476,20 @@ def powershell_uninstall_harness(
     home = tmp_path / "home"
     bin_dir = home / ".local" / "bin"
     tool_bin = tmp_path / "tool-bin"
-    hans_home = home / ".claudey"
+    claudey_home = home / ".claudey"
     app_data = tmp_path / "app-data"
     log = tmp_path / "calls.log"
-    for path in (bin_dir, tool_bin, hans_home, app_data):
+    for path in (bin_dir, tool_bin, claudey_home, app_data):
         path.mkdir(parents=True)
-    (hans_home / "config.json").write_text("{}", encoding="utf-8")
-    for name in HANS_COMMANDS:
+    (claudey_home / "config.json").write_text("{}", encoding="utf-8")
+    for name in CLAUDEY_COMMANDS:
         (tool_bin / f"{name}.cmd").write_text(
             "@echo off\nexit /b 0\n", encoding="utf-8"
         )
     for name in ("claude", "codex", "pi"):
         (bin_dir / f"{name}.cmd").write_text("@echo off\nexit /b 0\n", encoding="utf-8")
 
-    uv_commands = " ".join(HANS_COMMANDS)
+    uv_commands = " ".join(CLAUDEY_COMMANDS)
     (bin_dir / "uv.cmd").write_text(
         rf"""@echo off
 echo uv:%*>>"%CALL_LOG%"
@@ -529,7 +531,7 @@ function Remove-Item {
     }
     Microsoft.PowerShell.Management\Remove-Item @PSBoundParameters
 }
-$installer = [scriptblock]::Create([IO.File]::ReadAllText($env:HANS_UNINSTALLER))
+$installer = [scriptblock]::Create([IO.File]::ReadAllText($env:CLAUDEY_UNINSTALLER))
 if ($env:UNINSTALL_DRY_RUN -eq "1") {
     & $installer -DryRun
 }
@@ -548,7 +550,7 @@ else {
         _create_windows_shortcut(
             powershell,
             shortcut,
-            tool_bin / "hans-desktop.cmd",
+            tool_bin / "claudey-desktop.cmd",
         )
 
     system_root = os.environ["SYSTEMROOT"]
@@ -564,27 +566,27 @@ else {
             "APPDATA": str(app_data),
             "CALL_LOG": str(log),
             "FAKE_TOOL_BIN": str(tool_bin),
-            "HANS_UNINSTALLER": str(_repo_root() / "scripts" / "uninstall.ps1"),
+            "CLAUDEY_UNINSTALLER": str(_repo_root() / "scripts" / "uninstall.ps1"),
             "FAIL_STEP": "",
             "UNINSTALL_DRY_RUN": "0",
         }
     )
     return PowerShellUninstallHarness(
-        home, bin_dir, tool_bin, hans_home, log, env, powershell, wrapper
+        home, bin_dir, tool_bin, claudey_home, log, env, powershell, wrapper
     )
 
 
-def test_uninstall_ps1_removes_and_verifies_only_hans(
+def test_uninstall_ps1_removes_and_verifies_only_claudey(
     powershell_uninstall_harness: PowerShellUninstallHarness,
 ) -> None:
     result = powershell_uninstall_harness.run()
 
     assert result.returncode == 0, result.stderr
     assert "Claudey has been removed and verified." in result.stdout
-    assert not powershell_uninstall_harness.hans_home.exists()
+    assert not powershell_uninstall_harness.claudey_home.exists()
     assert all(
         not (powershell_uninstall_harness.tool_bin / f"{name}.cmd").exists()
-        for name in HANS_COMMANDS
+        for name in CLAUDEY_COMMANDS
     )
     assert (powershell_uninstall_harness.bin_dir / "uv.cmd").exists()
     assert (powershell_uninstall_harness.bin_dir / "claude.cmd").exists()
@@ -595,7 +597,7 @@ def test_uninstall_ps1_removes_and_verifies_only_hans(
         "uv:tool uninstall claudey",
         f"remove:{Path(powershell_uninstall_harness.env['USERPROFILE']) / 'Desktop' / 'Claudey.lnk'}",
         f"remove:{Path(powershell_uninstall_harness.env['APPDATA']) / 'Microsoft' / 'Windows' / 'Start Menu' / 'Programs' / 'Claudey.lnk'}",
-        f"remove:{powershell_uninstall_harness.hans_home}",
+        f"remove:{powershell_uninstall_harness.claudey_home}",
     ]
 
 
@@ -605,7 +607,7 @@ def test_uninstall_ps1_removes_legacy_fcc_shims(
     tool_bin = powershell_uninstall_harness.tool_bin
     for name in ("fcc-server", "fcc-claude", "fcc-codex", "fcc-pi", "fcc-desktop"):
         (tool_bin / f"{name}.cmd").write_text(
-            f"@echo off\necho {name} is deprecated: use hans-server 1>&2\nexit /b 2\n",
+            f"@echo off\necho {name} is deprecated: use claudey-server 1>&2\nexit /b 2\n",
             encoding="utf-8",
         )
     foreign = tool_bin / "fcc-other.cmd"
@@ -618,7 +620,7 @@ def test_uninstall_ps1_removes_legacy_fcc_shims(
     for name in ("fcc-server", "fcc-claude", "fcc-codex", "fcc-pi", "fcc-desktop"):
         assert not (tool_bin / f"{name}.cmd").exists(), name
     assert foreign.exists()
-    assert not powershell_uninstall_harness.hans_home.exists()
+    assert not powershell_uninstall_harness.claudey_home.exists()
 
 
 def test_uninstall_ps1_preserves_unowned_desktop_shortcut(
@@ -653,7 +655,7 @@ def test_uninstall_ps1_is_idempotent_when_tool_is_already_absent(
     result = powershell_uninstall_harness.run(fail_step="missing")
 
     assert result.returncode == 0, result.stderr
-    assert not powershell_uninstall_harness.hans_home.exists()
+    assert not powershell_uninstall_harness.claudey_home.exists()
     assert "already absent" in result.stdout
 
 
@@ -665,7 +667,7 @@ def test_uninstall_ps1_preserves_config_when_tool_removal_is_unconfirmed(
     result = powershell_uninstall_harness.run(fail_step=failure)
 
     assert result.returncode != 0
-    assert powershell_uninstall_harness.hans_home.exists()
+    assert powershell_uninstall_harness.claudey_home.exists()
     assert "Claudey has been removed and verified." not in result.stdout
     assert not any(
         call.startswith("remove:") for call in powershell_uninstall_harness.calls()
@@ -678,7 +680,7 @@ def test_uninstall_ps1_requires_uv_before_deleting_config(
     result = powershell_uninstall_harness.run(include_uv=False)
 
     assert result.returncode != 0
-    assert powershell_uninstall_harness.hans_home.exists()
+    assert powershell_uninstall_harness.claudey_home.exists()
     assert "uv is required" in result.stderr
     assert powershell_uninstall_harness.calls() == []
 
@@ -689,10 +691,10 @@ def test_uninstall_ps1_reports_purge_failure_after_verified_tool_removal(
     result = powershell_uninstall_harness.run(fail_step="purge")
 
     assert result.returncode != 0
-    assert powershell_uninstall_harness.hans_home.exists()
+    assert powershell_uninstall_harness.claudey_home.exists()
     assert all(
         not (powershell_uninstall_harness.tool_bin / f"{name}.cmd").exists()
-        for name in HANS_COMMANDS
+        for name in CLAUDEY_COMMANDS
     )
     assert "Claudey has been removed and verified." not in result.stdout
 
@@ -703,10 +705,10 @@ def test_uninstall_ps1_dry_run_is_non_mutating(
     result = powershell_uninstall_harness.run(dry_run=True)
 
     assert result.returncode == 0, result.stderr
-    assert powershell_uninstall_harness.hans_home.exists()
+    assert powershell_uninstall_harness.claudey_home.exists()
     assert all(
         (powershell_uninstall_harness.tool_bin / f"{name}.cmd").exists()
-        for name in HANS_COMMANDS
+        for name in CLAUDEY_COMMANDS
     )
     assert powershell_uninstall_harness.calls() == []
     assert "Dry run complete. No changes were made." in result.stdout
@@ -721,7 +723,7 @@ def test_uninstallers_guard_running_commands_and_preserve_shared_owners() -> Non
     assert "pgrep" in shell
     assert "Get-Process" in powershell
     for text in (shell, powershell):
-        for command in HANS_COMMANDS:
+        for command in CLAUDEY_COMMANDS:
             assert command in text
         assert "npm uninstall" not in text
         assert "uv self uninstall" not in text
@@ -742,4 +744,4 @@ def test_readme_uninstall_uses_raw_urls_and_verification_contract() -> None:
         '& ([scriptblock]::Create((irm "https://raw.githubusercontent.com/'
         'vzfghc/claudey/main/scripts/uninstall.ps1")))'
     ) in text
-    assert "verifies every HANS command is gone" in text
+    assert "verifies every CLAUDEY command is gone" in text

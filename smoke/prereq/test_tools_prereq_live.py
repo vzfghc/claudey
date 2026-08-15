@@ -24,8 +24,8 @@ def test_live_tool_use_when_configured_model_supports_tools(
     provider_model = models[0]
 
     payload = message_payload(
-        "Use the echo_smoke tool once with value HANS_SMOKE_TOOL.",
-        model="hans-smoke-default",
+        "Use the echo_smoke tool once with value CLAUDEY_SMOKE_TOOL.",
+        model="claudey-smoke-default",
         max_tokens=256,
         extra={
             "tools": [

@@ -126,11 +126,11 @@ provider catalog, supported-ID, and factory synchronization contract.
 
 [core/version.py](src/claudey/core/version.py) is the sole runtime owner
 of the Claudey release version. It reads installed distribution metadata for
-FastAPI/OpenAPI, hans-owned CLI `--version` output, and the outbound web-tools
+FastAPI/OpenAPI, claudey-owned CLI `--version` output, and the outbound web-tools
 user agent. A source-only checkout without installed metadata reports the
 explicit `0+unknown` fallback; runtime code never parses `pyproject.toml` or
 duplicates a release literal. Client launcher arguments remain transparent to
-their wrapped clients except for hans-owned ephemeral provider configuration.
+their wrapped clients except for claudey-owned ephemeral provider configuration.
 
 The main ownership rule is that Anthropic and Responses protocol schemas and
 shared protocol behavior belong in [src/claudey/core/](src/claudey/core/), while request routing and
@@ -152,19 +152,19 @@ Claudey optimizes for installed user workflows, not internal compatibility. The
 behavior that must be preserved is that these user-facing surfaces run correctly
 for real prompts against supported providers:
 
-- `hans-server`, the Windows/macOS Claudey Desktop shell, and the local Admin UI for
+- `claudey-server`, the Windows/macOS Claudey Desktop shell, and the local Admin UI for
   configuring supported providers, model routing, auth, server tools, messaging,
   and diagnostics.
-- `hans-claude`, Claude Code, and the Anthropic-compatible proxy behavior Claude
+- `claudey-claude`, Claude Code, and the Anthropic-compatible proxy behavior Claude
   Code relies on, including streaming text, native/interleaved thinking, tool
   use/results, model discovery, token counting, retries/recovery, and supported
   local server-tool behavior.
-- `hans-codex`, Codex CLI/extensions, and the streaming OpenAI Responses behavior
+- `claudey-codex`, Codex CLI/extensions, and the streaming OpenAI Responses behavior
   Codex relies on, including native/interleaved reasoning, function and custom
   tool calls, generated `/model` catalog support, Responses stream lifecycle
   events, and Responses-to-Anthropic conversion at the adapter boundary.
-- `hans-pi`, Pi, and the Anthropic-compatible proxy behavior Pi relies on,
-  including an hans-scoped model catalog, streaming text and reasoning, and tool
+- `claudey-pi`, Pi, and the Anthropic-compatible proxy behavior Pi relies on,
+  including an claudey-scoped model catalog, streaming text and reasoning, and tool
   use/results.
 - Configured Discord and Telegram messaging bridges, including command handling,
   reply-based conversation branches, status updates, transcript rendering,
@@ -214,12 +214,12 @@ new places to add unrelated behavior:
 
 Console scripts are registered in [pyproject.toml](pyproject.toml):
 
-- `hans-server` calls `claudey.cli.entrypoints:serve`.
-- `hans-desktop` is a GUI script calling
+- `claudey-server` calls `claudey.cli.entrypoints:serve`.
+- `claudey-desktop` is a GUI script calling
   `claudey.cli.desktop_entrypoint:launch` on Windows and macOS.
-- `hans-claude` calls `claudey.cli.launchers.claude:launch`.
-- `hans-codex` calls `claudey.cli.launchers.codex:launch`.
-- `hans-pi` calls `claudey.cli.launchers.pi:launch`.
+- `claudey-claude` calls `claudey.cli.launchers.claude:launch`.
+- `claudey-codex` calls `claudey.cli.launchers.codex:launch`.
+- `claudey-pi` calls `claudey.cli.launchers.pi:launch`.
 
 [scripts/install.sh](scripts/install.sh) and [scripts/install.ps1](scripts/install.ps1)
 install or update the uv tool plus optional voice extras. On Windows the
@@ -248,7 +248,7 @@ one worker runs the same in-process `ServerSupervisor` with console output and
 automatic browser launch disabled. A second desktop launch waits for health,
 opens the existing Admin page, and exits. Tray restart delegates to the canonical
 supervisor; tray quit requests the same graceful ASGI and application-runtime
-shutdown as `hans-server`. [cli/desktop_tray.py](src/claudey/cli/desktop_tray.py)
+shutdown as `claudey-server`. [cli/desktop_tray.py](src/claudey/cli/desktop_tray.py)
 owns only native status-area presentation and callbacks.
 
 [runtime/bootstrap.py](src/claudey/runtime/bootstrap.py) is the single production composition function. The CLI
@@ -321,7 +321,7 @@ in [config/env_files.py](src/claudey/config/env_files.py) and uses this order:
 
 1. repo-local `.env`;
 2. managed `~/.Claudey/.env`;
-3. optional `HANS_ENV_FILE`, appended when present.
+3. optional `CLAUDEY_ENV_FILE`, appended when present.
 
 Later dotenv files override earlier dotenv files. Process environment variables
 also participate through Pydantic settings resolution. `ANTHROPIC_AUTH_TOKEN`
@@ -347,8 +347,8 @@ Model routing configuration is tiered:
   `REASONING_HAIKU` accept the same values plus `inherit`.
 
 [config/reasoning.py](src/claudey/config/reasoning.py) owns the typed
-configuration vocabulary. hans-owned dotenv files receive a one-time rename and
-value migration from the retired boolean settings; explicit `HANS_ENV_FILE`
+configuration vocabulary. claudey-owned dotenv files receive a one-time rename and
+value migration from the retired boolean settings; explicit `CLAUDEY_ENV_FILE`
 files are never rewritten and instead receive an actionable startup warning.
 
 [config/model_refs.py](src/claudey/config/model_refs.py) owns provider-prefixed model ref
@@ -422,7 +422,7 @@ it does not depend on FastAPI, provider implementations, or the full settings
 object.
 [api/response_streams.py](src/claudey/api/response_streams.py) owns public streaming egress
 commit timing. It waits for the first protocol chunk before returning a
-successful hans-owned `StreamingResponse`. Its explicit replay iterator owns the
+successful claudey-owned `StreamingResponse`. Its explicit replay iterator owns the
 prefetched stream even before replay begins. The response itself owns one
 idempotent finalization task: close the body transitively, then release the
 provider-generation lease. This finalizer surrounds the real ASGI send and runs
@@ -562,7 +562,7 @@ not fail server startup, Admin operations, discovery, or inference. Shutdown
 never publishes the cleared in-memory cache.
 
 The Codex App reads `model_catalog_json` at startup, so it must restart to see a
-later catalog publication. `hans-codex` remains an additional launch-time
+later catalog publication. `claudey-codex` remains an additional launch-time
 synchronizer: it fetches the same `/v1/models` response, uses the same adapter
 and writer, and passes the path as an ephemeral override. Codex users open the
 native picker with `/model`; Claudey does not implement a proxy-level `/models`
@@ -804,7 +804,7 @@ The boundary has five hard rules:
 2. Prefer a provider's named effort vocabulary; use Claudey's documented numeric
    scale only when the provider exposes a numeric budget rather than named effort.
 3. Never use the output-token limit as a reasoning budget. Forward exact or
-   hans-mapped budgets only through documented numeric fields; otherwise translate
+   claudey-mapped budgets only through documented numeric fields; otherwise translate
    a supported named or boolean control and leave unsupported precision upstream.
 4. Provider-default intent emits no compute-control field. Explicit off requests
    an upstream disable where supported and always suppresses reasoning output at
@@ -1086,11 +1086,11 @@ participate in this local boundary.
 
 [cli/proxy_auth.py](src/claudey/cli/proxy_auth.py) owns the neutral
 proxy-auth token policy shared by client launchers. A blank configured token
-becomes the local-only `hans-no-auth` sentinel so clients cross their login gates
+becomes the local-only `claudey-no-auth` sentinel so clients cross their login gates
 while Claudey continues to run without API authentication.
 
 [cli/claude_env.py](src/claudey/cli/claude_env.py) owns the canonical
-Claude Code proxy environment used by every hans-launched Claude process. It
+Claude Code proxy environment used by every claudey-launched Claude process. It
 strips inherited `ANTHROPIC_*` variables, sets `ANTHROPIC_BASE_URL`, enables
 gateway model discovery, configures the auto-compact window, disables
 nonessential Anthropic traffic, and always sets `ANTHROPIC_AUTH_TOKEN`. Blank
@@ -1098,15 +1098,15 @@ proxy auth uses the shared local-only sentinel so Claude Code reaches the proxy
 instead of stopping at its login gate.
 
 [cli/launchers/claude.py](src/claudey/cli/launchers/claude.py) owns the installed
-`hans-claude` launcher:
+`claudey-claude` launcher:
 
-- `hans-claude` applies the shared proxy environment without changing the user's
+- `claudey-claude` applies the shared proxy environment without changing the user's
   Claude command arguments.
 
 [cli/launchers/codex.py](src/claudey/cli/launchers/codex.py) owns the installed
-`hans-codex` launcher:
+`claudey-codex` launcher:
 
-- `hans-codex` strips official OpenAI and Codex credential variables.
+- `claudey-codex` strips official OpenAI and Codex credential variables.
 - It strips parent-only Codex thread, shell, permission, and origin context so
   each launched client owns an independent runtime identity.
 - It creates an ephemeral `Claudey` model provider with `wire_api = "responses"` and
@@ -1116,14 +1116,14 @@ instead of stopping at its login gate.
   native `/model` picker lists Claudey provider slugs. Catalog generation is
   fail-open: launch continues with a warning if the catalog cannot be prepared.
 - The server lifecycle independently keeps that same file synchronized for
-  Codex App and IDE processes that are not launched through `hans-codex`.
+  Codex App and IDE processes that are not launched through `claudey-codex`.
 - Catalog discovery and inference both authenticate with HTTP bearer authorization.
-- It stores the proxy auth token in `HANS_CODEX_API_KEY` for Codex's provider
+- It stores the proxy auth token in `CLAUDEY_CODEX_API_KEY` for Codex's provider
   `env_key` to read. This process-local variable is a client credential carrier,
   not a second Claudey setting.
 
 [cli/launchers/pi.py](src/claudey/cli/launchers/pi.py) owns the installed
-`hans-pi` launcher and [cli/launchers/pi_extension.ts](src/claudey/cli/launchers/pi_extension.ts)
+`claudey-pi` launcher and [cli/launchers/pi_extension.ts](src/claudey/cli/launchers/pi_extension.ts)
 is its bundled Pi adapter:
 
 - Session commands load the extension from its absolute installed path and
@@ -1135,10 +1135,10 @@ is its bundled Pi adapter:
   silently falls back to a different provider.
 - Catalog discovery and provider inference use HTTP bearer authorization. Pi's
   provider API-key field remains its process-local credential carrier.
-- Claudey connection values live only in child-process `HANS_PI_*` variables. Native
+- Claudey connection values live only in child-process `CLAUDEY_PI_*` variables. Native
   Pi credentials and persistent configuration remain untouched.
 - Pi package-management, configuration, help, and version commands pass through
-  unchanged because they do not create an hans-backed session.
+  unchanged because they do not create an claudey-backed session.
 
 [cli/managed/](src/claudey/cli/managed/) owns managed Claude Code subprocesses used by
 Discord and Telegram messaging. Managed task invocations extend the same proxy

@@ -1,4 +1,4 @@
-"""Installed `hans-codex` launcher."""
+"""Installed `claudey-codex` launcher."""
 
 import json
 import os
@@ -23,7 +23,7 @@ from .common import (
     run_client_process,
 )
 
-_CODEX_AUTH_ENV_KEY = "HANS_CODEX_API_KEY"
+_CODEX_AUTH_ENV_KEY = "CLAUDEY_CODEX_API_KEY"
 _DISPLAY_NAME = "Codex CLI"
 _DEFAULT_BINARY = "codex"
 _INSTALL_HINT = "Install Codex with: npm install -g @openai/codex"
@@ -55,7 +55,7 @@ def launch(argv: Sequence[str] | None = None) -> None:
             f"Claudey proxy is not reachable at {proxy_root_url}: {error}",
             file=sys.stderr,
         )
-        print("Start it in another terminal with: hans-server", file=sys.stderr)
+        print("Start it in another terminal with: claudey-server", file=sys.stderr)
         raise SystemExit(1)
 
     binary_name = codex_binary_name()
@@ -195,15 +195,15 @@ def codex_config_args(*, api_url: str, model: str | None = None) -> list[str]:
 
     args = [
         "-c",
-        _toml_assignment("model_provider", "hans"),
+        _toml_assignment("model_provider", "claudey"),
         "-c",
-        _toml_assignment("model_providers.hans.name", "Claudey"),
+        _toml_assignment("model_providers.claudey.name", "Claudey"),
         "-c",
-        _toml_assignment("model_providers.hans.base_url", _ensure_v1_url(api_url)),
+        _toml_assignment("model_providers.claudey.base_url", _ensure_v1_url(api_url)),
         "-c",
-        _toml_assignment("model_providers.hans.env_key", _CODEX_AUTH_ENV_KEY),
+        _toml_assignment("model_providers.claudey.env_key", _CODEX_AUTH_ENV_KEY),
         "-c",
-        _toml_assignment("model_providers.hans.wire_api", "responses"),
+        _toml_assignment("model_providers.claudey.wire_api", "responses"),
     ]
     if model:
         args.extend(["-c", _toml_assignment("model", model)])

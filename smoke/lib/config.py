@@ -47,11 +47,11 @@ SECRET_KEY_PARTS = ("KEY", "TOKEN", "SECRET", "WEBHOOK", "AUTH")
 
 
 def smoke_env(key: str) -> str | None:
-    """Return the canonical HANS_* env value, falling back to legacy FCC_*.
+    """Return the canonical CLAUDEY_* env value, falling back to legacy HANS_* and FCC_*.
 
     The Claudey rebrand renamed the smoke-suite environment variables from the
-    FCC_* prefix to HANS_*; both spellings keep working so existing developer
-    environments and CI configs survive the upgrade unchanged.
+    FCC_* prefix to CLAUDEY_* (via HANS_*); all spellings keep working so existing
+    developer environments and CI configs survive the upgrade unchanged.
     """
     return _env_value(os.environ, key)
 
@@ -65,8 +65,9 @@ def smoke_env_default(key: str, default: str) -> str:
 
 def _env_value(source: Mapping[str, str], key: str) -> str | None:
     value = source.get(key)
-    if value is None and key.startswith("HANS_"):
-        value = source.get(f"FCC_{key.removeprefix('HANS_')}")
+    if value is None and key.startswith("CLAUDEY_"):
+        rest = key.removeprefix("CLAUDEY_")
+        value = source.get(f"HANS_{rest}") or source.get(f"FCC_{rest}")
     return value
 
 
@@ -122,12 +123,14 @@ OPENROUTER_FREE_CLI_DEFAULT_MODELS: tuple[str, ...] = (
 TARGET_REQUIRED_ENV: dict[str, tuple[str, ...]] = {
     "api": (),
     "auth": (),
-    "cli": ("HANS_SMOKE_CLAUDE_BIN", "configured provider for Claude CLI prompt"),
+    "cli": ("CLAUDEY_SMOKE_CLAUDE_BIN", "configured provider for Claude CLI prompt"),
     "clients": (),
     "config": (),
     "extensibility": (),
     "messaging": (),
-    "providers": ("configured provider credentials/endpoints or HANS_SMOKE_MODEL_*",),
+    "providers": (
+        "configured provider credentials/endpoints or CLAUDEY_SMOKE_MODEL_*",
+    ),
     "rate_limit": ("configured provider model",),
     "tools": ("configured tool-capable provider model",),
     "lmstudio": ("LM_STUDIO_BASE_URL with a running LM Studio server",),
@@ -135,21 +138,21 @@ TARGET_REQUIRED_ENV: dict[str, tuple[str, ...]] = {
     "ollama": ("OLLAMA_BASE_URL with a running Ollama server",),
     "nvidia_nim_cli": (
         "NVIDIA_NIM_API_KEY",
-        "HANS_SMOKE_CLAUDE_BIN or claude on PATH",
+        "CLAUDEY_SMOKE_CLAUDE_BIN or claude on PATH",
     ),
     "openrouter_free_cli": (
         "OPENROUTER_API_KEY",
-        "HANS_SMOKE_CLAUDE_BIN or claude on PATH",
+        "CLAUDEY_SMOKE_CLAUDE_BIN or claude on PATH",
     ),
     "telegram": (
         "TELEGRAM_BOT_TOKEN",
-        "ALLOWED_TELEGRAM_USER_ID or HANS_SMOKE_TELEGRAM_CHAT_ID",
+        "ALLOWED_TELEGRAM_USER_ID or CLAUDEY_SMOKE_TELEGRAM_CHAT_ID",
     ),
     "discord": (
         "DISCORD_BOT_TOKEN",
-        "ALLOWED_DISCORD_CHANNELS or HANS_SMOKE_DISCORD_CHANNEL_ID",
+        "ALLOWED_DISCORD_CHANNELS or CLAUDEY_SMOKE_DISCORD_CHANNEL_ID",
     ),
-    "voice": ("VOICE_NOTE_ENABLED=true", "HANS_SMOKE_RUN_VOICE=1"),
+    "voice": ("VOICE_NOTE_ENABLED=true", "CLAUDEY_SMOKE_RUN_VOICE=1"),
 }
 
 
@@ -186,15 +189,15 @@ class SmokeConfig:
         return cls(
             root=root,
             results_dir=root / ".smoke-results",
-            live=smoke_env("HANS_LIVE_SMOKE") == "1",
-            interactive=smoke_env("HANS_SMOKE_INTERACTIVE") == "1",
-            targets=_parse_targets(smoke_env("HANS_SMOKE_TARGETS")),
-            provider_matrix=_parse_csv(smoke_env("HANS_SMOKE_PROVIDER_MATRIX")),
-            timeout_s=float(smoke_env_default("HANS_SMOKE_TIMEOUT_S", "45")),
+            live=smoke_env("CLAUDEY_LIVE_SMOKE") == "1",
+            interactive=smoke_env("CLAUDEY_SMOKE_INTERACTIVE") == "1",
+            targets=_parse_targets(smoke_env("CLAUDEY_SMOKE_TARGETS")),
+            provider_matrix=_parse_csv(smoke_env("CLAUDEY_SMOKE_PROVIDER_MATRIX")),
+            timeout_s=float(smoke_env_default("CLAUDEY_SMOKE_TIMEOUT_S", "45")),
             prompt=smoke_env_default(
-                "HANS_SMOKE_PROMPT", "Reply with exactly: HANS_SMOKE_PONG"
+                "CLAUDEY_SMOKE_PROMPT", "Reply with exactly: CLAUDEY_SMOKE_PONG"
             ),
-            claude_bin=smoke_env_default("HANS_SMOKE_CLAUDE_BIN", "claude"),
+            claude_bin=smoke_env_default("CLAUDEY_SMOKE_CLAUDE_BIN", "claude"),
             worker_id=os.getenv("PYTEST_XDIST_WORKER", "main"),
             settings=settings,
         )
@@ -263,7 +266,7 @@ class SmokeConfig:
             return None
         if not self.has_provider_configuration("mistral"):
             return None
-        override_env = "HANS_SMOKE_MODEL_MISTRAL_REASONING"
+        override_env = "CLAUDEY_SMOKE_MODEL_MISTRAL_REASONING"
         if override := smoke_env(override_env):
             full_model = _normalize_provider_model("mistral", override)
             source = override_env
@@ -282,14 +285,14 @@ class SmokeConfig:
             return True
         if self.provider_matrix and provider in self.provider_matrix:
             return True
-        return bool(smoke_env(f"HANS_SMOKE_MODEL_{provider.upper()}"))
+        return bool(smoke_env(f"CLAUDEY_SMOKE_MODEL_{provider.upper()}"))
 
     def has_provider_configuration(self, provider: str) -> bool:
         descriptor = PROVIDER_CATALOG.get(provider)
         if descriptor is None:
             return False
         if descriptor.auth_kind is ProviderAuthKind.CONNECTED_ACCOUNT:
-            return bool(smoke_env(f"HANS_SMOKE_MODEL_{provider.upper()}"))
+            return bool(smoke_env(f"CLAUDEY_SMOKE_MODEL_{provider.upper()}"))
         return has_provider_configuration(descriptor, self.settings)
 
 
@@ -315,7 +318,7 @@ def _parse_targets(raw: str | None) -> frozenset[str]:
 
 
 def _provider_smoke_model(provider: str) -> tuple[str, str]:
-    override_env = f"HANS_SMOKE_MODEL_{provider.upper()}"
+    override_env = f"CLAUDEY_SMOKE_MODEL_{provider.upper()}"
     if override := smoke_env(override_env):
         return _normalize_provider_model(provider, override), override_env
 
@@ -329,7 +332,7 @@ def _provider_smoke_model(provider: str) -> tuple[str, str]:
 def _normalize_provider_model(provider: str, raw_model: str) -> str:
     model = raw_model.strip()
     if not model:
-        msg = f"HANS_SMOKE_MODEL_{provider.upper()} must not be empty"
+        msg = f"CLAUDEY_SMOKE_MODEL_{provider.upper()} must not be empty"
         raise ValueError(msg)
     if "/" in model and parse_provider_type(model) == provider:
         return model
@@ -345,19 +348,24 @@ def nvidia_nim_cli_model_refs(
     de-duplicated order and provenance in reports.
     """
     source = env if env is not None else os.environ
-    explicit_models = _parse_csv_ordered(_env_value(source, "HANS_SMOKE_NIM_MODELS"))
-    extra_models = _parse_csv_ordered(_env_value(source, "HANS_SMOKE_NIM_EXTRA_MODELS"))
+    explicit_models = _parse_csv_ordered(_env_value(source, "CLAUDEY_SMOKE_NIM_MODELS"))
+    extra_models = _parse_csv_ordered(
+        _env_value(source, "CLAUDEY_SMOKE_NIM_EXTRA_MODELS")
+    )
 
-    if _env_value(source, "HANS_SMOKE_NIM_MODELS") is not None and not explicit_models:
-        raise ValueError("HANS_SMOKE_NIM_MODELS must list at least one model")
+    if (
+        _env_value(source, "CLAUDEY_SMOKE_NIM_MODELS") is not None
+        and not explicit_models
+    ):
+        raise ValueError("CLAUDEY_SMOKE_NIM_MODELS must list at least one model")
 
     models: list[tuple[str, str]] = []
     base_models = explicit_models or NVIDIA_NIM_CLI_DEFAULT_MODELS
     base_source = (
-        "HANS_SMOKE_NIM_MODELS" if explicit_models else "nvidia_nim_cli_default"
+        "CLAUDEY_SMOKE_NIM_MODELS" if explicit_models else "nvidia_nim_cli_default"
     )
     models.extend((model, base_source) for model in base_models)
-    models.extend((model, "HANS_SMOKE_NIM_EXTRA_MODELS") for model in extra_models)
+    models.extend((model, "CLAUDEY_SMOKE_NIM_EXTRA_MODELS") for model in extra_models)
 
     normalized: dict[str, str] = {}
     for raw_model, model_source in models:
@@ -372,30 +380,30 @@ def openrouter_free_cli_model_refs(
     """Return normalized OpenRouter free CLI matrix model refs in deterministic order."""
     source = env if env is not None else os.environ
     explicit_models = _parse_csv_ordered(
-        _env_value(source, "HANS_SMOKE_OPENROUTER_FREE_MODELS")
+        _env_value(source, "CLAUDEY_SMOKE_OPENROUTER_FREE_MODELS")
     )
     extra_models = _parse_csv_ordered(
-        _env_value(source, "HANS_SMOKE_OPENROUTER_FREE_EXTRA_MODELS")
+        _env_value(source, "CLAUDEY_SMOKE_OPENROUTER_FREE_EXTRA_MODELS")
     )
 
     if (
-        _env_value(source, "HANS_SMOKE_OPENROUTER_FREE_MODELS") is not None
+        _env_value(source, "CLAUDEY_SMOKE_OPENROUTER_FREE_MODELS") is not None
         and not explicit_models
     ):
         raise ValueError(
-            "HANS_SMOKE_OPENROUTER_FREE_MODELS must list at least one model"
+            "CLAUDEY_SMOKE_OPENROUTER_FREE_MODELS must list at least one model"
         )
 
     models: list[tuple[str, str]] = []
     base_models = explicit_models or OPENROUTER_FREE_CLI_DEFAULT_MODELS
     base_source = (
-        "HANS_SMOKE_OPENROUTER_FREE_MODELS"
+        "CLAUDEY_SMOKE_OPENROUTER_FREE_MODELS"
         if explicit_models
         else "openrouter_free_cli_default"
     )
     models.extend((model, base_source) for model in base_models)
     models.extend(
-        (model, "HANS_SMOKE_OPENROUTER_FREE_EXTRA_MODELS") for model in extra_models
+        (model, "CLAUDEY_SMOKE_OPENROUTER_FREE_EXTRA_MODELS") for model in extra_models
     )
 
     normalized: dict[str, str] = {}

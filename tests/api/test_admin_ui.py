@@ -6,7 +6,7 @@ from importlib.util import find_spec
 import pytest
 from playwright.sync_api import Page, expect
 
-_ADMIN_PORT = 8082
+_ADMIN_PORT = 8090
 
 
 def _admin_server_running() -> bool:
@@ -23,14 +23,14 @@ def _admin_server_running() -> bool:
 # plugin is available AND the admin server is actually up.
 pytestmark = pytest.mark.skipif(
     find_spec("pytest_playwright") is None or not _admin_server_running(),
-    reason="requires pytest-playwright and the admin server on 127.0.0.1:8082",
+    reason="requires pytest-playwright and the admin server on 127.0.0.1:8090",
 )
 
 
 @pytest.fixture
 def admin_page(page: Page) -> Page:
     """Navigate to the admin page and wait for it to load."""
-    page.goto("http://localhost:8082/admin/")
+    page.goto("http://localhost:8090/admin/")
     page.wait_for_selector(".app-shell")
     return page
 

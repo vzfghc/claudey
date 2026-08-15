@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "claudey"
-version = "5.26.0"
+version = "6.0.0"
 description = "Local proxy connecting coding agents to OpenAI-compatible AI providers"
 readme = "README.md"
 requires-python = ">=3.14.0"
@@ -32,13 +32,13 @@ dependencies = [
 
 [project.scripts]
 claudey = "claudey.cli.dispatcher:main"
-hans-server = "claudey.cli.entrypoints:serve"
-hans-claude = "claudey.cli.launchers.claude:launch"
-hans-codex = "claudey.cli.launchers.codex:launch"
-hans-pi = "claudey.cli.launchers.pi:launch"
+claudey-server = "claudey.cli.entrypoints:serve"
+claudey-claude = "claudey.cli.launchers.claude:launch"
+claudey-codex = "claudey.cli.launchers.codex:launch"
+claudey-pi = "claudey.cli.launchers.pi:launch"
 
 [project.gui-scripts]
-hans-desktop = "claudey.cli.desktop_entrypoint:launch"
+claudey-desktop = "claudey.cli.desktop_entrypoint:launch"
 
 [project.optional-dependencies]
 voice = [
@@ -133,7 +133,7 @@ markers = [
     "clients: client compatibility checks",
     "voice: voice transcription checks",
     "contract: deterministic feature contract checks",
-    "smoke_target(name): route a smoke test behind HANS_SMOKE_TARGETS",
+    "smoke_target(name): route a smoke test behind CLAUDEY_SMOKE_TARGETS",
     "xdist_group(name): group smoke provider items under pytest-xdist --dist=loadgroup",
 ]
 

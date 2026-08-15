@@ -1,8 +1,8 @@
 """Unified ``claudey`` command that dispatches to the installed entry points.
 
 ``claudey`` is a thin wrapper over the same entrypoint functions behind the
-``hans-*`` commands: ``claudey server`` behaves exactly like ``hans-server``,
-``claudey claude`` like ``hans-claude``, and so on. With no arguments it prints
+``claudey-*`` commands: ``claudey server`` behaves exactly like ``claudey-server``,
+``claudey claude`` like ``claudey-claude``, and so on. With no arguments it prints
 a short usage tree instead of failing. ``claudey doctor`` prints a diagnostics
 report without launching anything.
 """
@@ -29,11 +29,11 @@ _ENTRYPOINTS: dict[str, tuple[str, str]] = {
 }
 
 _DESCRIPTIONS = {
-    "server": "Start the local proxy server (hans-server)",
-    "claude": "Launch Claude Code through the proxy (hans-claude)",
-    "codex": "Launch Codex CLI through the proxy (hans-codex)",
-    "pi": "Launch Pi through the proxy (hans-pi)",
-    "desktop": "Open the desktop tray app (hans-desktop)",
+    "server": "Start the local proxy server (claudey-server)",
+    "claude": "Launch Claude Code through the proxy (claudey-claude)",
+    "codex": "Launch Codex CLI through the proxy (claudey-codex)",
+    "pi": "Launch Pi through the proxy (claudey-pi)",
+    "desktop": "Open the desktop tray app (claudey-desktop)",
     "doctor": "Print a diagnostic report (version, paths, provider keys)",
 }
 

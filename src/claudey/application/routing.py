@@ -59,10 +59,9 @@ def _is_constructible_provider_id(provider_id: str) -> bool:
     constructible unless they are connected-account ids with no injected
     client: ``anthropic`` owns OAuth/login state only and has no factory, so
     ``anthropic/claude-sonnet-5`` must fall through to the tier chain instead
-    of failing with an internal error (matching upstream free-claude-code,
-    where Claude models always map to ``MODEL``). ``openai`` is injected by the
-    runtime (ChatGPT/Codex), so ``openai/<model>`` remains a valid direct
-    override.
+    of failing with an internal error (Claude models always map to ``MODEL``).
+    ``openai`` is injected by the runtime (ChatGPT/Codex), so ``openai/<model>``
+    remains a valid direct override.
     """
     if not _is_runtime_provider_id(provider_id):
         return False

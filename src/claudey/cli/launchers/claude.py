@@ -1,4 +1,4 @@
-"""Installed `hans-claude` launcher."""
+"""Installed `claudey-claude` launcher."""
 
 import os
 import sys
@@ -27,7 +27,7 @@ def launch(argv: Sequence[str] | None = None) -> None:
             f"Claudey proxy is not reachable at {proxy_root_url}: {error}",
             file=sys.stderr,
         )
-        print("Start it in another terminal with: hans-server", file=sys.stderr)
+        print("Start it in another terminal with: claudey-server", file=sys.stderr)
         raise SystemExit(1)
 
     binary_name = claude_binary_name()

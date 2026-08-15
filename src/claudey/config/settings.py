@@ -363,7 +363,9 @@ class Settings(BaseSettings):
     port: int = 8090
     open_admin_browser: bool = Field(
         default=True,
-        validation_alias=AliasChoices("HANS_OPEN_BROWSER", "FCC_OPEN_BROWSER"),
+        validation_alias=AliasChoices(
+            "CLAUDEY_OPEN_BROWSER", "HANS_OPEN_BROWSER", "FCC_OPEN_BROWSER"
+        ),
     )
     # Optional proxy bearer token protecting public API endpoints.
     # Set via env `ANTHROPIC_AUTH_TOKEN`. When empty, no auth is required.

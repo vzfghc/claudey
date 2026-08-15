@@ -2,11 +2,13 @@
 set -eu
 
 PACKAGE_NAME="claudey"
-HANS_HOME_DIRNAME=".claudey"
-HANS_MACOS_BUNDLE_ID="io.github.vzfghc.claudey"
-HANS_MACOS_OWNER_FILE=".claudey-owner"
+CLAUDEY_HOME_DIRNAME=".claudey"
+CLAUDEY_MACOS_BUNDLE_ID="io.github.vzfghc.claudey"
+CLAUDEY_MACOS_OWNER_FILE=".claudey-owner"
 # Include retired entry points so older installations are fully stopped and removed.
-HANS_COMMANDS="hans-desktop hans-server hans-claude hans-codex hans-pi hans-init claudey"
+CLAUDEY_COMMANDS="claudey-desktop claudey-server claudey-claude claudey-codex claudey-pi claudey-init claudey"
+# Retired hans-* entry points from before the Claudey rename.
+LEGACY_HANS_COMMANDS="hans-desktop hans-server hans-claude hans-codex hans-pi hans-init"
 # Legacy fcc-* deprecation shims installed via install.sh --legacy-fcc.
 LEGACY_FCC_COMMANDS="fcc-server fcc-claude fcc-codex fcc-pi fcc-desktop"
 
@@ -97,7 +99,7 @@ add_known_uv_paths() {
     hash -r 2>/dev/null || true
 }
 
-hans_process_ids() {
+claudey_process_ids() {
     command_name=$1
 
     if command -v pgrep >/dev/null 2>&1; then
@@ -123,14 +125,14 @@ hans_process_ids() {
         ' || true
 }
 
-is_hans_command_running() {
-    [ -n "$(hans_process_ids "$1")" ]
+is_claudey_command_running() {
+    [ -n "$(claudey_process_ids "$1")" ]
 }
 
-assert_no_hans_processes_running() {
+assert_no_claudey_processes_running() {
     running=""
-    for command_name in $HANS_COMMANDS; do
-        if is_hans_command_running "$command_name"; then
+    for command_name in $CLAUDEY_COMMANDS $LEGACY_HANS_COMMANDS; do
+        if is_claudey_command_running "$command_name"; then
             running="${running} ${command_name}"
         fi
     done
@@ -187,14 +189,14 @@ uninstall_claudey() {
     fail "uv tool uninstall $PACKAGE_NAME failed with exit code $status; ~/.claudey was not deleted."
 }
 
-verify_hans_commands_removed() {
+verify_claudey_commands_removed() {
     if [ "$dry_run" -eq 1 ]; then
         printf '+ verify all Claudey entry points are absent from the uv tool bin directory\n'
         return 0
     fi
 
     remaining=""
-    for command_name in $HANS_COMMANDS; do
+    for command_name in $CLAUDEY_COMMANDS $LEGACY_HANS_COMMANDS; do
         command_path="$uv_tool_bin/$command_name"
         if [ -e "$command_path" ] || [ -L "$command_path" ]; then
             remaining="${remaining} ${command_path}"
@@ -211,7 +213,7 @@ remove_legacy_fcc_shims() {
     for name in $LEGACY_FCC_COMMANDS; do
         shim_path="$uv_tool_bin/$name"
         [ -e "$shim_path" ] || continue
-        if grep -q "is deprecated: use hans-" "$shim_path" 2>/dev/null; then
+        if grep -q "is deprecated: use " "$shim_path" 2>/dev/null; then
             run rm -f "$shim_path"
         else
             printf 'A file not managed by Claudey exists at %s; leaving it unchanged.\n' "$shim_path"
@@ -219,13 +221,13 @@ remove_legacy_fcc_shims() {
     done
 }
 
-macos_app_is_hans_owned() {
+macos_app_is_claudey_owned() {
     app_dir=$1
-    owner_file="$app_dir/Contents/$HANS_MACOS_OWNER_FILE"
+    owner_file="$app_dir/Contents/$CLAUDEY_MACOS_OWNER_FILE"
     [ -d "$app_dir" ] &&
         [ ! -L "$app_dir" ] &&
         [ -f "$owner_file" ] &&
-        [ "$(cat "$owner_file")" = "$HANS_MACOS_BUNDLE_ID" ]
+        [ "$(cat "$owner_file")" = "$CLAUDEY_MACOS_BUNDLE_ID" ]
 }
 
 remove_macos_desktop_app() {
@@ -234,7 +236,7 @@ remove_macos_desktop_app() {
     app_dir="$HOME/Applications/Claudey.app"
     desktop_link="$HOME/Desktop/Claudey.app"
 
-    if ! macos_app_is_hans_owned "$app_dir"; then
+    if ! macos_app_is_claudey_owned "$app_dir"; then
         if [ -e "$app_dir" ] || [ -L "$app_dir" ]; then
             printf 'An app not managed by Claudey exists at %s; leaving it unchanged.\n' "$app_dir"
         fi
@@ -258,16 +260,16 @@ remove_macos_desktop_app() {
     fi
 }
 
-purge_hans_home() {
-    hans_home="$HOME/$HANS_HOME_DIRNAME"
-    if [ ! -e "$hans_home" ]; then
-        printf 'No Claudey config directory at %s; skipping purge.\n' "$hans_home"
+purge_claudey_home() {
+    claudey_home="$HOME/$CLAUDEY_HOME_DIRNAME"
+    if [ ! -e "$claudey_home" ]; then
+        printf 'No Claudey config directory at %s; skipping purge.\n' "$claudey_home"
         return 0
     fi
 
-    run rm -rf "$hans_home"
-    if [ "$dry_run" -eq 0 ] && [ -e "$hans_home" ]; then
-        fail "Claudey config directory still exists after deletion: $hans_home"
+    run rm -rf "$claudey_home"
+    if [ "$dry_run" -eq 0 ] && [ -e "$claudey_home" ]; then
+        fail "Claudey config directory still exists after deletion: $claudey_home"
     fi
 }
 
@@ -294,7 +296,7 @@ parse_args "$@"
 [ -n "${HOME:-}" ] || fail "HOME is not set; cannot locate Claudey data."
 
 step "Checking for running Claudey processes"
-assert_no_hans_processes_running
+assert_no_claudey_processes_running
 
 step "Locating the uv-managed Claudey installation"
 initialize_uv_context
@@ -303,7 +305,7 @@ step "Removing the Claudey uv tool"
 uninstall_claudey
 
 step "Verifying Claudey entry points were removed"
-verify_hans_commands_removed
+verify_claudey_commands_removed
 
 step "Removing legacy fcc-* deprecation shims"
 remove_legacy_fcc_shims
@@ -312,7 +314,7 @@ step "Removing the Claudey desktop launcher"
 remove_macos_desktop_app
 
 step "Purging Claudey config and data from ~/.claudey"
-purge_hans_home
+purge_claudey_home
 
 if [ "$dry_run" -eq 1 ]; then
     printf '\nDry run complete. No changes were made.\n'

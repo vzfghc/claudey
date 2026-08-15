@@ -90,7 +90,7 @@ class ConversationDriver:
         self,
         text: str,
         *,
-        model: str = "hans-smoke-default",
+        model: str = "claudey-smoke-default",
         max_tokens: int = 256,
         extra: dict[str, Any] | None = None,
         headers: dict[str, str] | None = None,
@@ -179,9 +179,9 @@ class ProviderMatrixDriver:
             )
 
         models = self.config.provider_smoke_models()
-        if not models and smoke_env("HANS_ALLOW_NO_PROVIDER_SMOKE") != "1":
+        if not models and smoke_env("CLAUDEY_ALLOW_NO_PROVIDER_SMOKE") != "1":
             fail_missing_env(
-                "no configured provider smoke models; set HANS_ALLOW_NO_PROVIDER_SMOKE=1 "
+                "no configured provider smoke models; set CLAUDEY_ALLOW_NO_PROVIDER_SMOKE=1 "
                 "only for no-provider smoke collection"
             )
         return models
@@ -228,7 +228,7 @@ class ClientProtocolDriver:
                         {"type": "text", "text": "Hello."},
                     ],
                 },
-                {"role": "user", "content": "Reply with exactly HANS_SMOKE_CLIENT"},
+                {"role": "user", "content": "Reply with exactly CLAUDEY_SMOKE_CLIENT"},
             ],
             "thinking": {"type": "adaptive", "budget_tokens": 1024},
         }
@@ -247,7 +247,7 @@ class ClientProtocolDriver:
                             "type": "tool_use",
                             "id": "toolu_client_smoke",
                             "name": "echo_smoke",
-                            "input": {"value": "HANS_SMOKE_CLIENT"},
+                            "input": {"value": "CLAUDEY_SMOKE_CLIENT"},
                         }
                     ],
                 },
@@ -257,7 +257,7 @@ class ClientProtocolDriver:
                         {
                             "type": "tool_result",
                             "tool_use_id": "toolu_client_smoke",
-                            "content": "HANS_SMOKE_CLIENT",
+                            "content": "CLAUDEY_SMOKE_CLIENT",
                         }
                     ],
                 },

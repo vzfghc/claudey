@@ -240,7 +240,7 @@ def test_preflight_and_build_request_issue_206_post_tool_text(nim_provider):
                         type="tool_use",
                         id=tool_id,
                         name="echo_smoke",
-                        input={"value": "HANS_206"},
+                        input={"value": "CLAUDEY_206"},
                     ),
                     block(
                         type="text",
@@ -251,7 +251,9 @@ def test_preflight_and_build_request_issue_206_post_tool_text(nim_provider):
             message(
                 "user",
                 [
-                    block(type="tool_result", tool_use_id=tool_id, content="HANS_206"),
+                    block(
+                        type="tool_result", tool_use_id=tool_id, content="CLAUDEY_206"
+                    ),
                     block(type="text", text="What was echoed?"),
                 ],
             ),
@@ -720,7 +722,7 @@ async def test_native_minimax_tool_markup_restores_nim_argument_aliases(nim_prov
         f"{namespace}<tool_call>"
         f'{namespace}<invoke name="Grep">'
         f"{namespace}<pattern>needle{namespace}</pattern>"
-        f"{namespace}<_hans_arg_type>py{namespace}</_hans_arg_type>"
+        f"{namespace}<_claudey_arg_type>py{namespace}</_claudey_arg_type>"
         f"{namespace}</invoke>"
         f"{namespace}</tool_call>"
     )
@@ -883,7 +885,7 @@ async def test_stream_response_restores_aliased_tool_arguments(nim_provider):
     )
     mock_chunk = _tool_call_chunk(
         name="Grep",
-        arguments=json.dumps({"pattern": "needle", "-A": 2, "_hans_arg_type": "py"}),
+        arguments=json.dumps({"pattern": "needle", "-A": 2, "_claudey_arg_type": "py"}),
     )
 
     async def mock_stream():
@@ -903,13 +905,13 @@ async def test_stream_response_restores_aliased_tool_arguments(nim_provider):
     properties = create_kwargs["tools"][0]["function"]["parameters"]["properties"]
     assert "-A" in properties
     assert "type" not in properties
-    assert "_hans_arg_A" not in properties
-    assert "_hans_arg_type" in properties
+    assert "_claudey_arg_A" not in properties
+    assert "_claudey_arg_type" in properties
 
     deltas = _input_json_deltas(events)
     assert len(deltas) == 1
     assert json.loads(deltas[0]) == {"pattern": "needle", "-A": 2, "type": "py"}
-    assert "_hans_arg_type" not in deltas[0]
+    assert "_claudey_arg_type" not in deltas[0]
 
 
 @pytest.mark.asyncio
@@ -938,7 +940,7 @@ async def test_stream_response_buffers_chunked_aliased_tool_arguments(nim_provid
     )
     second_chunk = _tool_call_chunk(
         name=None,
-        arguments='"_hans_arg_type": "py"}',
+        arguments='"_claudey_arg_type": "py"}',
         tool_id="call_chunked",
     )
 
@@ -985,7 +987,7 @@ async def test_stream_response_restores_nested_aliased_tool_arguments(nim_provid
     mock_chunk = _tool_call_chunk(
         name="NotionLike",
         arguments=json.dumps(
-            {"parent": {"_hans_arg_type": "page_id", "id": "page_123"}}
+            {"parent": {"_claudey_arg_type": "page_id", "id": "page_123"}}
         ),
     )
 
@@ -1152,7 +1154,7 @@ async def test_stream_response_retries_without_reasoning_content(nim_provider):
                         type="tool_use",
                         id="toolu_reasoning",
                         name="echo_smoke",
-                        input={"value": "HANS_TOOL"},
+                        input={"value": "CLAUDEY_TOOL"},
                     ),
                 ],
             ),

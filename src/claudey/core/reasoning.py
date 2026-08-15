@@ -107,7 +107,7 @@ class ReasoningPolicy:
 
     @property
     def numeric_budget_tokens(self) -> int | None:
-        """Express this intent as an exact or hans-mapped numeric budget."""
+        """Express this intent as an exact or claudey-mapped numeric budget."""
 
         if self.control is ReasoningControl.OFF:
             return None

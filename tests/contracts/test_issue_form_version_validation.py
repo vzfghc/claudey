@@ -60,7 +60,7 @@ def _run_javascript(script: str) -> Any:
 def test_bug_form_requests_a_contained_version_or_none() -> None:
     form = BUG_FORM.read_text(encoding="utf-8")
 
-    assert "Run `hans-server --version`" in form
+    assert "Run `claudey-server --version`" in form
     assert "include one version" in form
     assert "`number.number.number` format" in form
     assert "enter `None`" in form
@@ -137,13 +137,13 @@ def test_numeric_version_comparison_uses_all_three_components() -> None:
 
 
 def test_field_pattern_extracts_the_issue_form_value() -> None:
-    body = """### HANS version
+    body = """### CLAUDEY version
 
 4.6.1
 
 ### CLI
 
-Claude Code (hans-claude)
+Claude Code (claudey-claude)
 """
 
     match = re.search(_workflow_pattern("fieldPattern"), body, flags=re.MULTILINE)
@@ -157,8 +157,8 @@ def test_workflow_owns_one_idempotent_triage_state() -> None:
 
     assert "types: [opened, edited]" in workflow
     assert "issues: write" in workflow
-    assert "needs-hans-version" in workflow
-    assert "<!-- hans-version-validator -->" in workflow
+    assert "needs-claudey-version" in workflow
+    assert "<!-- claudey-version-validator -->" in workflow
     assert "github.rest.issues.createLabel" in workflow
     assert "github.rest.issues.addLabels" in workflow
     assert "github.rest.issues.removeLabel" in workflow
@@ -272,7 +272,7 @@ const context = {
     },
   },
 };
-const bodyFor = (value) => `### HANS version\n\n${value}\n\n### CLI\n\nClaude Code`;
+const bodyFor = (value) => `### CLAUDEY version\n\n${value}\n\n### CLI\n\nClaude Code`;
 
 liveIssue.body = bodyFor("latest");
 await run(github, context);
@@ -286,9 +286,9 @@ await run(github, context);
 comments.push({
   id: 102,
   user: { login: "github-actions[bot]" },
-  body: "<!-- hans-version-outdated -->\nstale",
+  body: "<!-- claudey-version-outdated -->\nstale",
 });
-liveIssue.labels = [{ name: "needs-hans-version" }];
+liveIssue.labels = [{ name: "needs-claudey-version" }];
 liveIssue.body = bodyFor("None");
 await run(github, context);
 
@@ -318,7 +318,7 @@ process.stdout.write(JSON.stringify({ calls, comments }));
         call["args"]["body"]
         for call in calls
         if call["name"] == "createComment"
-        and "hans-version-outdated" in call["args"]["body"]
+        and "claudey-version-outdated" in call["args"]["body"]
     )
     assert "`17.23.455`" in next(
         call["args"]["body"] for call in calls if call["name"] == "updateComment"

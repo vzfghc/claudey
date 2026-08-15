@@ -7,13 +7,13 @@ from pathlib import Path
 
 import pytest
 
-HANS_COMMANDS = (
-    "hans-desktop",
-    "hans-server",
-    "hans-claude",
-    "hans-codex",
-    "hans-pi",
-    "hans-init",
+CLAUDEY_COMMANDS = (
+    "claudey-desktop",
+    "claudey-server",
+    "claudey-claude",
+    "claudey-codex",
+    "claudey-pi",
+    "claudey-init",
     "claudey",
 )
 
@@ -82,8 +82,8 @@ def _posix_uv_command(version: str) -> str:
     return f"""#!/bin/sh
 echo "uv:$*" >> "$CALL_LOG"
 if [ "${{1:-}}" = "--version" ]; then
-    if [ "${{HANS_RUNNING_PHASE:-}}" = "late" ]; then
-        : > "$HANS_PROCESS_MARKER"
+    if [ "${{CLAUDEY_RUNNING_PHASE:-}}" = "late" ]; then
+        : > "$CLAUDEY_PROCESS_MARKER"
     fi
     if [ "$FAIL_STEP" = "uv-verify" ]; then
         exit 32
@@ -92,18 +92,18 @@ if [ "${{1:-}}" = "--version" ]; then
     exit 0
 fi
 if [ "${{1:-}}" = "tool" ] && [ "${{2:-}}" = "install" ]; then
-    if [ "$FAIL_STEP" = "hans-install" ]; then
+    if [ "$FAIL_STEP" = "claudey-install" ]; then
         exit 33
     fi
     mkdir -p "$FAKE_TOOL_BIN"
-    cp "$FAKE_FIXTURES/hans-command.sh" "$FAKE_TOOL_BIN/hans-server"
-    cp "$FAKE_FIXTURES/hans-command.sh" "$FAKE_TOOL_BIN/hans-desktop"
-    cp "$FAKE_FIXTURES/hans-command.sh" "$FAKE_TOOL_BIN/hans-claude"
-    cp "$FAKE_FIXTURES/hans-command.sh" "$FAKE_TOOL_BIN/hans-pi"
-    if [ "$FAIL_STEP" != "hans-missing" ]; then
-        cp "$FAKE_FIXTURES/hans-command.sh" "$FAKE_TOOL_BIN/hans-codex"
+    cp "$FAKE_FIXTURES/claudey-command.sh" "$FAKE_TOOL_BIN/claudey-server"
+    cp "$FAKE_FIXTURES/claudey-command.sh" "$FAKE_TOOL_BIN/claudey-desktop"
+    cp "$FAKE_FIXTURES/claudey-command.sh" "$FAKE_TOOL_BIN/claudey-claude"
+    cp "$FAKE_FIXTURES/claudey-command.sh" "$FAKE_TOOL_BIN/claudey-pi"
+    if [ "$FAIL_STEP" != "claudey-missing" ]; then
+        cp "$FAKE_FIXTURES/claudey-command.sh" "$FAKE_TOOL_BIN/claudey-codex"
     fi
-    chmod +x "$FAKE_TOOL_BIN"/hans-*
+    chmod +x "$FAKE_TOOL_BIN"/claudey-*
     exit 0
 fi
 if [ "${{1:-}}" = "tool" ] && [ "${{2:-}}" = "update-shell" ]; then
@@ -149,7 +149,7 @@ class PosixHarness:
         _write_executable(
             fallback_bin / "ps",
             """#!/bin/sh
-printf '%s\n' "$HANS_PS_OUTPUT"
+printf '%s\n' "$CLAUDEY_PS_OUTPUT"
 """,
         )
         awk = shutil.which("awk", path=self.env["PATH"])
@@ -158,7 +158,7 @@ printf '%s\n' "$HANS_PS_OUTPUT"
         # Symlink, not copy: copying the system awk breaks its arm64e code
         # signature, so the copied binary is killed on execution on macOS.
         os.symlink(awk, fallback_bin / "awk")
-        self.env["HANS_PS_OUTPUT"] = process_line
+        self.env["CLAUDEY_PS_OUTPUT"] = process_line
         self.env["PATH"] = str(fallback_bin)
 
     def run(self, *args: str, fail_step: str = "") -> subprocess.CompletedProcess[str]:
@@ -184,13 +184,13 @@ printf '%s\n' "$HANS_PS_OUTPUT"
 
         env = self.env | {
             "FAIL_STEP": fail_step,
-            "HANS_INSTALLER": str(_repo_root() / "scripts" / "install.sh"),
+            "CLAUDEY_INSTALLER": str(_repo_root() / "scripts" / "install.sh"),
         }
         command = [
             "/bin/sh",
             "-c",
-            'cat "$HANS_INSTALLER" | /bin/sh -s -- "$@"',
-            "hans-installer",
+            'cat "$CLAUDEY_INSTALLER" | /bin/sh -s -- "$@"',
+            "claudey-installer",
             *args,
         ]
         fork = vars(pty)["fork"]
@@ -267,12 +267,12 @@ def posix_harness(tmp_path: Path) -> PosixHarness:
     _write_executable(
         bin_dir / "pgrep",
         """#!/bin/sh
-[ -n "${HANS_RUNNING_COMMAND:-}" ] || exit 1
-if [ "${HANS_RUNNING_PHASE:-early}" = "late" ] && [ ! -e "$HANS_PROCESS_MARKER" ]; then
+[ -n "${CLAUDEY_RUNNING_COMMAND:-}" ] || exit 1
+if [ "${CLAUDEY_RUNNING_PHASE:-early}" = "late" ] && [ ! -e "$CLAUDEY_PROCESS_MARKER" ]; then
     exit 1
 fi
 case "$*" in
-    *"$HANS_RUNNING_COMMAND"*) printf '4242\n'; exit 0 ;;
+    *"$CLAUDEY_RUNNING_COMMAND"*) printf '4242\n'; exit 0 ;;
     *) exit 1 ;;
 esac
 """,
@@ -361,19 +361,19 @@ chmod +x "$HOME/.local/bin/uv"
     _write_executable(fixtures / "pi-command.sh", _posix_command("pi"))
     _write_executable(fixtures / "uv-command.sh", _posix_uv_command("0.11.28"))
     _write_executable(
-        fixtures / "hans-command.sh",
+        fixtures / "claudey-command.sh",
         """#!/bin/sh
 name=${0##*/}
 echo "$name:$*" >> "$CALL_LOG"
-if [ "$FAIL_STEP" = "hans-verify" ]; then
+if [ "$FAIL_STEP" = "claudey-verify" ]; then
     exit 36
 fi
-if [ "$name" = "hans-desktop" ] && [ "${1:-}" = "--export-icon" ]; then
+if [ "$name" = "claudey-desktop" ] && [ "${1:-}" = "--export-icon" ]; then
     [ "$FAIL_STEP" = "desktop-icon-export" ] && exit 37
     mkdir -p "$(dirname "$2")"
     printf 'fake icon\n' > "$2"
 fi
-if [ "$name" = "hans-server" ] && [ "${1:-}" = "--version" ]; then
+if [ "$name" = "claudey-server" ] && [ "${1:-}" = "--version" ]; then
     echo "claudey 3.5.18"
 fi
 """,
@@ -393,9 +393,9 @@ printf '%s\n' "${FAKE_UNAME:-Linux}"
             "CALL_LOG": str(log),
             "FAKE_FIXTURES": str(fixtures),
             "FAKE_TOOL_BIN": str(tool_bin),
-            "HANS_PROCESS_MARKER": str(tmp_path / "hans-process-ready"),
-            "HANS_RUNNING_COMMAND": "",
-            "HANS_RUNNING_PHASE": "early",
+            "CLAUDEY_PROCESS_MARKER": str(tmp_path / "claudey-process-ready"),
+            "CLAUDEY_RUNNING_COMMAND": "",
+            "CLAUDEY_RUNNING_PHASE": "early",
             "FAKE_UNAME": "Linux",
             "FAIL_STEP": "",
         }
@@ -426,7 +426,7 @@ def test_install_sh_fresh_install_is_verified(posix_harness: PosixHarness) -> No
     assert calls[-3:] == [
         "uv:tool update-shell",
         "uv:tool dir --bin",
-        "hans-server:--version",
+        "claudey-server:--version",
     ]
 
 
@@ -442,11 +442,11 @@ def test_install_sh_legacy_fcc_flag_installs_deprecation_shims(
         in result.stdout
     )
     for name, target in (
-        ("fcc-server", "hans-server"),
-        ("fcc-claude", "hans-claude"),
-        ("fcc-codex", "hans-codex"),
-        ("fcc-pi", "hans-pi"),
-        ("fcc-desktop", "hans-desktop"),
+        ("fcc-server", "claudey-server"),
+        ("fcc-claude", "claudey-claude"),
+        ("fcc-codex", "claudey-codex"),
+        ("fcc-pi", "claudey-pi"),
+        ("fcc-desktop", "claudey-desktop"),
     ):
         shim = posix_harness.tool_bin / name
         assert shim.exists(), name
@@ -462,7 +462,7 @@ def test_install_sh_legacy_fcc_flag_installs_deprecation_shims(
         check=False,
     )
     assert completed.returncode == 2
-    assert "fcc-server is deprecated: use hans-server" in completed.stderr
+    assert "fcc-server is deprecated: use claudey-server" in completed.stderr
 
 
 def test_install_sh_legacy_fcc_dry_run_prints_shim_commands(
@@ -471,8 +471,8 @@ def test_install_sh_legacy_fcc_dry_run_prints_shim_commands(
     result = posix_harness.run("--legacy-fcc", "--dry-run")
 
     assert result.returncode == 0, result.stderr
-    assert "+ write legacy shim fcc-server -> hans-server" in result.stdout
-    assert "+ write legacy shim fcc-desktop -> hans-desktop" in result.stdout
+    assert "+ write legacy shim fcc-server -> claudey-server" in result.stdout
+    assert "+ write legacy shim fcc-desktop -> claudey-desktop" in result.stdout
     assert not (posix_harness.tool_bin / "fcc-server").exists()
 
 
@@ -493,9 +493,9 @@ def test_install_sh_reprompts_then_installs_only_selected_agent(
 
     assert result.returncode == 0, result.stdout
     assert "Select at least one coding agent." in result.stdout
-    assert "Run Codex with: hans-codex" in result.stdout
-    assert "Run Claude Code with: hans-claude" not in result.stdout
-    assert "Run Pi with: hans-pi" not in result.stdout
+    assert "Run Codex with: claudey-codex" in result.stdout
+    assert "Run Claude Code with: claudey-claude" not in result.stdout
+    assert "Run Pi with: claudey-pi" not in result.stdout
     calls = posix_harness.calls()
     assert "codex-install:1" in calls
     assert not any("claude.ai" in call for call in calls)
@@ -525,7 +525,7 @@ def test_install_sh_creates_native_macos_app_and_desktop_link(
     app = posix_harness.root / "home" / "Applications" / "Claudey.app"
     plist = app / "Contents" / "Info.plist"
     owner_file = app / "Contents" / ".claudey-owner"
-    launcher = app / "Contents" / "MacOS" / "hans-desktop"
+    launcher = app / "Contents" / "MacOS" / "claudey-desktop"
     icon = app / "Contents" / "Resources" / "AppIcon.icns"
     desktop_link = posix_harness.root / "home" / "Desktop" / "Claudey.app"
     assert owner_file.read_text(encoding="utf-8").strip() == (
@@ -538,12 +538,13 @@ def test_install_sh_creates_native_macos_app_and_desktop_link(
     assert "<key>LSMultipleInstancesProhibited</key>" in plist_text
     assert icon.read_bytes() == b"fake icon\n"
     assert launcher.stat().st_mode & 0o111
-    expected_command = str(tool_bin / "hans-desktop").replace("'", "'\\''")
+    expected_command = str(tool_bin / "claudey-desktop").replace("'", "'\\''")
     assert f"exec '{expected_command}'" in launcher.read_text(encoding="utf-8")
     assert desktop_link.is_symlink()
     assert desktop_link.readlink() == app
     assert any(
-        call == f"hans-desktop:--export-icon {icon}" for call in posix_harness.calls()
+        call == f"claudey-desktop:--export-icon {icon}"
+        for call in posix_harness.calls()
     )
 
 
@@ -651,12 +652,12 @@ def test_install_sh_continues_when_pi_is_not_installed(
 
     assert result.returncode == 0, result.stderr
     assert "Pi was not installed; continuing without it." in result.stdout
-    assert "Run Pi with: hans-pi" not in result.stdout
+    assert "Run Pi with: claudey-pi" not in result.stdout
     calls = posix_harness.calls()
     assert "pi-install" in calls
     assert not any(call.startswith("pi:") for call in calls)
     assert "uv-install" in calls
-    assert "hans-server:--version" in calls
+    assert "claudey-server:--version" in calls
 
 
 def test_install_sh_continues_when_unrelated_pi_is_unchanged(
@@ -668,11 +669,11 @@ def test_install_sh_continues_when_unrelated_pi_is_unchanged(
 
     assert result.returncode == 0, result.stderr
     assert "Pi was not installed; continuing without it." in result.stdout
-    assert "Run Pi with: hans-pi" not in result.stdout
+    assert "Run Pi with: claudey-pi" not in result.stdout
     calls = posix_harness.calls()
     assert "unrelated-pi:--help" in calls
     assert "unrelated-pi:--version" not in calls
-    assert "hans-server:--version" in calls
+    assert "claudey-server:--version" in calls
 
 
 def test_install_sh_continues_when_pi_resolution_changes_to_unrelated_command(
@@ -690,11 +691,11 @@ def test_install_sh_continues_when_pi_resolution_changes_to_unrelated_command(
 
     assert result.returncode == 0, result.stderr
     assert "Pi was not installed; continuing without it." in result.stdout
-    assert "Run Pi with: hans-pi" not in result.stdout
+    assert "Run Pi with: claudey-pi" not in result.stdout
     calls = posix_harness.calls()
     assert "other-unrelated-pi:--help" in calls
     assert "other-unrelated-pi:--version" not in calls
-    assert "hans-server:--version" in calls
+    assert "claudey-server:--version" in calls
 
 
 def test_install_sh_replaces_obsolete_uv(posix_harness: PosixHarness) -> None:
@@ -742,10 +743,10 @@ def test_install_sh_replaces_prerelease_uv(
         "uv-download",
         "uv-install",
         "uv-verify",
-        "hans-install",
+        "claudey-install",
         "path-update",
-        "hans-missing",
-        "hans-verify",
+        "claudey-missing",
+        "claudey-verify",
     ],
 )
 def test_install_sh_stops_without_success_on_each_failure(
@@ -769,9 +770,9 @@ def test_install_sh_stops_without_success_on_each_failure(
         "uv-download": "uv-install",
         "uv-install": "uv:--version",
         "uv-verify": "uv:tool install",
-        "hans-install": "uv:tool update-shell",
+        "claudey-install": "uv:tool update-shell",
         "path-update": "uv:tool dir --bin",
-        "hans-missing": "hans-server:--version",
+        "claudey-missing": "claudey-server:--version",
     }.get(failure)
     if forbidden is not None:
         assert not any(forbidden in call for call in posix_harness.calls())
@@ -813,7 +814,7 @@ def test_install_sh_rejects_unparseable_existing_uv(
     assert not any("astral.sh" in call for call in posix_harness.calls())
 
 
-def test_install_sh_voice_flags_only_change_hans_spec(
+def test_install_sh_voice_flags_only_change_claudey_spec(
     posix_harness: PosixHarness,
 ) -> None:
     result = posix_harness.run("--voice-all", "--torch-backend", "cu130")
@@ -835,12 +836,12 @@ def test_install_sh_rejects_invalid_options_before_mutation(
     assert posix_harness.calls() == []
 
 
-@pytest.mark.parametrize("command_name", HANS_COMMANDS)
-def test_install_sh_rejects_running_hans_before_mutation(
+@pytest.mark.parametrize("command_name", CLAUDEY_COMMANDS)
+def test_install_sh_rejects_running_claudey_before_mutation(
     posix_harness: PosixHarness,
     command_name: str,
 ) -> None:
-    posix_harness.env["HANS_RUNNING_COMMAND"] = command_name
+    posix_harness.env["CLAUDEY_RUNNING_COMMAND"] = command_name
 
     result = posix_harness.run()
 
@@ -849,27 +850,27 @@ def test_install_sh_rejects_running_hans_before_mutation(
     assert f"{command_name} (PID 4242)" in result.stderr
 
 
-def test_install_sh_rechecks_for_hans_process_before_tool_replacement(
+def test_install_sh_rechecks_for_claudey_process_before_tool_replacement(
     posix_harness: PosixHarness,
 ) -> None:
     posix_harness.add_client("claude")
     posix_harness.add_client("codex")
     posix_harness.add_client("pi")
     posix_harness.add_uv("0.11.16")
-    posix_harness.env["HANS_RUNNING_COMMAND"] = "hans-server"
-    posix_harness.env["HANS_RUNNING_PHASE"] = "late"
+    posix_harness.env["CLAUDEY_RUNNING_COMMAND"] = "claudey-server"
+    posix_harness.env["CLAUDEY_RUNNING_PHASE"] = "late"
 
     result = posix_harness.run()
 
     assert result.returncode != 0
-    assert "hans-server (PID 4242)" in result.stderr
+    assert "claudey-server (PID 4242)" in result.stderr
     assert not any(call.startswith("uv:tool install") for call in posix_harness.calls())
 
 
 def test_install_sh_ignores_similarly_named_process(
     posix_harness: PosixHarness,
 ) -> None:
-    posix_harness.env["HANS_RUNNING_COMMAND"] = "hans-server-helper"
+    posix_harness.env["CLAUDEY_RUNNING_COMMAND"] = "claudey-server-helper"
 
     result = posix_harness.run()
 
@@ -880,7 +881,7 @@ def test_install_sh_ignores_similarly_named_process(
     ("command_name", "process_args"),
     (
         ("claudey", "/home/user/.local/bin/claudey"),
-        ("hans-server", "/usr/bin/python3 /home/user/.local/bin/hans-server"),
+        ("claudey-server", "/usr/bin/python3 /home/user/.local/bin/claudey-server"),
     ),
 )
 def test_install_sh_process_fallback_reads_full_command_line(
@@ -904,7 +905,7 @@ def _powershells() -> tuple[str, ...]:
 
 def test_install_ps1_waits_for_gui_icon_export() -> None:
     installer = (_repo_root() / "scripts" / "install.ps1").read_text(encoding="utf-8")
-    body = _braced_body(installer, "function Export-HansDesktopIcon")
+    body = _braced_body(installer, "function Export-ClaudeyDesktopIcon")
 
     assert "Start-Process" in body
     assert "-WindowStyle Hidden" in body
@@ -929,19 +930,19 @@ def test_install_ps1_gui_icon_export_completes_before_returning(
     function_declarations = (
         "function Format-Argument",
         "function Format-Command",
-        "function Export-HansDesktopIcon",
+        "function Export-ClaudeyDesktopIcon",
     )
     functions = "\n".join(
         f"{declaration} {{{_braced_body(installer, declaration)}}}"
         for declaration in function_declarations
     )
-    installed_desktop_command = Path(sys.executable).with_name("hans-desktop.exe")
+    installed_desktop_command = Path(sys.executable).with_name("claudey-desktop.exe")
     desktop_command = tmp_path / "icon-exporter.exe"
     shutil.copy2(installed_desktop_command, desktop_command)
     destination = tmp_path / "profile with spaces" / ".claudey" / "app-icon.ico"
     env = os.environ | {
-        "HANS_TEST_DESKTOP_COMMAND": str(desktop_command),
-        "HANS_TEST_ICON_PATH": str(destination),
+        "CLAUDEY_TEST_DESKTOP_COMMAND": str(desktop_command),
+        "CLAUDEY_TEST_ICON_PATH": str(destination),
     }
     script = "\n".join(
         (
@@ -949,9 +950,9 @@ def test_install_ps1_gui_icon_export_completes_before_returning(
             "$DryRun = $false",
             functions,
             (
-                "Export-HansDesktopIcon "
-                "-DesktopCommand $env:HANS_TEST_DESKTOP_COMMAND "
-                "-IconPath $env:HANS_TEST_ICON_PATH"
+                "Export-ClaudeyDesktopIcon "
+                "-DesktopCommand $env:CLAUDEY_TEST_DESKTOP_COMMAND "
+                "-IconPath $env:CLAUDEY_TEST_ICON_PATH"
             ),
         )
     )
@@ -978,8 +979,8 @@ def _create_windows_shortcut(
 ) -> None:
     shortcut_path.parent.mkdir(parents=True, exist_ok=True)
     env = os.environ | {
-        "HANS_TEST_SHORTCUT": str(shortcut_path),
-        "HANS_TEST_TARGET": str(target_path),
+        "CLAUDEY_TEST_SHORTCUT": str(shortcut_path),
+        "CLAUDEY_TEST_TARGET": str(target_path),
     }
     subprocess.run(
         [
@@ -988,8 +989,8 @@ def _create_windows_shortcut(
             "-Command",
             (
                 "$shell = New-Object -ComObject WScript.Shell; "
-                "$shortcut = $shell.CreateShortcut($env:HANS_TEST_SHORTCUT); "
-                "$shortcut.TargetPath = $env:HANS_TEST_TARGET; "
+                "$shortcut = $shell.CreateShortcut($env:CLAUDEY_TEST_SHORTCUT); "
+                "$shortcut.TargetPath = $env:CLAUDEY_TEST_TARGET; "
                 "$shortcut.Save()"
             ),
         ],
@@ -1001,7 +1002,7 @@ def _create_windows_shortcut(
 
 
 def _windows_shortcut_icon(powershell: str, shortcut_path: Path) -> str:
-    env = os.environ | {"HANS_TEST_SHORTCUT": str(shortcut_path)}
+    env = os.environ | {"CLAUDEY_TEST_SHORTCUT": str(shortcut_path)}
     completed = subprocess.run(
         [
             powershell,
@@ -1009,7 +1010,7 @@ def _windows_shortcut_icon(powershell: str, shortcut_path: Path) -> str:
             "-Command",
             (
                 "$shell = New-Object -ComObject WScript.Shell; "
-                "$shortcut = $shell.CreateShortcut($env:HANS_TEST_SHORTCUT); "
+                "$shortcut = $shell.CreateShortcut($env:CLAUDEY_TEST_SHORTCUT); "
                 "[Console]::Out.Write($shortcut.IconLocation)"
             ),
         ],
@@ -1057,18 +1058,18 @@ if "%1"=="tool" if "%2"=="update-shell" goto update_shell
 if "%1"=="tool" if "%2"=="dir" if "%3"=="--bin" goto tool_bin
 exit /b 59
 :version
-if "%HANS_RUNNING_PHASE%"=="late" type nul > "%HANS_PROCESS_MARKER%"
+if "%CLAUDEY_RUNNING_PHASE%"=="late" type nul > "%CLAUDEY_PROCESS_MARKER%"
 if "%FAIL_STEP%"=="uv-verify" exit /b 52
 echo uv {version}
 exit /b 0
 :install
-if "%FAIL_STEP%"=="hans-install" exit /b 53
+if "%FAIL_STEP%"=="claudey-install" exit /b 53
 if not exist "%FAKE_TOOL_BIN%" mkdir "%FAKE_TOOL_BIN%"
-copy /y "%FAKE_FIXTURES%\hans-command.cmd" "%FAKE_TOOL_BIN%\hans-server.cmd" >nul
-copy /y "%FAKE_FIXTURES%\hans-command.cmd" "%FAKE_TOOL_BIN%\hans-desktop.cmd" >nul
-copy /y "%FAKE_FIXTURES%\hans-command.cmd" "%FAKE_TOOL_BIN%\hans-claude.cmd" >nul
-copy /y "%FAKE_FIXTURES%\hans-command.cmd" "%FAKE_TOOL_BIN%\hans-pi.cmd" >nul
-if not "%FAIL_STEP%"=="hans-missing" copy /y "%FAKE_FIXTURES%\hans-command.cmd" "%FAKE_TOOL_BIN%\hans-codex.cmd" >nul
+copy /y "%FAKE_FIXTURES%\claudey-command.cmd" "%FAKE_TOOL_BIN%\claudey-server.cmd" >nul
+copy /y "%FAKE_FIXTURES%\claudey-command.cmd" "%FAKE_TOOL_BIN%\claudey-desktop.cmd" >nul
+copy /y "%FAKE_FIXTURES%\claudey-command.cmd" "%FAKE_TOOL_BIN%\claudey-claude.cmd" >nul
+copy /y "%FAKE_FIXTURES%\claudey-command.cmd" "%FAKE_TOOL_BIN%\claudey-pi.cmd" >nul
+if not "%FAIL_STEP%"=="claudey-missing" copy /y "%FAKE_FIXTURES%\claudey-command.cmd" "%FAKE_TOOL_BIN%\claudey-codex.cmd" >nul
 exit /b 0
 :update_shell
 if "%FAIL_STEP%"=="path-update" exit /b 54
@@ -1158,17 +1159,17 @@ def powershell_harness(
     )
     (fixtures / "pi-command.cmd").write_text(_batch_client("pi"), encoding="utf-8")
     (fixtures / "uv-command.cmd").write_text(_batch_uv("0.11.28"), encoding="utf-8")
-    (fixtures / "hans-command.cmd").write_text(
+    (fixtures / "claudey-command.cmd").write_text(
         """@echo off
-for %%I in ("%~f0") do set "HANS_NAME=%%~nI"
-echo %HANS_NAME%:%*>>"%CALL_LOG%"
-if "%FAIL_STEP%"=="hans-verify" exit /b 55
-if "%HANS_NAME%"=="hans-desktop" if "%1"=="--export-icon" if "%FAIL_STEP%"=="desktop-icon-export" exit /b 56
-if "%HANS_NAME%"=="hans-desktop" if "%1"=="--export-icon" (
+for %%I in ("%~f0") do set "CLAUDEY_NAME=%%~nI"
+echo %CLAUDEY_NAME%:%*>>"%CALL_LOG%"
+if "%FAIL_STEP%"=="claudey-verify" exit /b 55
+if "%CLAUDEY_NAME%"=="claudey-desktop" if "%1"=="--export-icon" if "%FAIL_STEP%"=="desktop-icon-export" exit /b 56
+if "%CLAUDEY_NAME%"=="claudey-desktop" if "%1"=="--export-icon" (
     if not exist "%~dp2" mkdir "%~dp2"
     echo fake icon>"%~2"
 )
-if "%HANS_NAME%"=="hans-server" if "%1"=="--version" echo claudey 3.5.18
+if "%CLAUDEY_NAME%"=="claudey-server" if "%1"=="--version" echo claudey 3.5.18
 exit /b 0
 """,
         encoding="utf-8",
@@ -1252,22 +1253,22 @@ function Get-Process {
     [CmdletBinding()]
     param([string[]] $Name)
 
-    if ([string]::IsNullOrWhiteSpace($env:HANS_RUNNING_COMMAND)) {
+    if ([string]::IsNullOrWhiteSpace($env:CLAUDEY_RUNNING_COMMAND)) {
         return
     }
     if (
-        $env:HANS_RUNNING_PHASE -eq "late" -and
-        -not (Test-Path -LiteralPath $env:HANS_PROCESS_MARKER)
+        $env:CLAUDEY_RUNNING_PHASE -eq "late" -and
+        -not (Test-Path -LiteralPath $env:CLAUDEY_PROCESS_MARKER)
     ) {
         return
     }
     foreach ($requestedName in $Name) {
-        if ($requestedName -eq $env:HANS_RUNNING_COMMAND) {
+        if ($requestedName -eq $env:CLAUDEY_RUNNING_COMMAND) {
             [pscustomobject] @{ Id = 4242; ProcessName = $requestedName }
         }
     }
 }
-$installer = [scriptblock]::Create([IO.File]::ReadAllText($env:HANS_INSTALLER))
+$installer = [scriptblock]::Create([IO.File]::ReadAllText($env:CLAUDEY_INSTALLER))
 & $installer @args
 """,
         encoding="utf-8",
@@ -1287,10 +1288,10 @@ $installer = [scriptblock]::Create([IO.File]::ReadAllText($env:HANS_INSTALLER))
             "CALL_LOG": str(log),
             "FAKE_FIXTURES": str(fixtures),
             "FAKE_TOOL_BIN": str(tool_bin),
-            "HANS_INSTALLER": str(_repo_root() / "scripts" / "install.ps1"),
-            "HANS_PROCESS_MARKER": str(tmp_path / "hans-process-ready"),
-            "HANS_RUNNING_COMMAND": "",
-            "HANS_RUNNING_PHASE": "early",
+            "CLAUDEY_INSTALLER": str(_repo_root() / "scripts" / "install.ps1"),
+            "CLAUDEY_PROCESS_MARKER": str(tmp_path / "claudey-process-ready"),
+            "CLAUDEY_RUNNING_COMMAND": "",
+            "CLAUDEY_RUNNING_PHASE": "early",
             "FAIL_STEP": "",
         }
     )
@@ -1324,13 +1325,13 @@ def test_install_ps1_fresh_install_is_verified(
     assert calls[-4:-1] == [
         "uv:tool update-shell",
         "uv:tool dir --bin",
-        "hans-server:--version",
+        "claudey-server:--version",
     ]
     home = Path(powershell_harness.env["USERPROFILE"])
     app_data = Path(powershell_harness.env["APPDATA"])
     icon = home / ".claudey" / "app-icon.ico"
     assert icon.read_text(encoding="utf-8").strip() == "fake icon"
-    assert calls[-1] == f'hans-desktop:--export-icon "{icon}"'
+    assert calls[-1] == f'claudey-desktop:--export-icon "{icon}"'
     desktop_shortcut = home / "Desktop" / "Claudey.lnk"
     assert desktop_shortcut.is_file()
     assert (
@@ -1357,11 +1358,11 @@ def test_install_ps1_legacy_fcc_flag_installs_deprecation_shims(
         in result.stdout
     )
     for name, target in (
-        ("fcc-server", "hans-server"),
-        ("fcc-claude", "hans-claude"),
-        ("fcc-codex", "hans-codex"),
-        ("fcc-pi", "hans-pi"),
-        ("fcc-desktop", "hans-desktop"),
+        ("fcc-server", "claudey-server"),
+        ("fcc-claude", "claudey-claude"),
+        ("fcc-codex", "claudey-codex"),
+        ("fcc-pi", "claudey-pi"),
+        ("fcc-desktop", "claudey-desktop"),
     ):
         shim = powershell_harness.tool_bin / f"{name}.cmd"
         assert shim.is_file(), name
@@ -1376,7 +1377,7 @@ def test_install_ps1_legacy_fcc_flag_installs_deprecation_shims(
         check=False,
     )
     assert completed.returncode == 2
-    assert "fcc-server is deprecated: use hans-server" in completed.stderr
+    assert "fcc-server is deprecated: use claudey-server" in completed.stderr
 
 
 def test_install_ps1_legacy_fcc_dry_run_prints_shim_commands(
@@ -1386,7 +1387,7 @@ def test_install_ps1_legacy_fcc_dry_run_prints_shim_commands(
 
     assert result.returncode == 0, result.stderr
     assert (
-        "+ write legacy shim <uv-tool-bin>\\fcc-server.cmd -> hans-server"
+        "+ write legacy shim <uv-tool-bin>\\fcc-server.cmd -> claudey-server"
         in result.stdout
     )
     assert not (powershell_harness.tool_bin / "fcc-server.cmd").exists()
@@ -1481,12 +1482,12 @@ def test_install_ps1_continues_when_pi_is_not_installed(
 
     assert result.returncode == 0, result.stderr
     assert "Pi was not installed; continuing without it." in result.stdout
-    assert "Run Pi with: hans-pi" not in result.stdout
+    assert "Run Pi with: claudey-pi" not in result.stdout
     calls = powershell_harness.calls()
     assert "pi-install" in calls
     assert not any(call.startswith("pi:") for call in calls)
     assert "uv-install" in calls
-    assert "hans-server:--version" in calls
+    assert "claudey-server:--version" in calls
 
 
 def test_install_ps1_continues_when_unrelated_pi_is_unchanged(
@@ -1498,11 +1499,11 @@ def test_install_ps1_continues_when_unrelated_pi_is_unchanged(
 
     assert result.returncode == 0, result.stderr
     assert "Pi was not installed; continuing without it." in result.stdout
-    assert "Run Pi with: hans-pi" not in result.stdout
+    assert "Run Pi with: claudey-pi" not in result.stdout
     calls = powershell_harness.calls()
     assert "unrelated-pi:--help" in calls
     assert "unrelated-pi:--version" not in calls
-    assert "hans-server:--version" in calls
+    assert "claudey-server:--version" in calls
 
 
 def test_install_ps1_continues_when_pi_resolution_changes_to_unrelated_command(
@@ -1520,11 +1521,11 @@ def test_install_ps1_continues_when_pi_resolution_changes_to_unrelated_command(
 
     assert result.returncode == 0, result.stderr
     assert "Pi was not installed; continuing without it." in result.stdout
-    assert "Run Pi with: hans-pi" not in result.stdout
+    assert "Run Pi with: claudey-pi" not in result.stdout
     calls = powershell_harness.calls()
     assert "other-unrelated-pi:--help" in calls
     assert "other-unrelated-pi:--version" not in calls
-    assert "hans-server:--version" in calls
+    assert "claudey-server:--version" in calls
 
 
 def test_install_ps1_replaces_obsolete_uv(
@@ -1574,10 +1575,10 @@ def test_install_ps1_replaces_prerelease_uv(
         "uv-download",
         "uv-install",
         "uv-verify",
-        "hans-install",
+        "claudey-install",
         "path-update",
-        "hans-missing",
-        "hans-verify",
+        "claudey-missing",
+        "claudey-verify",
     ],
 )
 def test_install_ps1_stops_without_success_on_each_failure(
@@ -1601,9 +1602,9 @@ def test_install_ps1_stops_without_success_on_each_failure(
         "uv-download": "uv-install",
         "uv-install": "uv:--version",
         "uv-verify": "uv:tool install",
-        "hans-install": "uv:tool update-shell",
+        "claudey-install": "uv:tool update-shell",
         "path-update": "uv:tool dir --bin",
-        "hans-missing": "hans-server:--version",
+        "claudey-missing": "claudey-server:--version",
     }.get(failure)
     if forbidden is not None:
         assert not any(forbidden in call for call in powershell_harness.calls())
@@ -1659,7 +1660,7 @@ def test_install_ps1_rejects_unparseable_existing_uv(
     assert not any("astral.sh" in call for call in powershell_harness.calls())
 
 
-def test_install_ps1_voice_flags_only_change_hans_spec(
+def test_install_ps1_voice_flags_only_change_claudey_spec(
     powershell_harness: PowerShellHarness,
 ) -> None:
     result = powershell_harness.run("-VoiceAll", "-TorchBackend", "cu130")
@@ -1672,12 +1673,12 @@ def test_install_ps1_voice_flags_only_change_hans_spec(
     )
 
 
-@pytest.mark.parametrize("command_name", HANS_COMMANDS)
-def test_install_ps1_rejects_running_hans_before_mutation(
+@pytest.mark.parametrize("command_name", CLAUDEY_COMMANDS)
+def test_install_ps1_rejects_running_claudey_before_mutation(
     powershell_harness: PowerShellHarness,
     command_name: str,
 ) -> None:
-    powershell_harness.env["HANS_RUNNING_COMMAND"] = command_name
+    powershell_harness.env["CLAUDEY_RUNNING_COMMAND"] = command_name
 
     result = powershell_harness.run()
 
@@ -1686,20 +1687,20 @@ def test_install_ps1_rejects_running_hans_before_mutation(
     assert f"{command_name} (PID 4242)" in result.stderr
 
 
-def test_install_ps1_rechecks_for_hans_process_before_tool_replacement(
+def test_install_ps1_rechecks_for_claudey_process_before_tool_replacement(
     powershell_harness: PowerShellHarness,
 ) -> None:
     powershell_harness.add_client("claude")
     powershell_harness.add_client("codex")
     powershell_harness.add_client("pi")
     powershell_harness.add_uv("0.11.16")
-    powershell_harness.env["HANS_RUNNING_COMMAND"] = "hans-server"
-    powershell_harness.env["HANS_RUNNING_PHASE"] = "late"
+    powershell_harness.env["CLAUDEY_RUNNING_COMMAND"] = "claudey-server"
+    powershell_harness.env["CLAUDEY_RUNNING_PHASE"] = "late"
 
     result = powershell_harness.run()
 
     assert result.returncode != 0
-    assert "hans-server (PID 4242)" in result.stderr
+    assert "claudey-server (PID 4242)" in result.stderr
     assert not any(
         call.startswith("uv:tool install") for call in powershell_harness.calls()
     )
@@ -1708,7 +1709,7 @@ def test_install_ps1_rechecks_for_hans_process_before_tool_replacement(
 def test_install_ps1_ignores_similarly_named_process(
     powershell_harness: PowerShellHarness,
 ) -> None:
-    powershell_harness.env["HANS_RUNNING_COMMAND"] = "hans-server-helper"
+    powershell_harness.env["CLAUDEY_RUNNING_COMMAND"] = "claudey-server-helper"
 
     result = powershell_harness.run()
 
@@ -1720,7 +1721,7 @@ def test_installers_use_native_clients_and_single_python_selection() -> None:
     powershell = (_repo_root() / "scripts" / "install.ps1").read_text(encoding="utf-8")
 
     for text in (shell, powershell):
-        for command_name in HANS_COMMANDS:
+        for command_name in CLAUDEY_COMMANDS:
             assert command_name in text
         assert "@anthropic-ai/claude-code" not in text
         assert "@openai/codex" not in text

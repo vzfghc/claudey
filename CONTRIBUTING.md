@@ -18,7 +18,7 @@ Install [uv](https://docs.astral.sh/uv/) and Python 3.14, then run directly from
 git clone https://github.com/vzfghc/claudey.git
 cd claudey
 uv python install 3.14.0
-uv run hans-server
+uv run claudey-server
 ```
 
 Use `uv run` for Python commands. Do not run the project with a global Python interpreter.

@@ -162,7 +162,7 @@ def test_glm_temperature_is_forwarded_unsilenced() -> None:
 
 
 def test_extra_body_cannot_override_canonical_temperature() -> None:
-    """FCM rule: user extras never clobber hans-owned request fields."""
+    """FCM rule: user extras never clobber claudey-owned request fields."""
     with pytest.raises(ValueError, match="canonical request fields"):
         validate_extra_body_does_not_override_canonical_fields(
             {"temperature": 0.0, "metadata": {"trace": "x"}}

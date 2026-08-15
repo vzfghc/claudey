@@ -15,7 +15,7 @@ def launch(argv: Sequence[str] | None = None) -> None:
         export_app_icon(Path(args[1]))
         return
     if args:
-        print("Usage: hans-desktop [--export-icon PATH]", file=sys.stderr)
+        print("Usage: claudey-desktop [--export-icon PATH]", file=sys.stderr)
         raise SystemExit(2)
     if sys.platform not in {"darwin", "win32"}:
         print("Claudey Desktop is supported on Windows and macOS.", file=sys.stderr)

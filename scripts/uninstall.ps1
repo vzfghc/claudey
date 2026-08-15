@@ -9,16 +9,25 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
 $PackageName = "claudey"
-$HansHomeDirname = ".fcc"
-$HansCommands = @(
+$ClaudeyHomeDirname = ".claudey"
+$ClaudeyCommands = @(
     # Include retired entry points so older installations are fully stopped and removed.
+    "claudey-desktop",
+    "claudey-server",
+    "claudey-claude",
+    "claudey-codex",
+    "claudey-pi",
+    "claudey-init",
+    "claudey"
+)
+# Retired hans-* entry points from before the Claudey rename.
+$LegacyHansCommands = @(
     "hans-desktop",
     "hans-server",
     "hans-claude",
     "hans-codex",
     "hans-pi",
-    "hans-init",
-    "claudey"
+    "hans-init"
 )
 # Legacy fcc-* deprecation shims installed via install.ps1 -LegacyFcc.
 $LegacyFccCommands = @(
@@ -35,7 +44,7 @@ function Show-Usage {
     @"
 Usage: uninstall.ps1 [options]
 
-Removes the Claudey uv tool and deletes ~/.fcc/ after removal is verified.
+Removes the Claudey uv tool and deletes ~/.claudey/ after removal is verified.
 Also removes the legacy fcc-* deprecation shims installed by -LegacyFcc.
 Does not remove uv, Claude Code, Codex, Pi, the uv-managed Python runtime, or shared PATH entries.
 
@@ -130,9 +139,9 @@ function Add-KnownUvPaths {
     Add-PathEntry (Join-Path $env:USERPROFILE ".cargo\bin")
 }
 
-function Assert-NoHansProcessesRunning {
+function Assert-NoClaudeyProcessesRunning {
     $running = @()
-    foreach ($commandName in $HansCommands) {
+    foreach ($commandName in @($ClaudeyCommands + $LegacyHansCommands)) {
         $processes = @(Get-Process -Name $commandName -ErrorAction SilentlyContinue)
         if ($processes.Count -gt 0) {
             $running += $commandName
@@ -153,7 +162,7 @@ function Initialize-UvContext {
 
     $uvCommand = Get-ApplicationCommand "uv"
     if (-not $uvCommand) {
-        throw "uv is required to remove the Claudey tool. Install uv, then rerun this uninstaller; ~/.fcc was not deleted."
+        throw "uv is required to remove the Claudey tool. Install uv, then rerun this uninstaller; ~/.claudey was not deleted."
     }
     $script:UvPath = $uvCommand.Source
 
@@ -164,15 +173,15 @@ function Initialize-UvContext {
         if (-not [string]::IsNullOrWhiteSpace($result.Output)) {
             [Console]::Error.WriteLine($result.Output)
         }
-        throw "Could not determine the uv tool bin directory (exit code $($result.ExitCode)); ~/.fcc was not deleted."
+        throw "Could not determine the uv tool bin directory (exit code $($result.ExitCode)); ~/.claudey was not deleted."
     }
     $script:UvToolBin = $result.Output.Trim()
     if ([string]::IsNullOrWhiteSpace($script:UvToolBin)) {
-        throw "uv returned an empty tool bin directory; ~/.fcc was not deleted."
+        throw "uv returned an empty tool bin directory; ~/.claudey was not deleted."
     }
 }
 
-function Uninstall-FreeClaudeCode {
+function Uninstall-Claudey {
     Write-Host "+ uv tool uninstall $PackageName"
     if ($DryRun) {
         return
@@ -196,10 +205,10 @@ function Uninstall-FreeClaudeCode {
     if (-not [string]::IsNullOrWhiteSpace($result.Output)) {
         [Console]::Error.WriteLine($result.Output)
     }
-    throw "uv tool uninstall $PackageName failed with exit code $($result.ExitCode); ~/.fcc was not deleted."
+    throw "uv tool uninstall $PackageName failed with exit code $($result.ExitCode); ~/.claudey was not deleted."
 }
 
-function Confirm-HansCommandsRemoved {
+function Confirm-ClaudeyCommandsRemoved {
     if ($DryRun) {
         Write-Host "+ verify all Claudey entry points are absent from the uv tool bin directory"
         return
@@ -207,7 +216,7 @@ function Confirm-HansCommandsRemoved {
 
     $remaining = @()
     $extensions = @("", ".exe", ".cmd", ".bat", ".ps1")
-    foreach ($commandName in $HansCommands) {
+    foreach ($commandName in @($ClaudeyCommands + $LegacyHansCommands)) {
         foreach ($extension in $extensions) {
             $commandPath = Join-Path $script:UvToolBin "$commandName$extension"
             if (Test-Path -LiteralPath $commandPath) {
@@ -216,7 +225,7 @@ function Confirm-HansCommandsRemoved {
         }
     }
     if ($remaining.Count -gt 0) {
-        throw "Claudey entry points remain after uv uninstall: $($remaining -join ', '); ~/.fcc was not deleted."
+        throw "Claudey entry points remain after uv uninstall: $($remaining -join ', '); ~/.claudey was not deleted."
     }
 }
 
@@ -235,7 +244,7 @@ function Remove-LegacyFccShims {
             continue
         }
         $content = Get-Content -LiteralPath $shimPath -Raw -ErrorAction SilentlyContinue
-        if ($null -ne $content -and $content.Contains("is deprecated: use hans-")) {
+        if ($null -ne $content -and $content.Contains("is deprecated: use ")) {
             Write-Host "+ Remove-Item -LiteralPath $(Format-Argument $shimPath) -Force"
             Remove-Item -LiteralPath $shimPath -Force
         }
@@ -266,11 +275,11 @@ function Test-EquivalentPath {
     }
 }
 
-function Test-HansDesktopShortcutTarget {
+function Test-ClaudeyDesktopShortcutTarget {
     param([string] $TargetPath)
 
     foreach ($extension in @("", ".exe", ".cmd", ".bat", ".ps1")) {
-        $expectedTarget = Join-Path $script:UvToolBin "hans-desktop$extension"
+        $expectedTarget = Join-Path $script:UvToolBin "claudey-desktop$extension"
         if (Test-EquivalentPath -Left $TargetPath -Right $expectedTarget) {
             return $true
         }
@@ -278,7 +287,7 @@ function Test-HansDesktopShortcutTarget {
     return $false
 }
 
-function Remove-HansDesktopShortcuts {
+function Remove-ClaudeyDesktopShortcuts {
     $shortcutPaths = @(
         (Join-Path $env:USERPROFILE "Desktop\Claudey.lnk"),
         (Join-Path $env:APPDATA "Microsoft\Windows\Start Menu\Programs\Claudey.lnk")
@@ -290,12 +299,12 @@ function Remove-HansDesktopShortcuts {
         }
         try {
             $shortcut = $shell.CreateShortcut($shortcutPath)
-            $isHansShortcut = Test-HansDesktopShortcutTarget -TargetPath $shortcut.TargetPath
+            $isClaudeyShortcut = Test-ClaudeyDesktopShortcutTarget -TargetPath $shortcut.TargetPath
         }
         catch {
-            $isHansShortcut = $false
+            $isClaudeyShortcut = $false
         }
-        if (-not $isHansShortcut) {
+        if (-not $isClaudeyShortcut) {
             Write-Host "A shortcut not managed by Claudey exists at $shortcutPath; leaving it unchanged."
             continue
         }
@@ -306,17 +315,17 @@ function Remove-HansDesktopShortcuts {
     }
 }
 
-function Purge-HansHome {
-    $hansHome = Join-Path $env:USERPROFILE $HansHomeDirname
-    if (-not (Test-Path -LiteralPath $hansHome)) {
-        Write-Host "No Claudey config directory at $hansHome; skipping purge."
+function Purge-ClaudeyHome {
+    $claudeyHome = Join-Path $env:USERPROFILE $ClaudeyHomeDirname
+    if (-not (Test-Path -LiteralPath $claudeyHome)) {
+        Write-Host "No Claudey config directory at $claudeyHome; skipping purge."
         return
     }
 
     $commandText = @(
         "Remove-Item",
         "-LiteralPath",
-        (Format-Argument $hansHome),
+        (Format-Argument $claudeyHome),
         "-Recurse",
         "-Force"
     ) -join " "
@@ -325,9 +334,9 @@ function Purge-HansHome {
         return
     }
 
-    Remove-Item -LiteralPath $hansHome -Recurse -Force
-    if (Test-Path -LiteralPath $hansHome) {
-        throw "Claudey config directory still exists after deletion: $hansHome"
+    Remove-Item -LiteralPath $claudeyHome -Recurse -Force
+    if (Test-Path -LiteralPath $claudeyHome) {
+        throw "Claudey config directory still exists after deletion: $claudeyHome"
     }
 }
 
@@ -344,25 +353,25 @@ if ([string]::IsNullOrWhiteSpace($env:USERPROFILE)) {
 }
 
 Write-Step "Checking for running Claudey processes"
-Assert-NoHansProcessesRunning
+Assert-NoClaudeyProcessesRunning
 
 Write-Step "Locating the uv-managed Claudey installation"
 Initialize-UvContext
 
 Write-Step "Removing the Claudey uv tool"
-Uninstall-FreeClaudeCode
+Uninstall-Claudey
 
 Write-Step "Verifying Claudey entry points were removed"
-Confirm-HansCommandsRemoved
+Confirm-ClaudeyCommandsRemoved
 
 Write-Step "Removing legacy fcc-* deprecation shims"
 Remove-LegacyFccShims
 
 Write-Step "Removing Claudey desktop shortcuts"
-Remove-HansDesktopShortcuts
+Remove-ClaudeyDesktopShortcuts
 
-Write-Step "Purging Claudey config and data from ~/.fcc"
-Purge-HansHome
+Write-Step "Purging Claudey config and data from ~/.claudey"
+Purge-ClaudeyHome
 
 Write-Host ""
 if ($DryRun) {

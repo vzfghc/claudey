@@ -156,13 +156,13 @@ def test_generated_catalog_schema_is_accepted_by_installed_codex(
     (codex_home / "config.toml").write_text(
         "\n".join(
             (
-                'model_provider = "hans"',
+                'model_provider = "claudey"',
                 'model = "nvidia_nim/test-model"',
                 f"model_catalog_json = {json.dumps(str(catalog_path))}",
                 "",
-                "[model_providers.hans]",
+                "[model_providers.claudey]",
                 'name = "Claudey"',
-                'base_url = "http://127.0.0.1:8082/v1"',
+                'base_url = "http://127.0.0.1:8090/v1"',
                 'http_headers = { Authorization = "Bearer claudey" }',
                 'wire_api = "responses"',
                 "",

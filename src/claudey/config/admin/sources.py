@@ -37,7 +37,7 @@ def repo_env_path() -> Path:
 
 
 def explicit_env_path() -> Path | None:
-    """Return the explicit HANS_ENV_FILE path, when configured."""
+    """Return the explicit CLAUDEY_ENV_FILE path, when configured."""
 
     return configured_explicit_env_path(os.environ)
 

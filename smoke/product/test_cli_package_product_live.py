@@ -8,7 +8,7 @@ import pytest
 from claudey.cli.managed.manager import ManagedClaudeSessionManager
 from claudey.cli.managed.session import ManagedClaudeSession
 from claudey.core.version import package_version
-from smoke.lib.child_process import cmd_hans_version, run_captured_text
+from smoke.lib.child_process import cmd_claudey_version, run_captured_text
 from smoke.lib.config import SmokeConfig
 
 pytestmark = [pytest.mark.live, pytest.mark.smoke_target("cli")]
@@ -20,7 +20,7 @@ def test_entrypoint_version_e2e(smoke_config: SmokeConfig, tmp_path: Path) -> No
     env["USERPROFILE"] = str(tmp_path)
 
     result = run_captured_text(
-        cmd_hans_version(),
+        cmd_claudey_version(),
         cwd=smoke_config.root,
         env=env,
         timeout=smoke_config.timeout_s,
@@ -30,12 +30,12 @@ def test_entrypoint_version_e2e(smoke_config: SmokeConfig, tmp_path: Path) -> No
     assert result.returncode == 0
     assert result.stdout == f"claudey {package_version()}\n"
     assert result.stderr == ""
-    assert not (tmp_path / ".fcc" / ".env").exists()
+    assert not (tmp_path / ".claudey" / ".env").exists()
 
 
 @pytest.mark.asyncio
 async def test_cli_session_resume_fork_e2e(tmp_path: Path) -> None:
-    session = ManagedClaudeSession(str(tmp_path), "http://127.0.0.1:8082")
+    session = ManagedClaudeSession(str(tmp_path), "http://127.0.0.1:8090")
     process = AsyncMock()
     process.stdout.read.side_effect = [b""]
     process.stderr.read.return_value = b""
@@ -62,7 +62,7 @@ async def test_cli_session_resume_fork_e2e(tmp_path: Path) -> None:
 async def test_cli_process_cleanup_e2e(tmp_path: Path) -> None:
     manager = ManagedClaudeSessionManager(
         workspace_path=str(tmp_path),
-        proxy_root_url="http://127.0.0.1:8082",
+        proxy_root_url="http://127.0.0.1:8090",
     )
     session, pending_id, is_new = await manager.get_or_create_session()
     assert is_new is True
@@ -82,7 +82,7 @@ async def test_cli_process_cleanup_e2e(tmp_path: Path) -> None:
 
 @pytest.mark.asyncio
 async def test_cli_session_stop_kills_child_e2e(tmp_path: Path) -> None:
-    session = ManagedClaudeSession(str(tmp_path), "http://127.0.0.1:8082")
+    session = ManagedClaudeSession(str(tmp_path), "http://127.0.0.1:8090")
     process = MagicMock()
     process.pid = 123456
     process.returncode = None

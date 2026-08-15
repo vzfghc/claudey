@@ -39,7 +39,7 @@ def test_dump_preserves_public_fields_and_nested_extensions() -> None:
     assert body["output_config"] == {"some": "hint"}
 
 
-def test_dump_excludes_unknown_client_hints_and_hans_routing_state() -> None:
+def test_dump_excludes_unknown_client_hints_and_claudey_routing_state() -> None:
     request = MessagesRequest.model_validate(
         {
             "model": "m",

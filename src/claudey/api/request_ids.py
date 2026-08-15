@@ -11,7 +11,7 @@ from claudey.core.trace import extract_claude_session_id_from_headers
 
 REQUEST_ID_HEADER = "request-id"
 OPENAI_REQUEST_ID_HEADER = "x-request-id"
-_REQUEST_ID_STATE_ATTRIBUTE = "hans_request_id"
+_REQUEST_ID_STATE_ATTRIBUTE = "claudey_request_id"
 _OPENAI_REQUEST_ID_PATHS = frozenset({"/v1/responses", "/v1/models"})
 
 

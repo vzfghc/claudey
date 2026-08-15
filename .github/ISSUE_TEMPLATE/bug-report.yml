@@ -4,10 +4,10 @@ labels:
   - bug
 body:
   - type: input
-    id: hans-version
+    id: claudey-version
     attributes:
-      label: HANS version
-      description: Run `hans-server --version` and include one version in `number.number.number` format. If HANS did not install, enter `None`.
+      label: CLAUDEY version
+      description: Run `claudey-server --version` and include one version in `number.number.number` format. If CLAUDEY did not install, enter `None`.
       placeholder: "The version is 1.22.333, or None"
     validations:
       required: true
@@ -18,9 +18,9 @@ body:
       label: CLI
       description: If the problem occurred while using a coding CLI, select it.
       options:
-        - Claude Code (hans-claude)
-        - Codex (hans-codex)
-        - Pi (hans-pi)
+        - Claude Code (claudey-claude)
+        - Codex (claudey-codex)
+        - Pi (claudey-pi)
 
   - type: input
     id: selected-models

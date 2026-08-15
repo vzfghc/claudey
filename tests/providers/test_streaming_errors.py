@@ -1414,13 +1414,13 @@ class TestProcessToolCall:
                     "id": "call_composed",
                     "function": {
                         "name": codec.encode(original),
-                        "arguments": '{"_hans_arg_type":"file"}',
+                        "arguments": '{"_claudey_arg_type":"file"}',
                     },
                 },
                 sse,
                 tool_names=codec,
                 tool_name_buffers={},
-                tool_argument_aliases={original: {"_hans_arg_type": "type"}},
+                tool_argument_aliases={original: {"_claudey_arg_type": "type"}},
                 tool_argument_alias_buffers={},
             )
         )

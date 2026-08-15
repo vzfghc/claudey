@@ -107,7 +107,7 @@ class DesktopController:
                 return
             self._server_thread = threading.Thread(
                 target=self._run_server,
-                name="hans-desktop-server",
+                name="claudey-desktop-server",
             )
             self._server_thread.start()
 

@@ -32,7 +32,7 @@ def _settings(**updates: object) -> Settings:
 
 
 @pytest.fixture(autouse=True)
-def _redirect_hans_home(monkeypatch, tmp_path):
+def _redirect_claudey_home(monkeypatch, tmp_path):
     home = tmp_path / "home"
     monkeypatch.setenv("HOME", str(home))
     monkeypatch.setenv("USERPROFILE", str(home))

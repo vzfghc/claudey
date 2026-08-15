@@ -24,17 +24,17 @@ echo "==> mutation: mutmut (providers/ + application/)"
 echo "==> schema fuzz: schemathesis (api handlers, admin excluded)"
 (
   cd "$ROOT"
-  "$UV" run uvicorn scripts.hans_schemathesis_app:app --host 127.0.0.1 --port 8082 &
+  "$UV" run uvicorn scripts.claudey_schemathesis_app:app --host 127.0.0.1 --port 8090 &
   UV_PID=$!
   trap 'kill "$UV_PID" 2>/dev/null || true' EXIT
   for _ in $(seq 1 40); do
-    if curl -fsS http://127.0.0.1:8082/health >/dev/null 2>&1; then
+    if curl -fsS http://127.0.0.1:8090/health >/dev/null 2>&1; then
       break
     fi
     sleep 2
   done
-  "$UV" run schemathesis run http://127.0.0.1:8082/openapi.json \
-    -u http://127.0.0.1:8082 \
+  "$UV" run schemathesis run http://127.0.0.1:8090/openapi.json \
+    -u http://127.0.0.1:8090 \
     -n 25 \
     --max-failures 50 \
     --exclude-path-regex '^/admin' \

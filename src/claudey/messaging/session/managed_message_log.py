@@ -1,4 +1,4 @@
-"""Persist platform messages belonging to hans-managed conversations."""
+"""Persist platform messages belonging to claudey-managed conversations."""
 
 from datetime import UTC, datetime
 from typing import Any

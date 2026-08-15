@@ -131,7 +131,7 @@ class PersistentlyFailingMessagingRuntime(TrackingMessagingRuntime):
             raise RuntimeError("quiesce failed")
 
 
-def _settings(model: str, *, port: int = 8082) -> Settings:
+def _settings(model: str, *, port: int = 8090) -> Settings:
     return Settings().model_copy(update={"model": model, "port": port})
 
 
@@ -995,7 +995,7 @@ async def test_composition_publishes_startup_notice_after_runtime_and_repair() -
     ]
     workflow.publish_startup_notice.assert_awaited_once_with(notice)
     assert manager_constructor.call_args.kwargs["proxy_root_url"] == (
-        "http://127.0.0.1:8082"
+        "http://127.0.0.1:8090"
     )
     assert "api_url" not in manager_constructor.call_args.kwargs
     assert "plans_directory" not in manager_constructor.call_args.kwargs

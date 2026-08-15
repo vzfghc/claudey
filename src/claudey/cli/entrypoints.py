@@ -7,7 +7,7 @@ from claudey.core.version import package_version
 
 
 def serve(argv: Sequence[str] | None = None) -> None:
-    """Start the FastAPI server (registered as ``hans-server``)."""
+    """Start the FastAPI server (registered as ``claudey-server``)."""
     if _print_version_if_requested(argv):
         return
 

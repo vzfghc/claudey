@@ -39,7 +39,7 @@ REASONING_OPENAI_CHAT_BODY_KEYS = frozenset(
 def validate_extra_body_does_not_override_canonical_fields(
     extra: dict[str, Any],
 ) -> None:
-    """Reject extras that would replace hans-owned chat-completion fields."""
+    """Reject extras that would replace claudey-owned chat-completion fields."""
     bad = CANONICAL_OPENAI_CHAT_BODY_KEYS & extra.keys()
     if bad:
         raise ValueError(

@@ -1,7 +1,7 @@
 """Child-process commands for smoke (avoid nested ``uv run`` on Windows).
 
 Nested ``uv run`` can try to refresh console scripts while they are locked
-(``hans-server.exe`` in use), causing flaky smoke. The smoke runner is
+(``claudey-server.exe`` in use), causing flaky smoke. The smoke runner is
 already executed under the project environment (``uv run pytest``), so children
 should use the same interpreter.
 """
@@ -20,19 +20,19 @@ def cmd_python_c(script: str) -> list[str]:
     return [python_exe(), "-c", script]
 
 
-def cmd_hans_version() -> list[str]:
+def cmd_claudey_version() -> list[str]:
     return [
         python_exe(),
         "-c",
         (
             "import sys; "
-            "sys.argv = ['hans-server', '--version']; "
+            "sys.argv = ['claudey-server', '--version']; "
             "from claudey.cli.entrypoints import serve; serve()"
         ),
     ]
 
 
-def cmd_hans_server() -> list[str]:
+def cmd_claudey_server() -> list[str]:
     return [
         python_exe(),
         "-c",

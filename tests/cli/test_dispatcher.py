@@ -71,7 +71,7 @@ def test_dispatcher_usage_tree_lists_doctor(capsys) -> None:
 
 class _FakeDoctorSettings:
     host = "0.0.0.0"
-    port = 8082
+    port = 8090
     nvidia_nim_api_key = "test-key"
     openai_api_key = ""
 
@@ -106,8 +106,8 @@ def test_dispatcher_doctor_prints_diagnostic_report(monkeypatch, capsys) -> None
     assert "  Module path:" in out
     assert "Config dir:  ~/.claudey" in out
     assert "Env file:    ~/.claudey/.env" in out
-    assert "Admin URL:   http://127.0.0.1:8082/admin" in out
-    assert "Server port: 8082" in out
+    assert "Admin URL:   http://127.0.0.1:8090/admin" in out
+    assert "Server port: 8090" in out
     assert "Providers with keys: nvidia_nim" in out
     assert f"Providers total: {len(PROVIDER_CATALOG)}" in out
     assert "CI checks:    ruff format: ok | ruff check: ok | ty: ok" in out

@@ -765,7 +765,7 @@ def _request_count(log_delta: str) -> int:
 
 
 def _marker(scope: str, prefix: str) -> str:
-    return f"HANS_{scope}_{prefix}_{uuid.uuid4().hex[:8].upper()}"
+    return f"CLAUDEY_{scope}_{prefix}_{uuid.uuid4().hex[:8].upper()}"
 
 
 def _excerpt(value: str | None, *, max_chars: int = 2400) -> str:

@@ -41,7 +41,7 @@ def kimi_code_provider() -> OpenAIChatProvider:
     )
 
 
-def test_init_uses_subscription_endpoint_and_identifies_hans(kimi_code_provider):
+def test_init_uses_subscription_endpoint_and_identifies_claudey(kimi_code_provider):
     assert kimi_code_provider._api_key == "test-subscription-key"
     assert kimi_code_provider._base_url == "https://api.kimi.com/coding/v1"
     assert kimi_code_provider._provider_name == "KIMI_CODE"

@@ -209,7 +209,7 @@ def schedule_open_admin_browser(settings: Settings) -> None:
     threading.Thread(
         target=open_admin_when_ready,
         args=(settings,),
-        name="hans-open-admin-browser",
+        name="claudey-open-admin-browser",
         daemon=True,
     ).start()
 

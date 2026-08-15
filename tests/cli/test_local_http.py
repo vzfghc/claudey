@@ -44,10 +44,10 @@ def test_proxy_preflight_connects_directly_when_http_proxy_is_configured(
         monkeypatch.delenv("NO_PROXY", raising=False)
         monkeypatch.delenv("no_proxy", raising=False)
 
-        with _status_server(200) as (hans_url, hans_hits):
-            assert preflight_proxy(hans_url) is None
+        with _status_server(200) as (claudey_url, claudey_hits):
+            assert preflight_proxy(claudey_url) is None
 
-    assert hans_hits == ["/health"]
+    assert claudey_hits == ["/health"]
     assert forward_proxy_hits == []
 
 
@@ -61,13 +61,13 @@ def test_child_proxy_bypass_preserves_existing_proxy_policy() -> None:
 
     env = with_local_proxy_bypass(
         base_env,
-        proxy_root_url="http://hans.internal:8082",
+        proxy_root_url="http://claudey.internal:8090",
     )
 
     assert env["HTTP_PROXY"] == "http://proxy.example:3128"
     assert env["KEEP_ME"] == "yes"
     assert env["NO_PROXY"] == (
-        "example.com,localhost,10.0.0.0/8,127.0.0.1,::1,hans.internal"
+        "example.com,localhost,10.0.0.0/8,127.0.0.1,::1,claudey.internal"
     )
     assert env["no_proxy"] == env["NO_PROXY"]
     assert base_env["NO_PROXY"] == "example.com, localhost"
@@ -77,7 +77,7 @@ def test_child_proxy_bypass_preserves_existing_proxy_policy() -> None:
 def test_child_proxy_bypass_uses_all_loopback_spellings_without_duplicates() -> None:
     env = with_local_proxy_bypass(
         {"NO_PROXY": "127.0.0.1"},
-        proxy_root_url="http://127.0.0.1:8082",
+        proxy_root_url="http://127.0.0.1:8090",
     )
 
     assert env["NO_PROXY"] == "127.0.0.1,localhost,::1"

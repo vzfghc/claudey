@@ -1,6 +1,6 @@
 """Shared proxy-auth policy for Claudey client launchers."""
 
-PROXY_NO_AUTH_SENTINEL = "hans-no-auth"
+PROXY_NO_AUTH_SENTINEL = "claudey-no-auth"
 
 
 def proxy_auth_token(auth_token: str) -> str:

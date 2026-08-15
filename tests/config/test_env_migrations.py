@@ -3,12 +3,16 @@ from pathlib import Path
 import pytest
 
 from claudey.config.env_files import (
-    HANS_ENV_FILE,
+    CLAUDEY_ENV_FILE,
     explicit_env_path,
 )
 from claudey.config.env_migrations import (
+    CLAUDEY_SMOKE_TARGETS,
+    HANS_ENV_FILE,
+    HANS_SMOKE_TARGETS,
     HUGGINGFACE_API_KEY_ENV,
     HUGGINGFACE_TOKEN_MIGRATION,
+    LEGACY_HANS_MIGRATIONS,
     LEGACY_HUGGINGFACE_TOKEN_ENV,
     REASONING_MIGRATIONS,
     env_text_needs_migration,
@@ -90,7 +94,7 @@ def test_explicit_env_file_migration_warning_does_not_rewrite(
     explicit = tmp_path / "custom.env"
     explicit.write_text("HF_TOKEN=explicit-token\n", encoding="utf-8")
 
-    warning = explicit_env_file_migration_warning({"HANS_ENV_FILE": str(explicit)})
+    warning = explicit_env_file_migration_warning({"CLAUDEY_ENV_FILE": str(explicit)})
 
     assert warning is not None
     assert str(explicit) in warning
@@ -143,11 +147,36 @@ def test_reasoning_migration_accepts_every_legacy_boolean_spelling(
     assert migrated == f"REASONING_POLICY={expected}\n"
 
 
-def test_hans_env_file_resolves_correctly(monkeypatch, tmp_path: Path) -> None:
+def test_claudey_env_file_resolves_correctly(monkeypatch, tmp_path: Path) -> None:
     explicit = tmp_path / "custom.env"
     explicit.touch()
 
-    monkeypatch.setenv(HANS_ENV_FILE, str(explicit))
+    monkeypatch.setenv(CLAUDEY_ENV_FILE, str(explicit))
     result = explicit_env_path()
 
     assert result == explicit
+
+
+def test_legacy_hans_migrations_rename_to_claudey_canonical() -> None:
+    text = (
+        f"{HANS_ENV_FILE}=legacy.env\n"
+        f"{HANS_SMOKE_TARGETS}=providers\n"
+        "MODEL=nvidia_nim/model\n"
+    )
+
+    for migration in LEGACY_HANS_MIGRATIONS:
+        text, _ = migrate_env_key_in_text(text, migration)
+
+    assert HANS_ENV_FILE not in text
+    assert HANS_SMOKE_TARGETS not in text
+    assert "CLAUDEY_ENV_FILE=legacy.env" in text
+    assert f"{CLAUDEY_SMOKE_TARGETS}=providers" in text
+    assert "MODEL=nvidia_nim/model" in text
+
+
+def test_explicit_env_path_accepts_legacy_hans_env_file(monkeypatch) -> None:
+    explicit = Path("/tmp/legacy-explicit.env")
+
+    monkeypatch.setenv("HANS_ENV_FILE", str(explicit))
+
+    assert explicit_env_path() == explicit

@@ -11,7 +11,7 @@ from claudey.core.interprocess_lock import InterprocessFileLock
 
 
 def _settings() -> Settings:
-    return Settings.model_construct(host="0.0.0.0", port=8082)
+    return Settings.model_construct(host="0.0.0.0", port=8090)
 
 
 def test_desktop_instance_lock_is_exclusive_and_reusable(tmp_path: Path) -> None:

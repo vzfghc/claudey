@@ -9,11 +9,11 @@
       - button "Expand sidebar" [ref=f4e472] [cursor=pointer]
     - main [ref=f4e36]:
       - generic [ref=f4e37]:
-        - paragraph [ref=f4e38]: What are we building today, Hans?
+        - paragraph [ref=f4e38]: What are we building today, Claudey?
         - generic [ref=f4e39]:
           - heading "Providers" [level=2] [ref=f4e40]
           - status "Claudey server health" [ref=f4e41]:
-            - generic [ref=f4e43]: Running on :8082 v5.7.0
+            - generic [ref=f4e43]: Running on :8090 v5.7.0
       - generic [ref=f4e45]:
         - region "Connected accounts" [ref=f4e46]:
           - generic [ref=f4e48]:
@@ -371,18 +371,18 @@
                 - textbox "Server Host" [ref=f4e453]: 0.0.0.0
               - generic [ref=f4e454]:
                 - generic [ref=f4e455]: Server Port
-                - spinbutton "Server Port" [ref=f4e457]: "8082"
+                - spinbutton "Server Port" [ref=f4e457]: "8090"
               - generic [ref=f4e458]:
                 - generic [ref=f4e459]:
                   - generic [ref=f4e460]: Open Admin on Startup
                   - generic [ref=f4e461]: template
                 - checkbox "Open Admin on Startup template" [checked] [ref=f4e462] [cursor=pointer]
-                - generic [ref=f4e463]: Open the Admin UI after the next hans-server launch becomes healthy.
+                - generic [ref=f4e463]: Open the Admin UI after the next claudey-server launch becomes healthy.
             - button "Show advanced" [ref=f4e464] [cursor=pointer]
     - contentinfo [ref=f4e465]:
       - generic [ref=f4e466]:
         - strong [ref=f4e467]: No changes
-        - generic [ref=f4e468]: /Users/hanifrestian/.fcc/.env
+        - generic [ref=f4e468]: /Users/hanifrestian/.claudey/.env
       - generic [ref=f4e469]:
         - button "Validate" [ref=f4e470] [cursor=pointer]
         - button "Apply" [disabled] [ref=f4e471]

@@ -1,4 +1,4 @@
-"""Direct HTTP and child-environment policy for hans-local traffic."""
+"""Direct HTTP and child-environment policy for claudey-local traffic."""
 
 from collections.abc import Mapping
 from typing import Any
@@ -11,7 +11,7 @@ _NO_PROXY_KEYS = ("NO_PROXY", "no_proxy")
 
 
 def open_local_request(request: Request, *, timeout: float) -> Any:
-    """Open an hans-local request without consulting machine proxy settings."""
+    """Open an claudey-local request without consulting machine proxy settings."""
 
     return _DIRECT_OPENER.open(request, timeout=timeout)
 
@@ -21,7 +21,7 @@ def with_local_proxy_bypass(
     *,
     proxy_root_url: str,
 ) -> dict[str, str]:
-    """Copy an environment and keep its hans-local destination off proxies."""
+    """Copy an environment and keep its claudey-local destination off proxies."""
 
     host = urlsplit(proxy_root_url).hostname
     if host is None:

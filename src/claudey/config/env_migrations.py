@@ -1,4 +1,4 @@
-"""One-time dotenv key migrations for hans-owned config files."""
+"""One-time dotenv key migrations for claudey-owned config files."""
 
 import re
 from collections.abc import Mapping
@@ -12,8 +12,12 @@ LEGACY_HUGGINGFACE_TOKEN_ENV = "HF_TOKEN"
 
 HUGGINGFACE_API_KEY_ENV = "HUGGINGFACE_API_KEY"
 
-# Claudey rebrand key renames: owned dotenv files are migrated to the HANS_*
+# Claudey rebrand key renames: owned dotenv files are migrated to the CLAUDEY_*
 # canonical env var names.
+CLAUDEY_ENV_FILE = "CLAUDEY_ENV_FILE"
+CLAUDEY_SMOKE_TARGETS = "CLAUDEY_SMOKE_TARGETS"
+
+# Legacy HANS_* spellings from before the claudey rename.
 HANS_ENV_FILE = "HANS_ENV_FILE"
 HANS_SMOKE_TARGETS = "HANS_SMOKE_TARGETS"
 
@@ -59,9 +63,15 @@ REASONING_MIGRATIONS = (
     ),
 )
 
+LEGACY_HANS_MIGRATIONS = (
+    EnvKeyMigration(HANS_ENV_FILE, CLAUDEY_ENV_FILE),
+    EnvKeyMigration(HANS_SMOKE_TARGETS, CLAUDEY_SMOKE_TARGETS),
+)
+
 ENV_MIGRATIONS = (
     HUGGINGFACE_TOKEN_MIGRATION,
     *REASONING_MIGRATIONS,
+    *LEGACY_HANS_MIGRATIONS,
 )
 
 
@@ -98,7 +108,7 @@ def explicit_env_file_migration_warning(
         f"{migration.old_key} to {migration.new_key}" for migration in pending
     )
     return (
-        f"Explicit HANS_ENV_FILE {path} uses retired settings. Rename {renames}; "
+        f"Explicit CLAUDEY_ENV_FILE {path} uses retired settings. Rename {renames}; "
         "explicit env files are not rewritten automatically."
     )
 

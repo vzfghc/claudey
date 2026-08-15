@@ -47,7 +47,7 @@ Run your coding agents with free, paid, or local models. Choose and validate pro
 
 ## What You Get
 
-- Launch Claude Code with `hans-claude`, Codex with `hans-codex`, or Pi with `hans-pi`.
+- Launch Claude Code with `claudey-claude`, Codex with `claudey-codex`, or Pi with `claudey-pi`.
 - Run Claudey in the background from a desktop launcher on Windows or macOS.
 - Switch among 37 cloud and local providers from the Admin UI.
 - Use each coding agent's native model picker.
@@ -94,7 +94,7 @@ Open **Claudey** from your desktop or Applications folder.
 Run:
 
 ```bash
-hans-server
+claudey-server
 ```
 
 On Windows and macOS, Claudey runs in the system tray or menu bar without opening a
@@ -102,17 +102,17 @@ terminal. Use its menu to open Admin, check server status, restart, or quit. On
 Windows, left-clicking the tray icon opens Admin directly.
 
 To print the installed Claudey version without starting the server,
-run `hans-server --version`.
+run `claudey-server --version`.
 
-When using `hans-server`, keep the terminal open. The Admin UI opens in your
+When using `claudey-server`, keep the terminal open. The Admin UI opens in your
 browser once the server is healthy by default. Its address is shown in the
 startup log:
 
 ```text
-INFO:     Admin UI: http://127.0.0.1:8082/admin (local-only)
+INFO:     Admin UI: http://127.0.0.1:8090/admin (local-only)
 ```
 
-Use the port shown in your terminal if it differs from `8082`.
+Use the port shown in your terminal if it differs from `8090`.
 
 <a id="nvidia-nim-provider"></a>
 
@@ -133,28 +133,28 @@ Use the port shown in your terminal if it differs from `8082`.
 Claude Code:
 
 ```bash
-hans-claude
+claudey-claude
 ```
 
 Codex:
 
 ```bash
-hans-codex
+claudey-codex
 ```
 
 Pi:
 
 ```bash
-hans-pi
+claudey-pi
 ```
 
 All three launchers use the current Admin UI settings. Use the agent's model picker to choose from the models Claudey exposes. Normal CLI arguments still work, for example:
 
 ```bash
-hans-codex exec "hello"
+claudey-codex exec "hello"
 ```
 
-`hans-pi` registers Claudey only for that Pi process; your existing Pi settings, sessions, credentials, and extensions remain unchanged.
+`claudey-pi` registers Claudey only for that Pi process; your existing Pi settings, sessions, credentials, and extensions remain unchanged.
 
 ## Choose A Provider
 
@@ -210,7 +210,7 @@ Important provider notes:
 - OpenAI uses your ChatGPT subscription rather than an API key. Connect from
   **Providers → Connected accounts**; browser PKCE is the default and device
   code is available for headless setups. Claudey stores its own renewable
-  credentials under `~/.fcc/auth/` and leaves Codex login untouched. Restart
+  credentials under `~/.claudey/auth/` and leaves Codex login untouched. Restart
   an already-running agent after connecting to refresh its model picker.
 - Azure OpenAI uses the deployment names from your resource. Set
   `AZURE_OPENAI_BASE_URL` to its complete v1 endpoint, such as
@@ -306,7 +306,7 @@ Providers that do not support a selected control retain their own behavior.
 
 ## Connect Your Client
 
-For terminal use, start `hans-server`, then run `hans-claude`, `hans-codex`, or `hans-pi`. Use the guides below for editor integrations.
+For terminal use, start `claudey-server`, then run `claudey-claude`, `claudey-codex`, or `claudey-pi`. Use the guides below for editor integrations.
 
 <details>
 <summary><strong>Claude Code in VS Code</strong></summary>
@@ -316,7 +316,7 @@ Install the [Claude Code extension](https://marketplace.visualstudio.com/items?i
 ```json
 "claudeCode.disableLoginPrompt": true,
 "claudeCode.environmentVariables": [
-  { "name": "ANTHROPIC_BASE_URL", "value": "http://localhost:8082" },
+  { "name": "ANTHROPIC_BASE_URL", "value": "http://localhost:8090" },
   { "name": "ANTHROPIC_AUTH_TOKEN", "value": "claudey" },
   { "name": "CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY", "value": "1" },
   { "name": "CLAUDE_CODE_AUTO_COMPACT_WINDOW", "value": "190000" },
@@ -338,13 +338,13 @@ Start Claudey, then add its provider and generated model catalog to your user-le
 **Windows** — edit `%USERPROFILE%\.codex\config.toml` and replace `YOUR_USERNAME`:
 
 ```toml
-model_provider = "hans"
+model_provider = "claudey"
 model = "nvidia_nim/nvidia/nemotron-3-super-120b-a12b"
-model_catalog_json = "C:/Users/YOUR_USERNAME/.fcc/codex-model-catalog.json"
+model_catalog_json = "C:/Users/YOUR_USERNAME/.claudey/codex-model-catalog.json"
 
-[model_providers.hans]
+[model_providers.claudey]
 name = "Claudey"
-base_url = "http://127.0.0.1:8082/v1"
+base_url = "http://127.0.0.1:8090/v1"
 http_headers = { Authorization = "Bearer claudey" }
 wire_api = "responses"
 ```
@@ -352,13 +352,13 @@ wire_api = "responses"
 **macOS** — edit `~/.codex/config.toml` and replace `YOUR_USERNAME`:
 
 ```toml
-model_provider = "hans"
+model_provider = "claudey"
 model = "nvidia_nim/nvidia/nemotron-3-super-120b-a12b"
-model_catalog_json = "/Users/YOUR_USERNAME/.fcc/codex-model-catalog.json"
+model_catalog_json = "/Users/YOUR_USERNAME/.claudey/codex-model-catalog.json"
 
-[model_providers.hans]
+[model_providers.claudey]
 name = "Claudey"
-base_url = "http://127.0.0.1:8082/v1"
+base_url = "http://127.0.0.1:8090/v1"
 http_headers = { Authorization = "Bearer claudey" }
 wire_api = "responses"
 ```
@@ -373,12 +373,12 @@ Match the model, port, and bearer token to the Admin UI. Restart the Codex App a
 Install the [Codex extension](https://marketplace.visualstudio.com/items?itemName=openai.chatgpt). Create or edit `~/.codex/config.toml` (`%USERPROFILE%\.codex\config.toml` on Windows):
 
 ```toml
-model_provider = "hans"
+model_provider = "claudey"
 model = "nvidia_nim/nvidia/nemotron-3-super-120b-a12b"
 
-[model_providers.hans]
+[model_providers.claudey]
 name = "Claudey"
-base_url = "http://127.0.0.1:8082/v1"
+base_url = "http://127.0.0.1:8090/v1"
 http_headers = { Authorization = "Bearer claudey" }
 wire_api = "responses"
 ```
@@ -399,7 +399,7 @@ Set the environment for `acp.registry.claude-acp`:
 
 ```json
 "env": {
-  "ANTHROPIC_BASE_URL": "http://localhost:8082",
+  "ANTHROPIC_BASE_URL": "http://localhost:8090",
   "ANTHROPIC_AUTH_TOKEN": "claudey",
   "CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY": "1",
   "CLAUDE_CODE_AUTO_COMPACT_WINDOW": "190000",
@@ -521,7 +521,7 @@ Windows PowerShell:
 & ([scriptblock]::Create((irm "https://raw.githubusercontent.com/vzfghc/claudey/main/scripts/install.ps1"))) -VoiceLocal -TorchBackend cu130
 ```
 
-Restart `hans-server`. In **Admin UI → Messaging → Voice**, enable voice notes, select `cpu`, `cuda`, or `nvidia_nim`, and choose the Whisper model. Local gated models need `HUGGINGFACE_API_KEY`; NVIDIA NIM transcription needs `NVIDIA_NIM_API_KEY`.
+Restart `claudey-server`. In **Admin UI → Messaging → Voice**, enable voice notes, select `cpu`, `cuda`, or `nvidia_nim`, and choose the Whisper model. Local gated models need `HUGGINGFACE_API_KEY`; NVIDIA NIM transcription needs `NVIDIA_NIM_API_KEY`.
 
 </details>
 
@@ -533,13 +533,13 @@ Re-run the matching command from [Install Or Update](#install).
 
 ### Uninstall
 
-Stop every running Claudey command first. The uninstaller verifies every HANS command is gone
+Stop every running Claudey command first. The uninstaller verifies every CLAUDEY command is gone
 before deleting its managed data.
 
 **Removes**
 
 - Claudey, including its desktop launcher and commands
-- `~/.fcc/`
+- `~/.claudey/`
 
 **Keeps**
 

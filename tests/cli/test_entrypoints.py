@@ -18,7 +18,7 @@ from claudey.config.settings import Settings
 
 def _launcher_settings(
     *,
-    port: int = 8082,
+    port: int = 8090,
     token: str = "claudey",
     open_admin_browser: bool = True,
 ) -> Settings:
@@ -54,13 +54,13 @@ def test_cli_scripts_are_registered() -> None:
 
     assert pyproject["project"]["scripts"] == {
         "claudey": "claudey.cli.dispatcher:main",
-        "hans-server": "claudey.cli.entrypoints:serve",
-        "hans-claude": "claudey.cli.launchers.claude:launch",
-        "hans-codex": "claudey.cli.launchers.codex:launch",
-        "hans-pi": "claudey.cli.launchers.pi:launch",
+        "claudey-server": "claudey.cli.entrypoints:serve",
+        "claudey-claude": "claudey.cli.launchers.claude:launch",
+        "claudey-codex": "claudey.cli.launchers.codex:launch",
+        "claudey-pi": "claudey.cli.launchers.pi:launch",
     }
     assert pyproject["project"]["gui-scripts"] == {
-        "hans-desktop": "claudey.cli.desktop_entrypoint:launch",
+        "claudey-desktop": "claudey.cli.desktop_entrypoint:launch",
     }
 
 
@@ -68,7 +68,7 @@ def test_cli_scripts_are_registered() -> None:
     "argv",
     [("--version",), ("--version", "--help"), ("--help", "--version")],
 )
-def test_hans_server_reports_version_without_side_effects(
+def test_claudey_server_reports_version_without_side_effects(
     argv: tuple[str, ...],
     capsys: pytest.CaptureFixture[str],
 ) -> None:
@@ -258,31 +258,6 @@ def test_serve_supervisor_refuses_restart_after_incomplete_shutdown() -> None:
     kill_all.assert_called_once()
 
 
-@pytest.mark.skip(reason="Legacy free-claude-code migration removed")
-def test_serve_migrates_legacy_env_before_loading_settings(tmp_path: Path) -> None:
-    from claudey.cli import commands
-
-    legacy_env = tmp_path / "free-claude-code" / ".env"
-    legacy_env.parent.mkdir(parents=True)
-    legacy_env.write_text("MODEL=deepseek/deepseek-chat\n", encoding="utf-8")
-    settings = _launcher_settings()
-    get_settings = MagicMock(return_value=settings)
-    get_settings.cache_clear = MagicMock()
-
-    with (
-        patch("pathlib.Path.home", return_value=tmp_path),
-        patch.object(commands, "get_settings", get_settings),
-        patch.object(commands.ServerSupervisor, "_run_once", return_value=False),
-        patch.object(commands, "kill_all_best_effort"),
-    ):
-        commands.serve()
-
-    assert (tmp_path / ".claudey" / ".env").read_text("utf-8") == (
-        "MODEL=deepseek/deepseek-chat\n"
-    )
-    get_settings.assert_called_once_with()
-
-
 def test_serve_migrates_hf_token_before_loading_settings(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
@@ -321,7 +296,7 @@ def test_config_env_key_migration_warns_for_explicit_env_file(
     explicit = tmp_path / "custom.env"
     explicit.write_text("HF_TOKEN=legacy-hf\n", encoding="utf-8")
 
-    with patch.dict(commands.os.environ, {"HANS_ENV_FILE": str(explicit)}):
+    with patch.dict(commands.os.environ, {"CLAUDEY_ENV_FILE": str(explicit)}):
         migrated = commands._migrate_config_env_keys()
 
     assert migrated == ()
@@ -392,7 +367,7 @@ def test_claude_child_env_uses_sentinel_for_blank_configured_auth_token() -> Non
     from claudey.cli.claude_env import build_claude_proxy_env
 
     env = build_claude_proxy_env(
-        proxy_root_url="http://127.0.0.1:8082",
+        proxy_root_url="http://127.0.0.1:8090",
         auth_token="",
         base_env={
             "ANTHROPIC_AUTH_TOKEN": "inherited-token",
@@ -400,7 +375,7 @@ def test_claude_child_env_uses_sentinel_for_blank_configured_auth_token() -> Non
         },
     )
 
-    assert env["ANTHROPIC_AUTH_TOKEN"] == "hans-no-auth"
+    assert env["ANTHROPIC_AUTH_TOKEN"] == "claudey-no-auth"
     assert "ANTHROPIC_API_KEY" not in env
 
 
@@ -521,9 +496,9 @@ def test_launch_codex_passes_responses_config_and_child_env(
     assert exc_info.value.code == 0
     command = popen.call_args.args[0]
     assert command[0] == "resolved-codex.cmd"
-    assert 'model_provider="hans"' in command
-    assert 'model_providers.hans.base_url="http://127.0.0.1:9191/v1"' in command
-    assert 'model_providers.hans.wire_api="responses"' in command
+    assert 'model_provider="claudey"' in command
+    assert 'model_providers.claudey.base_url="http://127.0.0.1:9191/v1"' in command
+    assert 'model_providers.claudey.wire_api="responses"' in command
     assert f"model_catalog_json={json.dumps(str(catalog_path))}" in command
     assert command[-2:] == ["exec", "hello"]
     assert len(requests) == 1
@@ -537,7 +512,7 @@ def test_launch_codex_passes_responses_config_and_child_env(
         "nvidia_nim/provider-model"
     ]
     child_env = popen.call_args.kwargs["env"]
-    assert child_env["HANS_CODEX_API_KEY"] == "proxy-token"
+    assert child_env["CLAUDEY_CODEX_API_KEY"] == "proxy-token"
     assert child_env["CODEX_HOME"] == "keep-home"
     assert child_env["NO_PROXY"] == "127.0.0.1,localhost,::1"
     assert child_env["no_proxy"] == child_env["NO_PROXY"]
@@ -607,8 +582,8 @@ def test_pi_launcher_builds_scoped_session_command_and_proxy_env(
         base_env={
             "PATH": "keep",
             "ANTHROPIC_API_KEY": "native-pi-credential",
-            "HANS_PI_API_KEY": "stale-key",
-            "HANS_PI_BASE_URL": "https://stale.invalid",
+            "CLAUDEY_PI_API_KEY": "stale-key",
+            "CLAUDEY_PI_BASE_URL": "https://stale.invalid",
         },
     )
 
@@ -630,8 +605,8 @@ def test_pi_launcher_builds_scoped_session_command_and_proxy_env(
         "ANTHROPIC_API_KEY": "native-pi-credential",
         "NO_PROXY": "127.0.0.1,localhost,::1",
         "no_proxy": "127.0.0.1,localhost,::1",
-        "HANS_PI_BASE_URL": "http://127.0.0.1:9191",
-        "HANS_PI_API_KEY": "proxy-token",
+        "CLAUDEY_PI_BASE_URL": "http://127.0.0.1:9191",
+        "CLAUDEY_PI_API_KEY": "proxy-token",
     }
 
 
@@ -639,12 +614,12 @@ def test_pi_launcher_uses_no_auth_sentinel_for_blank_token() -> None:
     from claudey.cli.launchers.pi import build_pi_launcher_env
 
     env = build_pi_launcher_env(
-        proxy_root_url="http://127.0.0.1:8082",
+        proxy_root_url="http://127.0.0.1:8090",
         auth_token="",
         base_env={},
     )
 
-    assert env["HANS_PI_API_KEY"] == "hans-no-auth"
+    assert env["CLAUDEY_PI_API_KEY"] == "claudey-no-auth"
 
 
 def test_launch_pi_registers_bundled_extension_for_sessions(
@@ -654,7 +629,7 @@ def test_launch_pi_registers_bundled_extension_for_sessions(
     from claudey.cli.launchers.pi import launch
 
     monkeypatch.setenv("KEEP_ME", "yes")
-    monkeypatch.setenv("HANS_PI_API_KEY", "stale-key")
+    monkeypatch.setenv("CLAUDEY_PI_API_KEY", "stale-key")
     extension = tmp_path / "pi_extension.ts"
     extension.write_text("export default () => {};", encoding="utf-8")
     settings = _launcher_settings(port=9191, token="proxy-token")
@@ -695,8 +670,8 @@ def test_launch_pi_registers_bundled_extension_for_sessions(
         "hello",
     ]
     child_env = popen.call_args.kwargs["env"]
-    assert child_env["HANS_PI_BASE_URL"] == "http://127.0.0.1:9191"
-    assert child_env["HANS_PI_API_KEY"] == "proxy-token"
+    assert child_env["CLAUDEY_PI_BASE_URL"] == "http://127.0.0.1:9191"
+    assert child_env["CLAUDEY_PI_API_KEY"] == "proxy-token"
     assert child_env["NO_PROXY"] == "127.0.0.1,localhost,::1"
     assert child_env["no_proxy"] == child_env["NO_PROXY"]
     assert child_env["KEEP_ME"] == "yes"
@@ -908,4 +883,4 @@ def test_launch_claude_unreachable_proxy_exits_with_hint(
     popen.assert_not_called()
     captured = capsys.readouterr()
     assert "http://127.0.0.1:9393" in captured.err
-    assert "hans-server" in captured.err
+    assert "claudey-server" in captured.err

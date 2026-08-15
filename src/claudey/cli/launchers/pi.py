@@ -1,4 +1,4 @@
-"""Installed `hans-pi` launcher."""
+"""Installed `claudey-pi` launcher."""
 
 import os
 import subprocess
@@ -13,8 +13,8 @@ from claudey.config.settings import get_settings
 
 from .common import preflight_proxy, resolve_client_binary, run_client_process
 
-_API_KEY_ENV = "HANS_PI_API_KEY"
-_BASE_URL_ENV = "HANS_PI_BASE_URL"
+_API_KEY_ENV = "CLAUDEY_PI_API_KEY"
+_BASE_URL_ENV = "CLAUDEY_PI_BASE_URL"
 _BINARY_NAME = "pi"
 _DISPLAY_NAME = "Pi"
 _HELP_TIMEOUT_SECONDS = 5.0
@@ -61,7 +61,7 @@ def launch(argv: Sequence[str] | None = None) -> None:
             f"Claudey proxy is not reachable at {proxy_root_url}: {error}",
             file=sys.stderr,
         )
-        print("Start it in another terminal with: hans-server", file=sys.stderr)
+        print("Start it in another terminal with: claudey-server", file=sys.stderr)
         raise SystemExit(1)
 
     extension_path = pi_extension_path()
@@ -113,13 +113,13 @@ def build_pi_launcher_env(
     auth_token: str,
     base_env: Mapping[str, str],
 ) -> dict[str, str]:
-    """Return a Pi environment containing only hans-owned proxy variables."""
+    """Return a Pi environment containing only claudey-owned proxy variables."""
 
     env = with_local_proxy_bypass(
         {
             key: value
             for key, value in base_env.items()
-            if not key.startswith("HANS_PI_")
+            if not key.startswith("CLAUDEY_PI_")
         },
         proxy_root_url=proxy_root_url,
     )

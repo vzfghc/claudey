@@ -1,7 +1,7 @@
 import type { ExtensionAPI, ProviderModelConfig } from "@earendil-works/pi-coding-agent";
 
-const API_KEY_ENV = "HANS_PI_API_KEY";
-const BASE_URL_ENV = "HANS_PI_BASE_URL";
+const API_KEY_ENV = "CLAUDEY_PI_API_KEY";
+const BASE_URL_ENV = "CLAUDEY_PI_BASE_URL";
 const CATALOG_TIMEOUT_MS = 3000;
 const DEFAULT_CONTEXT_WINDOW = 128000;
 const DEFAULT_MAX_TOKENS = 16384;
@@ -68,7 +68,7 @@ function modelDefinition(providerModel: string, reasoning: boolean): ProviderMod
 	};
 }
 
-export function projectHansModels(payload: unknown): ProviderModelConfig[] {
+export function projectClaudeyModels(payload: unknown): ProviderModelConfig[] {
 	const ids = catalogModelIds(payload);
 	const normalModels = new Set<string>();
 	for (const id of ids) {
@@ -105,7 +105,7 @@ function requestIdSuffix(response: Response): string {
 	return requestId ? ` (request ${requestId})` : "";
 }
 
-async function fetchHansModels(baseUrl: string, apiKey: string): Promise<ProviderModelConfig[]> {
+async function fetchClaudeyModels(baseUrl: string, apiKey: string): Promise<ProviderModelConfig[]> {
 	const controller = new AbortController();
 	const timeout = setTimeout(() => controller.abort(), CATALOG_TIMEOUT_MS);
 	try {
@@ -136,16 +136,16 @@ async function fetchHansModels(baseUrl: string, apiKey: string): Promise<Provide
 			}
 			throw new Error(`Claudey model catalog returned invalid JSON${requestIdSuffix(response)}.`);
 		}
-		return projectHansModels(payload);
+		return projectClaudeyModels(payload);
 	} finally {
 		clearTimeout(timeout);
 	}
 }
 
-export default async function freeClaudeCode(pi: ExtensionAPI): Promise<void> {
+export default async function claudeyLauncher(pi: ExtensionAPI): Promise<void> {
 	const baseUrl = normalizeBaseUrl(requireEnvironment(BASE_URL_ENV));
 	const apiKey = requireEnvironment(API_KEY_ENV);
-	const models = await fetchHansModels(baseUrl, apiKey);
+	const models = await fetchClaudeyModels(baseUrl, apiKey);
 
 	pi.registerProvider("claudey", {
 		name: "Claudey",

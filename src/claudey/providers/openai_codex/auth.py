@@ -1,4 +1,4 @@
-"""hans-owned ChatGPT credential lifecycle."""
+"""claudey-owned ChatGPT credential lifecycle."""
 
 import asyncio
 import base64
@@ -282,7 +282,7 @@ class OpenAIAuthManager:
             return self.status()
 
     async def disconnect(self) -> ConnectedAccountStatus:
-        """Best-effort revoke, then always remove hans-owned credentials."""
+        """Best-effort revoke, then always remove claudey-owned credentials."""
 
         async with self._operation_lock:
             async with self._state_lock:

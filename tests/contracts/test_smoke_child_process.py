@@ -8,7 +8,7 @@ from smoke.lib import e2e as smoke_e2e
 from smoke.lib import http as smoke_http
 from smoke.lib import server as smoke_server
 from smoke.lib.child_process import (
-    cmd_hans_server,
+    cmd_claudey_server,
     cmd_python_c,
     run_captured_text,
 )
@@ -18,8 +18,8 @@ from smoke.lib.http import collect_message_stream
 from smoke.lib.server import RunningServer
 
 
-def test_hans_server_command_uses_cli_entrypoint() -> None:
-    assert cmd_hans_server() == [
+def test_claudey_server_command_uses_cli_entrypoint() -> None:
+    assert cmd_claudey_server() == [
         child_process.python_exe(),
         "-c",
         "from claudey.cli.entrypoints import serve; serve()",
@@ -64,7 +64,7 @@ def test_start_server_disables_cli_admin_browser(monkeypatch, tmp_path: Path) ->
     env_obj = captured["env"]
     assert isinstance(env_obj, dict)
     env = {str(key): value for key, value in env_obj.items()}
-    assert env["HANS_OPEN_BROWSER"] == "0"
+    assert env["CLAUDEY_OPEN_BROWSER"] == "0"
     assert env["HOST"] == "127.0.0.1"
     assert env["PORT"] == "4567"
 
@@ -137,14 +137,14 @@ def test_run_captured_text_uses_utf8_replacement(monkeypatch, tmp_path: Path) ->
     result = run_captured_text(
         ("cmd", "arg"),
         cwd=tmp_path,
-        env={"HANS_TEST": "1"},
+        env={"CLAUDEY_TEST": "1"},
         timeout=1.0,
     )
 
     assert result.stdout == "ok"
     assert calls["command"] == ["cmd", "arg"]
     assert calls["cwd"] == tmp_path
-    assert calls["env"] == {"HANS_TEST": "1"}
+    assert calls["env"] == {"CLAUDEY_TEST": "1"}
     assert calls["capture_output"] is True
     assert calls["text"] is True
     assert calls["encoding"] == "utf-8"

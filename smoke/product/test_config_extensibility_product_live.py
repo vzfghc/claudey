@@ -7,7 +7,7 @@ from claudey.config.settings import Settings
 from claudey.messaging.platforms.factory import create_messaging_components
 from claudey.providers.runtime import build_provider_config
 from smoke.lib.child_process import (
-    cmd_hans_server,
+    cmd_claudey_server,
     cmd_python_c,
     run_captured_text,
 )
@@ -25,7 +25,7 @@ def test_env_precedence_e2e(smoke_config: SmokeConfig, tmp_path) -> None:
         encoding="utf-8",
     )
     env = os.environ.copy()
-    env["HANS_ENV_FILE"] = str(env_file)
+    env["CLAUDEY_ENV_FILE"] = str(env_file)
     env["MODEL"] = "nvidia_nim/process-model"
     env["ANTHROPIC_AUTH_TOKEN"] = "process-token"
     script = (
@@ -50,7 +50,7 @@ def test_removed_env_migration_e2e(smoke_config: SmokeConfig, tmp_path) -> None:
     env_file = tmp_path / "removed.env"
     env_file.write_text('NIM_ENABLE_THINKING="true"\n', encoding="utf-8")
     env = os.environ.copy()
-    env["HANS_ENV_FILE"] = str(env_file)
+    env["CLAUDEY_ENV_FILE"] = str(env_file)
     result = run_captured_text(
         cmd_python_c("from claudey.config.settings import Settings; Settings()"),
         cwd=smoke_config.root,
@@ -73,7 +73,7 @@ def test_route_reasoning_config_e2e(smoke_config: SmokeConfig, tmp_path) -> None
         encoding="utf-8",
     )
     env = os.environ.copy()
-    env["HANS_ENV_FILE"] = str(env_file)
+    env["CLAUDEY_ENV_FILE"] = str(env_file)
     script = (
         "from claudey.application.routing import ModelRouter; "
         "from claudey.config.settings import Settings; "
@@ -115,7 +115,7 @@ def test_proxy_timeout_config_e2e(smoke_config: SmokeConfig, tmp_path) -> None:
         encoding="utf-8",
     )
     env = os.environ.copy()
-    env["HANS_ENV_FILE"] = str(env_file)
+    env["CLAUDEY_ENV_FILE"] = str(env_file)
     script = (
         "from claudey.config.settings import Settings; "
         "from claudey.config.provider_catalog import PROVIDER_CATALOG; "
@@ -176,7 +176,7 @@ def test_entrypoint_server_e2e(smoke_config: SmokeConfig) -> None:
     with SmokeServerDriver(
         smoke_config,
         name="product-entrypoint",
-        command=cmd_hans_server(),
+        command=cmd_claudey_server(),
         env_overrides={"MESSAGING_PLATFORM": "none"},
     ).run() as server:
         assert server.process.poll() is None

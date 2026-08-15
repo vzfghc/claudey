@@ -64,12 +64,12 @@ class TestSettings:
     def test_open_admin_browser_loads_from_environment(self, monkeypatch):
         from claudey.config.settings import Settings
 
-        monkeypatch.setenv("HANS_OPEN_BROWSER", "false")
+        monkeypatch.setenv("CLAUDEY_OPEN_BROWSER", "false")
         monkeypatch.setitem(Settings.model_config, "env_file", ())
 
         assert Settings().open_admin_browser is False
 
-    def test_default_claude_workspace_uses_hans_home(self, monkeypatch, tmp_path):
+    def test_default_claude_workspace_uses_claudey_home(self, monkeypatch, tmp_path):
         """Unset CLAUDE_WORKSPACE stores agent data under the fixed path helper."""
         from claudey.config.settings import Settings
 
@@ -83,7 +83,7 @@ class TestSettings:
         assert messaging_state_dir_path() == tmp_path / ".claudey" / "agent_workspace"
         assert not hasattr(settings, "claude_workspace")
 
-    def test_server_log_path_uses_hans_home(self, monkeypatch, tmp_path):
+    def test_server_log_path_uses_claudey_home(self, monkeypatch, tmp_path):
         """The server log location is fixed under ~/.claudey."""
         from claudey.config.paths import server_log_path
 
@@ -114,7 +114,7 @@ class TestSettings:
 
         assert not hasattr(settings, "zai_base_url")
 
-    def test_blank_claude_workspace_uses_hans_home(self, monkeypatch, tmp_path):
+    def test_blank_claude_workspace_uses_claudey_home(self, monkeypatch, tmp_path):
         """An explicit blank env value does not affect the fixed workspace helper."""
         from claudey.config.settings import Settings
 
@@ -1176,7 +1176,7 @@ class TestPerModelMapping:
         """Model discovery is limited to configured chat references."""
         from claudey.config.settings import Settings
 
-        monkeypatch.setenv("HANS_SMOKE_MODEL_NVIDIA_NIM", "nvidia_nim/smoke")
+        monkeypatch.setenv("CLAUDEY_SMOKE_MODEL_NVIDIA_NIM", "nvidia_nim/smoke")
         monkeypatch.setenv("WHISPER_MODEL", "openai/whisper-large-v3")
         s = Settings()
         s.model = "nvidia_nim/fallback"

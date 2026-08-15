@@ -11,7 +11,7 @@ from pathlib import Path
 
 import httpx
 
-from .child_process import cmd_hans_server
+from .child_process import cmd_claudey_server
 from .config import SmokeConfig, redacted
 
 
@@ -50,7 +50,7 @@ def start_server(
             "HOST": "127.0.0.1",
             "PORT": str(port),
             "LOG_FILE": str(log_path),
-            "HANS_OPEN_BROWSER": "0",
+            "CLAUDEY_OPEN_BROWSER": "0",
             "MESSAGING_PLATFORM": "none",
             "PYTHONUNBUFFERED": "1",
         }
@@ -58,7 +58,7 @@ def start_server(
     if env_overrides:
         env.update(env_overrides)
 
-    cmd = command or cmd_hans_server()
+    cmd = command or cmd_claudey_server()
 
     with log_path.open("ab") as log_file:
         process = subprocess.Popen(

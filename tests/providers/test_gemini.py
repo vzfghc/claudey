@@ -244,7 +244,7 @@ def test_build_request_body_merges_caller_nested_google(gemini_provider):
     }
 
 
-def test_gemini_rejects_caller_thinking_config_with_hans_reasoning_control(
+def test_gemini_rejects_caller_thinking_config_with_claudey_reasoning_control(
     gemini_provider: GeminiProvider,
 ) -> None:
     request = make_request(

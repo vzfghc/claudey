@@ -49,14 +49,14 @@ def _clear_process_config(monkeypatch) -> None:
         "OLLAMA_API_KEY",
         "ANTHROPIC_AUTH_TOKEN",
         "TELEGRAM_PROXY_URL",
-        "HANS_ENV_FILE",
+        "CLAUDEY_ENV_FILE",
         "CLOUDFLARE_API_TOKEN",
         "CLOUDFLARE_ACCOUNT_ID",
         "GITHUB_MODELS_TOKEN",
         "SAMBANOVA_API_KEY",
         "HOST",
         "PORT",
-        "HANS_OPEN_BROWSER",
+        "CLAUDEY_OPEN_BROWSER",
         "VOICE_NOTE_ENABLED",
         "WHISPER_DEVICE",
         "LOG_FILE",
@@ -428,7 +428,7 @@ def test_admin_config_masks_secrets_and_exposes_manifest(monkeypatch, tmp_path):
     assert "TELEGRAM_PROXY_URL" in keys
     assert "CEREBRAS_API_KEY" in keys
     assert "OLLAMA_API_KEY" in keys
-    assert "HANS_OPEN_BROWSER" in keys
+    assert "CLAUDEY_OPEN_BROWSER" in keys
     assert "ZAI_BASE_URL" not in keys
     assert "CLAUDE_WORKSPACE" not in keys
     assert "CLAUDE_CLI_BIN" not in keys
@@ -444,7 +444,7 @@ def test_admin_config_masks_secrets_and_exposes_manifest(monkeypatch, tmp_path):
     )
     assert telegram_proxy_field["secret"] is True
     open_browser_field = next(
-        field for field in body["fields"] if field["key"] == "HANS_OPEN_BROWSER"
+        field for field in body["fields"] if field["key"] == "CLAUDEY_OPEN_BROWSER"
     )
     assert open_browser_field["type"] == "boolean"
     assert open_browser_field["value"] == "true"
@@ -597,7 +597,7 @@ def test_admin_apply_persists_open_browser_for_next_launch(monkeypatch, tmp_path
 
     response = _local_client(app).post(
         "/admin/api/config/apply",
-        json={"values": {"HANS_OPEN_BROWSER": False}},
+        json={"values": {"CLAUDEY_OPEN_BROWSER": False}},
     )
 
     assert response.status_code == 200
@@ -611,7 +611,7 @@ def test_admin_apply_persists_open_browser_for_next_launch(monkeypatch, tmp_path
         "fields": [],
     }
     managed_env = tmp_path / ".claudey" / ".env"
-    assert "HANS_OPEN_BROWSER=false" in managed_env.read_text(encoding="utf-8")
+    assert "CLAUDEY_OPEN_BROWSER=false" in managed_env.read_text(encoding="utf-8")
 
 
 def test_admin_apply_masks_telegram_proxy_credentials(monkeypatch, tmp_path):
@@ -1046,7 +1046,7 @@ def test_admin_apply_preserves_hidden_diagnostics_and_smoke_values(
             [
                 "MODEL=nvidia_nim/old-model",
                 "LOG_RAW_API_PAYLOADS=true",
-                "HANS_SMOKE_MODEL_ZAI=zai/smoke-model",
+                "CLAUDEY_SMOKE_MODEL_ZAI=zai/smoke-model",
                 "",
             ]
         ),
@@ -1065,7 +1065,7 @@ def test_admin_apply_preserves_hidden_diagnostics_and_smoke_values(
     text = env_file.read_text("utf-8")
     assert "MODEL=open_router/test-model" in text
     assert "LOG_RAW_API_PAYLOADS=true" in text
-    assert "HANS_SMOKE_MODEL_ZAI=zai/smoke-model" in text
+    assert "CLAUDEY_SMOKE_MODEL_ZAI=zai/smoke-model" in text
 
 
 def test_admin_apply_omits_stale_zai_base_url(monkeypatch, tmp_path):
@@ -1308,9 +1308,9 @@ def test_admin_local_provider_status_reports_reachable(monkeypatch, tmp_path):
 
 
 def test_admin_launch_url_uses_loopback_for_wildcard_host():
-    settings = Settings.model_construct(host="0.0.0.0", port=8082)
+    settings = Settings.model_construct(host="0.0.0.0", port=8090)
 
-    assert local_admin_url(settings) == "http://127.0.0.1:8082/admin"
+    assert local_admin_url(settings) == "http://127.0.0.1:8090/admin"
 
 
 def test_admin_dashboard_endpoint_loopback_and_shape(monkeypatch, tmp_path):

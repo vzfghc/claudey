@@ -54,4 +54,4 @@ def test_desktop_entrypoint_rejects_unknown_arguments(
         desktop_entrypoint.launch(["--unknown"])
 
     assert exc_info.value.code == 2
-    assert "Usage: hans-desktop" in capsys.readouterr().err
+    assert "Usage: claudey-desktop" in capsys.readouterr().err

@@ -269,7 +269,7 @@ def _coalesce_openai_user_messages(
 
 
 class _SyntheticOpenAIToolTurnBoundary(dict[str, Any]):
-    """Identify an hans-inserted assistant boundary until wire serialization."""
+    """Identify an claudey-inserted assistant boundary until wire serialization."""
 
     __slots__ = ()
 

@@ -8,10 +8,10 @@ CLAUDE_INSTALL_URL="https://claude.ai/install.sh"
 CODEX_INSTALL_URL="https://chatgpt.com/codex/install.sh"
 PI_INSTALL_URL="https://pi.dev/install.sh"
 UV_INSTALL_URL="https://astral.sh/uv/install.sh"
-HANS_MACOS_BUNDLE_ID="io.github.vzfghc.claudey"
-HANS_MACOS_OWNER_FILE=".claudey-owner"
+CLAUDEY_MACOS_BUNDLE_ID="io.github.vzfghc.claudey"
+CLAUDEY_MACOS_OWNER_FILE=".claudey-owner"
 # Include retired entry points so updates reject older Claudey processes before replacement.
-HANS_COMMANDS="hans-desktop hans-server hans-claude hans-codex hans-pi hans-init claudey"
+CLAUDEY_COMMANDS="claudey-desktop claudey-server claudey-claude claudey-codex claudey-pi claudey-init claudey"
 
 dry_run=0
 voice_nim=0
@@ -74,17 +74,17 @@ choose_coding_agents() {
     exec 4>"$selection_output"
 
     while :; do
-        if prompt_yes_no "Install or verify Claude Code for hans-claude?"; then
+        if prompt_yes_no "Install or verify Claude Code for claudey-claude?"; then
             install_claude=1
         else
             install_claude=0
         fi
-        if prompt_yes_no "Install or verify Codex for hans-codex?"; then
+        if prompt_yes_no "Install or verify Codex for claudey-codex?"; then
             install_codex=1
         else
             install_codex=0
         fi
-        if prompt_yes_no "Install or verify Pi for hans-pi?"; then
+        if prompt_yes_no "Install or verify Pi for claudey-pi?"; then
             install_pi=1
         else
             install_pi=0
@@ -186,7 +186,7 @@ add_pi_bin_directories() {
     fi
 }
 
-hans_process_ids() {
+claudey_process_ids() {
     command_name=$1
 
     if command -v pgrep >/dev/null 2>&1; then
@@ -212,10 +212,10 @@ hans_process_ids() {
         ' || true
 }
 
-assert_no_hans_processes_running() {
+assert_no_claudey_processes_running() {
     running=""
-    for command_name in $HANS_COMMANDS; do
-        process_ids=$(hans_process_ids "$command_name")
+    for command_name in $CLAUDEY_COMMANDS; do
+        process_ids=$(claudey_process_ids "$command_name")
         [ -n "$process_ids" ] || continue
 
         for process_id in $process_ids; do
@@ -257,7 +257,7 @@ download_and_run() {
         return 0
     fi
 
-    temporary_script=$(mktemp "${TMPDIR:-/tmp}/hans-install.XXXXXX") || fail "Unable to create a temporary file for $label."
+    temporary_script=$(mktemp "${TMPDIR:-/tmp}/claudey-install.XXXXXX") || fail "Unable to create a temporary file for $label."
     print_command curl -fsSL "$url" -o "$temporary_script"
     if curl -fsSL "$url" -o "$temporary_script"; then
         :
@@ -576,7 +576,7 @@ package_spec() {
 }
 
 install_claudey() {
-    assert_no_hans_processes_running
+    assert_no_claudey_processes_running
     spec=$(package_spec)
 
     if [ -n "$torch_backend" ]; then
@@ -591,8 +591,8 @@ configure_and_verify_claudey() {
 
     if [ "$dry_run" -eq 1 ]; then
         print_command uv tool dir --bin
-        printf '+ verify hans-desktop, hans-server, hans-claude, hans-codex, and hans-pi in the uv tool bin directory\n'
-        print_command hans-server --version
+        printf '+ verify claudey-desktop, claudey-server, claudey-claude, claudey-codex, and claudey-pi in the uv tool bin directory\n'
+        print_command claudey-server --version
         return 0
     fi
 
@@ -609,20 +609,20 @@ configure_and_verify_claudey() {
     export PATH
     hash -r 2>/dev/null || true
 
-    for command_name in hans-desktop hans-server hans-claude hans-codex hans-pi; do
+    for command_name in claudey-desktop claudey-server claudey-claude claudey-codex claudey-pi; do
         [ -x "$tool_bin/$command_name" ] || fail "Claudey installation did not create $tool_bin/$command_name."
     done
 
-    run "$tool_bin/hans-server" --version
+    run "$tool_bin/claudey-server" --version
 }
 
 legacy_fcc_target() {
     case "$1" in
-        fcc-server) printf '%s' "hans-server" ;;
-        fcc-claude) printf '%s' "hans-claude" ;;
-        fcc-codex) printf '%s' "hans-codex" ;;
-        fcc-pi) printf '%s' "hans-pi" ;;
-        fcc-desktop) printf '%s' "hans-desktop" ;;
+        fcc-server) printf '%s' "claudey-server" ;;
+        fcc-claude) printf '%s' "claudey-claude" ;;
+        fcc-codex) printf '%s' "claudey-codex" ;;
+        fcc-pi) printf '%s' "claudey-pi" ;;
+        fcc-desktop) printf '%s' "claudey-desktop" ;;
         *) return 1 ;;
     esac
 }
@@ -654,13 +654,13 @@ shell_quote() {
     printf "'%s'" "$escaped"
 }
 
-macos_app_is_hans_owned() {
+macos_app_is_claudey_owned() {
     app_dir=$1
-    owner_file="$app_dir/Contents/$HANS_MACOS_OWNER_FILE"
+    owner_file="$app_dir/Contents/$CLAUDEY_MACOS_OWNER_FILE"
     [ -d "$app_dir" ] &&
         [ ! -L "$app_dir" ] &&
         [ -f "$owner_file" ] &&
-        [ "$(cat "$owner_file")" = "$HANS_MACOS_BUNDLE_ID" ]
+        [ "$(cat "$owner_file")" = "$CLAUDEY_MACOS_BUNDLE_ID" ]
 }
 
 install_macos_desktop_app() {
@@ -668,31 +668,31 @@ install_macos_desktop_app() {
 
     app_dir="$HOME/Applications/Claudey.app"
     contents_dir="$app_dir/Contents"
-    owner_file="$contents_dir/$HANS_MACOS_OWNER_FILE"
+    owner_file="$contents_dir/$CLAUDEY_MACOS_OWNER_FILE"
     executable_dir="$contents_dir/MacOS"
-    executable_path="$executable_dir/hans-desktop"
+    executable_path="$executable_dir/claudey-desktop"
     resources_dir="$contents_dir/Resources"
     icon_path="$resources_dir/AppIcon.icns"
     desktop_dir="$HOME/Desktop"
     desktop_link="$desktop_dir/Claudey.app"
 
     if [ -e "$app_dir" ] || [ -L "$app_dir" ]; then
-        macos_app_is_hans_owned "$app_dir" ||
+        macos_app_is_claudey_owned "$app_dir" ||
             fail "An app not managed by Claudey already exists at $app_dir. Move it, then rerun the installer."
     fi
 
     if [ "$dry_run" -eq 1 ]; then
         print_command mkdir -p "$executable_dir" "$resources_dir" "$desktop_dir"
-        print_command hans-desktop --export-icon "$icon_path"
+        print_command claudey-desktop --export-icon "$icon_path"
         printf '+ write %s, %s, and %s\n' "$owner_file" "$contents_dir/Info.plist" "$executable_path"
         print_command ln -s "$app_dir" "$desktop_link"
         return 0
     fi
 
     mkdir -p "$executable_dir" "$resources_dir" "$desktop_dir"
-    run "$tool_bin/hans-desktop" --export-icon "$icon_path"
+    run "$tool_bin/claudey-desktop" --export-icon "$icon_path"
     [ -f "$icon_path" ] || fail "Claudey did not export its macOS app icon to $icon_path."
-    printf '%s\n' "$HANS_MACOS_BUNDLE_ID" > "$owner_file"
+    printf '%s\n' "$CLAUDEY_MACOS_BUNDLE_ID" > "$owner_file"
     cat > "$contents_dir/Info.plist" <<'PLIST'
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -701,7 +701,7 @@ install_macos_desktop_app() {
     <key>CFBundleDisplayName</key>
     <string>Claudey</string>
     <key>CFBundleExecutable</key>
-    <string>hans-desktop</string>
+    <string>claudey-desktop</string>
     <key>CFBundleIdentifier</key>
     <string>io.github.vzfghc.claudey</string>
     <key>CFBundleIconFile</key>
@@ -717,7 +717,7 @@ install_macos_desktop_app() {
 </dict>
 </plist>
 PLIST
-    desktop_command=$(shell_quote "$tool_bin/hans-desktop")
+    desktop_command=$(shell_quote "$tool_bin/claudey-desktop")
     {
         printf '%s\n' '#!/bin/sh'
         printf 'exec %s\n' "$desktop_command"
@@ -743,7 +743,7 @@ validate_args
 add_known_bin_directories
 
 step "Checking for running Claudey processes"
-assert_no_hans_processes_running
+assert_no_claudey_processes_running
 
 if installer_is_interactive; then
     step "Choosing coding agents"
@@ -784,18 +784,18 @@ if [ "$dry_run" -eq 1 ]; then
 else
     if [ "$(uname -s)" = "Darwin" ]; then
         printf '\nClaudey is installed and verified. Open Claudey from Applications or the desktop to run it in the background.\n'
-        printf 'For terminal use, start the proxy with: hans-server\n'
+        printf 'For terminal use, start the proxy with: claudey-server\n'
     else
-        printf '\nClaudey is installed and verified. Start the proxy with: hans-server\n'
+        printf '\nClaudey is installed and verified. Start the proxy with: claudey-server\n'
     fi
     if [ "$install_claude" -eq 1 ]; then
-        printf 'Run Claude Code with: hans-claude\n'
+        printf 'Run Claude Code with: claudey-claude\n'
     fi
     if [ "$install_codex" -eq 1 ]; then
-        printf 'Run Codex with: hans-codex\n'
+        printf 'Run Codex with: claudey-codex\n'
     fi
     if [ "$pi_available" -eq 1 ]; then
-        printf 'Run Pi with: hans-pi\n'
+        printf 'Run Pi with: claudey-pi\n'
     fi
     if [ "$legacy_fcc" -eq 1 ]; then
         printf 'Legacy fcc-* commands now print a deprecation notice and exit 2.\n'

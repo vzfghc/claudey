@@ -15,7 +15,7 @@ from claudey.core.reasoning import DEFAULT_REASONING_POLICY, ReasoningPolicy
 from claudey.providers.base import BaseProvider, ProviderConfig
 from tests.api.support import create_test_app
 
-_TMP = tempfile.mkdtemp(prefix="hans-schemathesis-")
+_TMP = tempfile.mkdtemp(prefix="claudey-schemathesis-")
 os.environ["CLAUDEY_CUSTOM_PROVIDERS_PATH"] = os.path.join(
     _TMP, "custom-providers.json"
 )

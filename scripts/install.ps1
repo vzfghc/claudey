@@ -27,14 +27,14 @@ $script:InstallCodex = $true
 $script:InstallPi = $true
 $script:PiAvailable = $false
 $script:UvToolBin = ""
-$HansCommands = @(
+$ClaudeyCommands = @(
     # Include retired entry points so updates reject older Claudey processes before replacement.
-    "hans-desktop",
-    "hans-server",
-    "hans-claude",
-    "hans-codex",
-    "hans-pi",
-    "hans-init",
+    "claudey-desktop",
+    "claudey-server",
+    "claudey-claude",
+    "claudey-codex",
+    "claudey-pi",
+    "claudey-init",
     "claudey"
 )
 
@@ -83,9 +83,9 @@ function Read-YesNo {
 
 function Select-CodingAgents {
     while ($true) {
-        $script:InstallClaudeCode = Read-YesNo "Install or verify Claude Code for hans-claude?"
-        $script:InstallCodex = Read-YesNo "Install or verify Codex for hans-codex?"
-        $script:InstallPi = Read-YesNo "Install or verify Pi for hans-pi?"
+        $script:InstallClaudeCode = Read-YesNo "Install or verify Claude Code for claudey-claude?"
+        $script:InstallCodex = Read-YesNo "Install or verify Codex for claudey-codex?"
+        $script:InstallPi = Read-YesNo "Install or verify Pi for claudey-pi?"
 
         if ($script:InstallClaudeCode -or $script:InstallCodex -or $script:InstallPi) {
             return
@@ -244,9 +244,9 @@ function Add-PiBinDirectories {
     }
 }
 
-function Assert-NoHansProcessesRunning {
+function Assert-NoClaudeyProcessesRunning {
     $running = @()
-    foreach ($commandName in $HansCommands) {
+    foreach ($commandName in $ClaudeyCommands) {
         $processes = @(Get-Process -Name $commandName -ErrorAction SilentlyContinue)
         foreach ($process in $processes) {
             $running += "$commandName (PID $($process.Id))"
@@ -272,7 +272,7 @@ function Invoke-DownloadedPowerShellInstaller {
         return
     }
 
-    $temporaryScript = Join-Path ([IO.Path]::GetTempPath()) ("hans-install-" + [guid]::NewGuid().ToString("N") + ".ps1")
+    $temporaryScript = Join-Path ([IO.Path]::GetTempPath()) ("claudey-install-" + [guid]::NewGuid().ToString("N") + ".ps1")
     try {
         Write-Host "+ irm $Url -OutFile $(Format-Argument $temporaryScript)"
         Invoke-RestMethod -Uri $Url -OutFile $temporaryScript -ErrorAction Stop
@@ -568,8 +568,8 @@ function Get-PackageSpec {
     return "claudey @ $RepoArchiveUrl"
 }
 
-function Install-FreeClaudeCode {
-    Assert-NoHansProcessesRunning
+function Install-Claudey {
+    Assert-NoClaudeyProcessesRunning
     $packageSpec = Get-PackageSpec
     $arguments = @(
         "tool",
@@ -596,7 +596,7 @@ function Install-FreeClaudeCode {
     Invoke-NativeCommand -FilePath $uvPath -Arguments $arguments
 }
 
-function Export-HansDesktopIcon {
+function Export-ClaudeyDesktopIcon {
     param(
         [string] $DesktopCommand,
         [string] $IconPath
@@ -630,19 +630,19 @@ function Export-HansDesktopIcon {
     }
 }
 
-function Configure-AndConfirmFreeClaudeCode {
-    $iconPath = Join-Path $env:USERPROFILE ".fcc\app-icon.ico"
+function Configure-AndConfirmClaudey {
+    $iconPath = Join-Path $env:USERPROFILE ".claudey\app-icon.ico"
     if ($DryRun) {
         $script:UvToolBin = "<uv-tool-bin>"
         Write-Host "+ uv tool update-shell"
         Write-Host "+ uv tool dir --bin"
-        Write-Host "+ verify hans-desktop, hans-server, hans-claude, hans-codex, and hans-pi in the uv tool bin directory"
-        Write-Host "+ hans-server --version"
-        Export-HansDesktopIcon `
-            -DesktopCommand "<uv-tool-bin>\hans-desktop.exe" `
+        Write-Host "+ verify claudey-desktop, claudey-server, claudey-claude, claudey-codex, and claudey-pi in the uv tool bin directory"
+        Write-Host "+ claudey-server --version"
+        Export-ClaudeyDesktopIcon `
+            -DesktopCommand "<uv-tool-bin>\claudey-desktop.exe" `
             -IconPath $iconPath
-        Install-HansDesktopShortcuts `
-            -DesktopCommand "<uv-tool-bin>\hans-desktop.exe" `
+        Install-ClaudeyDesktopShortcuts `
+            -DesktopCommand "<uv-tool-bin>\claudey-desktop.exe" `
             -IconPath $iconPath
         return
     }
@@ -664,7 +664,7 @@ function Configure-AndConfirmFreeClaudeCode {
         [IO.Path]::AltDirectorySeparatorChar
     )
     $installedCommands = @{}
-    foreach ($commandName in @("hans-desktop", "hans-server", "hans-claude", "hans-codex", "hans-pi")) {
+    foreach ($commandName in @("claudey-desktop", "claudey-server", "claudey-claude", "claudey-codex", "claudey-pi")) {
         $command = Get-ApplicationCommand $commandName
         if (-not $command) {
             throw "Claudey installation did not create '$commandName'."
@@ -679,12 +679,12 @@ function Configure-AndConfirmFreeClaudeCode {
         $installedCommands[$commandName] = $command.Source
     }
 
-    Invoke-NativeCommand -FilePath $installedCommands["hans-server"] -Arguments @("--version")
-    Export-HansDesktopIcon `
-        -DesktopCommand $installedCommands["hans-desktop"] `
+    Invoke-NativeCommand -FilePath $installedCommands["claudey-server"] -Arguments @("--version")
+    Export-ClaudeyDesktopIcon `
+        -DesktopCommand $installedCommands["claudey-desktop"] `
         -IconPath $iconPath
-    Install-HansDesktopShortcuts `
-        -DesktopCommand $installedCommands["hans-desktop"] `
+    Install-ClaudeyDesktopShortcuts `
+        -DesktopCommand $installedCommands["claudey-desktop"] `
         -IconPath $iconPath
 }
 
@@ -709,7 +709,7 @@ function Test-EquivalentPath {
     }
 }
 
-function Install-HansDesktopShortcuts {
+function Install-ClaudeyDesktopShortcuts {
     param(
         [string] $DesktopCommand,
         [string] $IconPath
@@ -731,12 +731,12 @@ function Install-HansDesktopShortcuts {
         if (Test-Path -LiteralPath $shortcutPath) {
             try {
                 $existingShortcut = $shell.CreateShortcut($shortcutPath)
-                $isHansShortcut = Test-EquivalentPath -Left $existingShortcut.TargetPath -Right $DesktopCommand
+                $isClaudeyShortcut = Test-EquivalentPath -Left $existingShortcut.TargetPath -Right $DesktopCommand
             }
             catch {
-                $isHansShortcut = $false
+                $isClaudeyShortcut = $false
             }
-            if (-not $isHansShortcut) {
+            if (-not $isClaudeyShortcut) {
                 Write-Host "A shortcut not managed by Claudey already exists at $shortcutPath; leaving it unchanged."
                 continue
             }
@@ -754,21 +754,21 @@ function Install-HansDesktopShortcuts {
 
 function Install-LegacyFccShims {
     $legacyCommands = @(
-        @{ Legacy = "fcc-server"; Hans = "hans-server" },
-        @{ Legacy = "fcc-claude"; Hans = "hans-claude" },
-        @{ Legacy = "fcc-codex"; Hans = "hans-codex" },
-        @{ Legacy = "fcc-pi"; Hans = "hans-pi" },
-        @{ Legacy = "fcc-desktop"; Hans = "hans-desktop" }
+        @{ Legacy = "fcc-server"; Claudey = "claudey-server" },
+        @{ Legacy = "fcc-claude"; Claudey = "claudey-claude" },
+        @{ Legacy = "fcc-codex"; Claudey = "claudey-codex" },
+        @{ Legacy = "fcc-pi"; Claudey = "claudey-pi" },
+        @{ Legacy = "fcc-desktop"; Claudey = "claudey-desktop" }
     )
     foreach ($entry in $legacyCommands) {
         $shimPath = Join-Path $script:UvToolBin "$($entry.Legacy).cmd"
-        Write-Host "+ write legacy shim $shimPath -> $($entry.Hans)"
+        Write-Host "+ write legacy shim $shimPath -> $($entry.Claudey)"
         if ($DryRun) {
             continue
         }
         $lines = @(
             "@echo off"
-            "echo $($entry.Legacy) is deprecated: use $($entry.Hans) 1>&2"
+            "echo $($entry.Legacy) is deprecated: use $($entry.Claudey) 1>&2"
             "exit /b 2"
         )
         Set-Content -LiteralPath $shimPath -Value $lines -Encoding ascii
@@ -793,7 +793,7 @@ if ((-not [string]::IsNullOrWhiteSpace($TorchBackend)) -and (-not ($VoiceLocal -
 Add-KnownBinDirectories
 
 Write-Step "Checking for running Claudey processes"
-Assert-NoHansProcessesRunning
+Assert-NoClaudeyProcessesRunning
 
 if (Test-InteractiveInstaller) {
     Write-Step "Choosing coding agents"
@@ -806,10 +806,10 @@ Write-Step "Ensuring uv $MinUvVersion or newer is installed"
 Ensure-Uv
 
 Write-Step "Installing or updating Claudey"
-Install-FreeClaudeCode
+Install-Claudey
 
 Write-Step "Configuring PATH and verifying Claudey"
-Configure-AndConfirmFreeClaudeCode
+Configure-AndConfirmClaudey
 
 if ($LegacyFcc) {
     Write-Step "Installing legacy fcc-* deprecation shims"
@@ -822,14 +822,14 @@ if ($DryRun) {
 }
 else {
     Write-Host "Claudey is installed and verified. Open the Claudey desktop shortcut to run it in the background."
-    Write-Host "For terminal use, start the proxy with: hans-server"
+    Write-Host "For terminal use, start the proxy with: claudey-server"
     if ($script:InstallClaudeCode) {
-        Write-Host "Run Claude Code with: hans-claude"
+        Write-Host "Run Claude Code with: claudey-claude"
     }
     if ($script:InstallCodex) {
-        Write-Host "Run Codex with: hans-codex"
+        Write-Host "Run Codex with: claudey-codex"
     }
     if ($script:PiAvailable) {
-        Write-Host "Run Pi with: hans-pi"
+        Write-Host "Run Pi with: claudey-pi"
     }
 }

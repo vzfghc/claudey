@@ -11,7 +11,10 @@ from .paths import managed_env_path
 
 ANTHROPIC_AUTH_TOKEN_ENV = "ANTHROPIC_AUTH_TOKEN"
 
-# still honored so existing setups keep working after the Claudey rename.
+CLAUDEY_ENV_FILE = "CLAUDEY_ENV_FILE"
+
+# Legacy spelling still honored so existing setups keep working after the
+# Claudey rename; CLAUDEY_ENV_FILE is canonical.
 HANS_ENV_FILE = "HANS_ENV_FILE"
 
 
@@ -22,11 +25,12 @@ def repo_env_path() -> Path:
 
 
 def explicit_env_path(env: Mapping[str, str] | None = None) -> Path | None:
-    """Return the explicit HANS_ENV_FILE path, when configured."""
+    """Return the explicit env-file path, when configured."""
 
     source = env if env is not None else os.environ
-    if explicit := source.get(HANS_ENV_FILE):
-        return Path(explicit)
+    for key in (CLAUDEY_ENV_FILE, HANS_ENV_FILE):
+        if explicit := source.get(key):
+            return Path(explicit)
     return None
 
 
