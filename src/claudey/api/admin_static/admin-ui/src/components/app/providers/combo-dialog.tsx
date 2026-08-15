@@ -29,16 +29,35 @@ interface ComboDialogProps {
   onSaved: () => void;
 }
 
-function emptyNode(): ComboNode {
-  return { provider_model_ref: "", enabled: true, priority: 0 };
+let nodeKey = 0;
+function nextNodeKey(): string {
+  nodeKey += 1;
+  return `node-${nodeKey}`;
+}
+
+/** A fallback row plus a stable client key (never sent to the API). */
+type NodeRow = ComboNode & { _key: string };
+
+function emptyNode(): NodeRow {
+  return { _key: nextNodeKey(), provider_model_ref: "", enabled: true, priority: 0 };
+}
+
+function toNodeRow(node: ComboNode): NodeRow {
+  return { _key: nextNodeKey(), ...node };
+}
+
+function stripNodeKey(row: NodeRow): ComboNode {
+  const { _key, ...node } = row;
+  void _key;
+  return node;
 }
 
 export function ComboDialog({ open, onOpenChange, combo, onSaved }: ComboDialogProps) {
   const isEdit = Boolean(combo?.combo_id);
   const [name, setName] = useState(combo?.display_name ?? "");
   const [enabled, setEnabled] = useState(combo?.enabled ?? true);
-  const [nodes, setNodes] = useState<ComboNode[]>(
-    combo?.nodes?.length ? combo.nodes : [emptyNode()],
+  const [nodes, setNodes] = useState<NodeRow[]>(
+    combo?.nodes?.length ? combo.nodes.map(toNodeRow) : [emptyNode()],
   );
   const [isValidating, setIsValidating] = useState(false);
   const [validateResult, setValidateResult] = useState<ComboValidateResult | null>(null);
@@ -57,7 +76,7 @@ export function ComboDialog({ open, onOpenChange, combo, onSaved }: ComboDialogP
   };
 
   const handleValidate = async () => {
-    const validNodes = nodes.filter((n) => n.provider_model_ref.trim());
+    const validNodes = nodes.filter((n) => n.provider_model_ref.trim()).map(stripNodeKey);
     if (!name.trim()) {
       toast.error("A combo name is required");
       return;
@@ -89,7 +108,7 @@ export function ComboDialog({ open, onOpenChange, combo, onSaved }: ComboDialogP
   };
 
   const handleSave = async () => {
-    const validNodes = nodes.filter((n) => n.provider_model_ref.trim());
+    const validNodes = nodes.filter((n) => n.provider_model_ref.trim()).map(stripNodeKey);
     if (!name.trim()) {
       toast.error("A combo name is required");
       return;
@@ -150,7 +169,7 @@ export function ComboDialog({ open, onOpenChange, combo, onSaved }: ComboDialogP
             <Label>Fallback chain (tried in order)</Label>
             <div className="space-y-2">
               {nodes.map((node, index) => (
-                <div key={index} className="flex items-center gap-2">
+                <div key={node._key} className="flex items-center gap-2">
                   <div className="flex-1">
                     <ModelCombobox
                       value={node.provider_model_ref}
@@ -159,8 +178,12 @@ export function ComboDialog({ open, onOpenChange, combo, onSaved }: ComboDialogP
                       placeholder="provider/model"
                     />
                   </div>
-                  <label className="flex items-center gap-1.5 text-[13px] text-ink-muted-48">
+                  <label
+                    htmlFor={`${node._key}-enabled`}
+                    className="flex items-center gap-1.5 text-[13px] text-ink-muted-48"
+                  >
                     <Checkbox
+                      id={`${node._key}-enabled`}
                       checked={node.enabled}
                       onCheckedChange={(checked) => updateNode(index, { enabled: checked === true })}
                     />
@@ -191,8 +214,12 @@ export function ComboDialog({ open, onOpenChange, combo, onSaved }: ComboDialogP
             </Button>
           </div>
 
-          <label className="flex items-center gap-2 text-[14px] text-ink">
-            <Checkbox checked={enabled} onCheckedChange={(checked) => setEnabled(checked === true)} />
+          <label htmlFor="combo-enabled" className="flex items-center gap-2 text-[14px] text-ink">
+            <Checkbox
+              id="combo-enabled"
+              checked={enabled}
+              onCheckedChange={(checked) => setEnabled(checked === true)}
+            />
             Combo enabled
           </label>
 

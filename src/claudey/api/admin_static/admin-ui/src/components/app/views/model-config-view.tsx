@@ -1,3 +1,4 @@
+import * as React from "react";
 import { useState } from "react";
 import { RefreshCw, Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -84,8 +85,14 @@ export function ModelConfigView() {
     }
   };
 
+  const handleFormSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    void handleApply();
+  };
+
   return (
     <div className="flex min-h-0 flex-1 flex-col">
+      <form onSubmit={handleFormSubmit} className="flex min-h-0 flex-1 flex-col">
       <div className="min-h-0 flex-1 overflow-y-auto px-6 py-8">
         <div className="mx-auto max-w-[920px] space-y-6">
           <div className="flex items-end justify-between gap-4">
@@ -158,6 +165,7 @@ export function ModelConfigView() {
         onApply={handleApply}
         onRestart={form.restart}
       />
+      </form>
     </div>
   );
 }

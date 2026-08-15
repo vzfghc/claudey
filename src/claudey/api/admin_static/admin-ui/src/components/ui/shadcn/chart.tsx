@@ -68,12 +68,19 @@ const ChartContainer = React.forwardRef<
 });
 ChartContainer.displayName = "Chart";
 
+/** CSS id interpolated into a data-attribute selector; must stay a bare token. */
+const SAFE_CSS_ID = /^[a-zA-Z0-9_-]+$/;
+
 const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
   const colorConfig = Object.entries(config).filter(
     ([, config]) => config.theme || config.color
   );
 
   if (!colorConfig.length) {
+    return null;
+  }
+
+  if (!SAFE_CSS_ID.test(id)) {
     return null;
   }
 

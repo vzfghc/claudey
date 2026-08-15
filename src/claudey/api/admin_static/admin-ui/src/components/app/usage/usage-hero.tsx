@@ -60,6 +60,24 @@ export function UsageHero({ payload, billing, usdToIdr }: UsageHeroProps) {
     indicator.style.width = `${active.offsetWidth}px`;
   }, [period]);
 
+  // ARIA tabs keyboard navigation (roving tabindex): Left/Right move between
+  // periods, Home/End jump to the first/last. The handler lives on each tab
+  // button so focus stays on a focusable element and follows the active tab.
+  const onTabKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>) => {
+    const currentIndex = USAGE_PERIODS.indexOf(period);
+    let nextIndex: number | null = null;
+    if (event.key === "ArrowRight") nextIndex = (currentIndex + 1) % USAGE_PERIODS.length;
+    else if (event.key === "ArrowLeft") nextIndex = (currentIndex - 1 + USAGE_PERIODS.length) % USAGE_PERIODS.length;
+    else if (event.key === "Home") nextIndex = 0;
+    else if (event.key === "End") nextIndex = USAGE_PERIODS.length - 1;
+    if (nextIndex === null) return;
+    event.preventDefault();
+    setPeriod(USAGE_PERIODS[nextIndex]);
+    tabsRef.current
+      ?.querySelectorAll<HTMLButtonElement>('button[role="tab"]')
+      .item(nextIndex)?.focus();
+  };
+
   const totalCostUsd = billing?.total_cost_usd;
   const idrRate = usdToIdr > 0 ? usdToIdr : IDR_FALLBACK_RATE;
 
@@ -92,6 +110,7 @@ export function UsageHero({ payload, billing, usdToIdr }: UsageHeroProps) {
       <div
         ref={tabsRef}
         role="tablist"
+        id="usage-period-tablist"
         aria-label="Period"
         className="relative z-10 mx-auto mb-4 flex items-center justify-center gap-0 rounded-md bg-black/[0.04] p-1 shadow-[inset_0_1px_1px_rgba(0,0,0,0.04)]"
       >
@@ -107,7 +126,11 @@ export function UsageHero({ payload, billing, usdToIdr }: UsageHeroProps) {
               type="button"
               ref={label === period ? activeTabRef : undefined}
               role="tab"
+              id={`usage-period-tab-${index}`}
+              aria-controls="usage-hero-panel"
               aria-selected={label === period}
+              tabIndex={label === period ? 0 : -1}
+              onKeyDown={onTabKeyDown}
               className={cn(
                 "relative z-10 rounded-sm border-none bg-transparent px-3.5 py-1.5 text-[12px] leading-none font-semibold transition-[color,transform] duration-200",
                 label === period ? "text-heat" : "text-ink-muted-48 hover:text-ink",
@@ -123,10 +146,17 @@ export function UsageHero({ payload, billing, usdToIdr }: UsageHeroProps) {
         ))}
       </div>
 
+      {/* Hero content — the labelled tabpanel for the period tabs above */}
+      <div
+        id="usage-hero-panel"
+        role="tabpanel"
+        aria-labelledby={`usage-period-tab-${USAGE_PERIODS.indexOf(period)}`}
+        className="relative z-10 flex w-full flex-col items-center"
+      >
       {/* Hero number — click toggles compact ⇄ full */}
       <button
         type="button"
-        title="Click to toggle between compact and full numbers"
+        title="Toggle between compact and full numbers"
         aria-pressed={fullNumbers}
         onClick={() => setFullNumbers((v) => !v)}
         className="usage-hero-number relative z-10 cursor-pointer border-none bg-transparent p-0 font-display text-[clamp(2.5rem,6vw,4rem)] leading-[1.1] font-semibold text-heat tabular-nums transition-[transform] duration-200 ease-default active:scale-[0.98]"
@@ -145,6 +175,7 @@ export function UsageHero({ payload, billing, usdToIdr }: UsageHeroProps) {
           <strong className="font-medium text-ink">IDR:</strong>{" "}
           {totalCostUsd !== undefined ? formatIdr(totalCostUsd, idrRate) : "—"}
         </span>
+      </div>
       </div>
     </article>
   );

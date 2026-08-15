@@ -1,5 +1,5 @@
 import * as React from "react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { ChevronDown, Search } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -34,6 +34,10 @@ export function ModelCombobox({
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
+
+  const baseId = useId();
+  const listboxId = `${baseId}-listbox`;
+  const optionId = (index: number) => `${baseId}-option-${index}`;
 
   // Load discovered models once on mount
   useEffect(() => {
@@ -130,6 +134,10 @@ export function ModelCombobox({
           aria-autocomplete="list"
           aria-expanded={open}
           aria-haspopup="listbox"
+          aria-controls={listboxId}
+          aria-activedescendant={
+            open && activeIndex >= 0 ? optionId(activeIndex) : undefined
+          }
           className={cn(
             "border-hairline placeholder:text-ink-muted-48 h-10 w-full rounded-sm border bg-canvas pr-9 pl-3 text-[14px] text-ink transition-[border-color,box-shadow] ease-default outline-none",
             "focus-visible:border-heat focus-visible:ring-2 focus-visible:ring-heat/30",
@@ -156,6 +164,7 @@ export function ModelCombobox({
       {open && (
         <div
           ref={listRef}
+          id={listboxId}
           role="listbox"
           className="animate-in fade-in-0 zoom-in-95 absolute top-full left-0 z-50 mt-1 max-h-64 w-full overflow-y-auto rounded-sm border border-hairline bg-canvas py-1 shadow-float"
         >
@@ -169,7 +178,9 @@ export function ModelCombobox({
             filtered.map((val, index) => (
               <div
                 key={val}
+                id={optionId(index)}
                 role="option"
+                tabIndex={-1}
                 aria-selected={index === activeIndex}
                 onMouseDown={(e) => {
                   e.preventDefault();

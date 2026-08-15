@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { fetchConfig, fetchModels, validateConfig, applyConfig, restartServer } from "@/api/client";
 import type { ConfigPayload, ConfigField } from "@/api/types";
@@ -24,19 +24,31 @@ export function useConfigForm(): UseConfigFormReturn {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [editedValues, setEditedValues] = useState<Record<string, string>>({});
+  // Abort in-flight config/model fetches so rapid refresh()/reloads cannot
+  // resolve out of order or set state after unmount.
+  const fetchAbortRef = useRef<AbortController | null>(null);
 
   const load = useCallback(async () => {
+    fetchAbortRef.current?.abort();
+    const controller = new AbortController();
+    fetchAbortRef.current = controller;
     setIsLoading(true);
     setError(null);
     try {
-      const data = await fetchConfig();
+      const data = await fetchConfig(controller.signal);
+      if (controller.signal.aborted) return;
       setPayload(data);
       setEditedValues({});
     } catch (err) {
+      if (err instanceof DOMException && err.name === "AbortError") return;
       setError(err instanceof Error ? err.message : "Failed to load config");
     } finally {
-      setIsLoading(false);
+      if (!controller.signal.aborted) setIsLoading(false);
     }
+  }, []);
+
+  useEffect(() => {
+    return () => fetchAbortRef.current?.abort();
   }, []);
 
   useEffect(() => {
@@ -89,7 +101,10 @@ export function useConfigForm(): UseConfigFormReturn {
   }, []);
 
   const refresh = useCallback(async () => {
-    await fetchModels();
+    const controller = new AbortController();
+    fetchAbortRef.current?.abort();
+    fetchAbortRef.current = controller;
+    await fetchModels(controller.signal);
     await load();
   }, [load]);
 

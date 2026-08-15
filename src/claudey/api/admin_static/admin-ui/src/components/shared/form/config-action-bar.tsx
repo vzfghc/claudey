@@ -74,6 +74,7 @@ export function ConfigActionBar({
           Validate
         </Button>
         <Button
+          type="submit"
           variant="primary"
           size="sm"
           onClick={handleApply}

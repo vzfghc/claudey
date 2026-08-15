@@ -1,5 +1,5 @@
 import * as React from "react";
-import { useCallback, useEffect, useLayoutEffect, useRef } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import {
   BarChart3,
   Boxes,
@@ -237,14 +237,17 @@ export function Sidebar({ items = DEFAULT_ITEMS, activeId, onNavigate, footer }:
     scale: React.MutableRefObject<number>;
   }
 
-  const hoverPillState: PillGlideState = {
-    tweenId: pillTweenId,
-    fromY: pillFromY,
-    fromScale: pillFromScale,
-    targetIndex: pillTargetIndex,
-    y: pillY,
-    scale: pillScale,
-  };
+  const hoverPillState: PillGlideState = useMemo(
+    () => ({
+      tweenId: pillTweenId,
+      fromY: pillFromY,
+      fromScale: pillFromScale,
+      targetIndex: pillTargetIndex,
+      y: pillY,
+      scale: pillScale,
+    }),
+    [pillTweenId, pillFromY, pillFromScale, pillTargetIndex, pillY, pillScale],
+  );
 
   const activePillTweenId = useRef<number | null>(null);
   const activePillFromY = useRef(0);
@@ -253,14 +256,24 @@ export function Sidebar({ items = DEFAULT_ITEMS, activeId, onNavigate, footer }:
   const activePillY = useRef(0);
   const activePillScale = useRef(1);
   const activePillInitialized = useRef(false);
-  const activePillState: PillGlideState = {
-    tweenId: activePillTweenId,
-    fromY: activePillFromY,
-    fromScale: activePillFromScale,
-    targetIndex: activePillTargetIndex,
-    y: activePillY,
-    scale: activePillScale,
-  };
+  const activePillState: PillGlideState = useMemo(
+    () => ({
+      tweenId: activePillTweenId,
+      fromY: activePillFromY,
+      fromScale: activePillFromScale,
+      targetIndex: activePillTargetIndex,
+      y: activePillY,
+      scale: activePillScale,
+    }),
+    [
+      activePillTweenId,
+      activePillFromY,
+      activePillFromScale,
+      activePillTargetIndex,
+      activePillY,
+      activePillScale,
+    ],
+  );
 
   const glideTo = useCallback(
     (el: HTMLDivElement | null, s: PillGlideState, index: number) => {
@@ -323,7 +336,7 @@ export function Sidebar({ items = DEFAULT_ITEMS, activeId, onNavigate, footer }:
     (index: number) => {
       glideTo(hoverPillRef.current, hoverPillState, index);
     },
-    [glideTo],
+    [glideTo, hoverPillState],
   );
 
   useLayoutEffect(() => {
@@ -344,7 +357,7 @@ export function Sidebar({ items = DEFAULT_ITEMS, activeId, onNavigate, footer }:
     // the right place the next time the pointer moves.
     resetPillTween(activeIndex);
     if (hoverPillRef.current) hoverPillRef.current.style.opacity = "0";
-  }, [activeId, items, glideTo, resetPillTween]);
+  }, [activeId, items, glideTo, resetPillTween, activePillState]);
 
   const activeIndex = Math.max(0, items.findIndex((item) => item.id === activeId));
 

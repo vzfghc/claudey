@@ -90,7 +90,6 @@ export function ProviderKeyDialog({
             onChange={(e) => setValue(e.target.value)}
             placeholder="sk-••••••••••••••••"
             autoComplete="off"
-            autoFocus
           />
         </div>
 
