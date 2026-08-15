@@ -103,14 +103,17 @@ function ComboRow({ combo, onEdit, onDelete }: ComboRowProps) {
 }
 
 export function ProvidersView() {
-  const config = useJson<ConfigPayload>("/admin/api/config");
-  const combosRes = useJson<{ combos: Combo[] }>("/admin/api/combos");
+  // Bumped by every mutation (save/delete/configure) — passed into useJson as a
+  // refetch dependency so the view refetches without remounting (keeps row
+  // state like in-flight test results, and scroll position).
+  const [reloadKey, setReloadKey] = useState(0);
+  const config = useJson<ConfigPayload>("/admin/api/config", reloadKey);
+  const combosRes = useJson<{ combos: Combo[] }>("/admin/api/combos", reloadKey);
   const [showCustomDialog, setShowCustomDialog] = useState(false);
   const [comboDialogOpen, setComboDialogOpen] = useState(false);
   const [editingCombo, setEditingCombo] = useState<Combo | null>(null);
   const [keyDialogField, setKeyDialogField] = useState<ConfigField | null>(null);
   const [keyDialogProvider, setKeyDialogProvider] = useState("");
-  const [reloadKey, setReloadKey] = useState(0);
 
   const reload = useCallback(() => setReloadKey((k) => k + 1), []);
 
@@ -163,7 +166,7 @@ export function ProvidersView() {
   const custom = providers.filter((p) => p.kind === "custom");
 
   return (
-    <div key={reloadKey} className="min-h-0 flex-1 overflow-y-auto px-6 py-8">
+    <div className="min-h-0 flex-1 overflow-y-auto px-6 py-8">
       <div className="mx-auto max-w-[880px] space-y-10">
         <div className="flex items-end justify-between gap-4">
           <div>
@@ -210,7 +213,6 @@ export function ProvidersView() {
                 <ProviderCard
                   key={provider.provider_id}
                   provider={provider}
-                  onConfigure={() => {}}
                   onChanged={reload}
                 />
               ))}
@@ -235,7 +237,18 @@ export function ProvidersView() {
             </Button>
           </div>
 
-          {combos.length === 0 ? (
+          {combosRes.error ? (
+            <LineGroup>
+              <div className="flex items-center justify-between gap-4 px-4 py-4">
+                <p className="text-[14px] text-danger">
+                  Failed to load combos — {combosRes.error}
+                </p>
+                <Button variant="ghost" size="sm" onClick={reload}>
+                  Retry
+                </Button>
+              </div>
+            </LineGroup>
+          ) : combos.length === 0 ? (
             <LineGroup>
               <p className="px-4 py-4 text-[14px] text-ink-muted-48">
                 No fallback combos yet. Add one above, then reference it from the

@@ -9,8 +9,9 @@ interface AsyncState<T> {
 /**
  * Minimal JSON fetch hook with AbortController cleanup.
  * (Container views only — the design-system empty/error states do the rest.)
+ * @param refetchKey — bump to refetch the same path without remounting callers.
  */
-export function useJson<T>(path: string): AsyncState<T> {
+export function useJson<T>(path: string, refetchKey: number = 0): AsyncState<T> {
   const [state, setState] = useState<AsyncState<T>>({
     data: null,
     isLoading: true,
@@ -46,7 +47,7 @@ export function useJson<T>(path: string): AsyncState<T> {
       });
 
     return () => controller.abort();
-  }, [path]);
+  }, [path, refetchKey]);
 
   return state;
 }

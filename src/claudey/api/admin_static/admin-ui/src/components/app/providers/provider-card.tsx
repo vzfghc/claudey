@@ -10,7 +10,8 @@ import type { ProviderStatus, ConfigField } from "@/api/types";
 interface ProviderRowProps {
   provider: ProviderStatus;
   primaryField?: ConfigField;
-  onConfigure: (fieldKey: string) => void;
+  /** Config-key dialog opener — omit for rows that cannot be configured (custom). */
+  onConfigure?: (fieldKey: string) => void;
   onChanged: () => void;
 }
 
@@ -59,7 +60,7 @@ export function ProviderCard({ provider, primaryField, onConfigure, onChanged }:
 
   const tone = statusTone(provider.status);
   const isConfigured = ["configured", "reachable"].includes(provider.status);
-  const fieldKey = primaryField?.key ?? provider.configuration?.split(" + ")[0]?.trim();
+  const fieldKey = primaryField?.key;
 
   const handleTest = async () => {
     setIsTesting(true);
@@ -92,6 +93,9 @@ export function ProviderCard({ provider, primaryField, onConfigure, onChanged }:
     }
   };
 
+  // Secondary line: kind-specific metadata. Remote rows show the configuration
+  // summary — the live status already lives in the dot+label on the right, so
+  // rendering statusLabel() here duplicated it on every remote row.
   const secondary =
     provider.kind === "local"
       ? provider.base_url || "No URL configured"
@@ -99,7 +103,7 @@ export function ProviderCard({ provider, primaryField, onConfigure, onChanged }:
         ? provider.compatible === "anthropic"
           ? "Anthropic-compatible"
           : "OpenAI-compatible"
-        : statusLabel(provider.status, provider.label);
+        : provider.configuration || provider.label;
 
   return (
     <div className="group flex items-center gap-4 px-4 py-3 transition-colors duration-200 hover:bg-parchment/60">
@@ -153,7 +157,7 @@ export function ProviderCard({ provider, primaryField, onConfigure, onChanged }:
               <Button
                 variant="secondary"
                 size="sm"
-                onClick={() => fieldKey && onConfigure(fieldKey)}
+                onClick={() => fieldKey && onConfigure?.(fieldKey)}
               >
                 Switch key
               </Button>
@@ -162,7 +166,7 @@ export function ProviderCard({ provider, primaryField, onConfigure, onChanged }:
             <Button
               variant="secondary"
               size="sm"
-              onClick={() => fieldKey && onConfigure(fieldKey)}
+              onClick={() => fieldKey && onConfigure?.(fieldKey)}
             >
               Configure
             </Button>
