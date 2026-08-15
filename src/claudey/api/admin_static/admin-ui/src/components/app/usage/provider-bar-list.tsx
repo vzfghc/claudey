@@ -12,7 +12,8 @@ interface ProviderBarListProps {
   providers: ProviderRow[];
 }
 
-/** Top providers by token share — shadcn BarList with heat bars. */
+/** Top providers by token share — shadcn BarList with a soft heat tint so the
+ *  dark ink labels stay legible (design-system.md §10: never ink on solid heat). */
 export function ProviderBarList({ providers }: ProviderBarListProps) {
   if (!providers.length) return null;
 
@@ -35,7 +36,7 @@ export function ProviderBarList({ providers }: ProviderBarListProps) {
         <BarList
           data={data}
           valueFormatter={(value: number) => compactNumber(value)}
-          barClassName="bg-heat"
+          barClassName="bg-heat/20"
           barGap={8}
           barHeight={28}
           sortOrder="descending"

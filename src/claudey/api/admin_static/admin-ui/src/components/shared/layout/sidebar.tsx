@@ -363,7 +363,7 @@ export function Sidebar({ items = DEFAULT_ITEMS, activeId, onNavigate, footer }:
     <aside
       ref={sidebarRef}
       className={cn(
-        "relative z-20 flex h-full flex-col border-r border-hairline bg-parchment transition-none",
+        "relative z-20 flex h-full flex-col border-r border-hairline bg-canvas transition-none",
         collapsed && "sidebar-rail",
       )}
       style={{ width: SIDEBAR_W.expanded, paddingLeft: SIDEBAR_W.padExpanded, paddingRight: SIDEBAR_W.padExpanded }}

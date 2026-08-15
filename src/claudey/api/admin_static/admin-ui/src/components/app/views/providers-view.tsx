@@ -6,7 +6,6 @@ import { ProviderCard } from "@/components/app/providers/provider-card";
 import { CustomProviderDialog } from "@/components/app/providers/custom-provider-dialog";
 import { ComboDialog } from "@/components/app/providers/combo-dialog";
 import { ProviderKeyDialog } from "@/components/app/providers/provider-key-dialog";
-import { Card, CardContent, CardHeader, CardTitle, CardAction } from "@/components/ui/shadcn/card";
 import { Button } from "@/components/ui/shadcn/button";
 import { Badge } from "@/components/ui/shadcn/badge";
 import { Skeleton } from "@/components/ui/shadcn/skeleton";
@@ -14,6 +13,94 @@ import { PlaceholderView } from "@/components/app/views/placeholder-view";
 import { useJson } from "@/hooks/use-json";
 import { deleteCombo } from "@/api/client";
 import type { Combo, ConfigField, ConfigPayload } from "@/api/types";
+
+/** Apple grouped-list shell: one rounded hairline container, rows divided by
+ *  1px lines. Replaces the boxed-card grid (docs/design-system.md §5, §10). */
+function LineGroup({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="divide-y divide-hairline overflow-hidden rounded-lg border border-hairline bg-canvas">
+      {children}
+    </div>
+  );
+}
+
+function SectionHead({ children }: { children: React.ReactNode }) {
+  return (
+    <h2 className="mb-3 text-[21px] leading-tight font-semibold tracking-[-0.374px] text-ink">
+      {children}
+    </h2>
+  );
+}
+
+interface ComboRowProps {
+  combo: Combo;
+  onEdit: () => void;
+  onDelete: () => void;
+}
+
+/** ComboRow — same Apple settings line grammar as ProviderRow: name · enabled
+ *  badge · node-chain summary · Copy/Edit/Delete actions. */
+function ComboRow({ combo, onEdit, onDelete }: ComboRowProps) {
+  const chain = combo.nodes
+    .filter((node) => node.enabled)
+    .sort((a, b) => a.priority - b.priority)
+    .map((node) => node.provider_model_ref)
+    .join(" → ");
+  const summary = chain
+    ? `${combo.nodes.length} node${combo.nodes.length === 1 ? "" : "s"} · ${chain}`
+    : `${combo.nodes.length} node${combo.nodes.length === 1 ? "" : "s"}`;
+  const token = `@combo:${combo.combo_id}`;
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(token);
+      toast.success(`Copied ${token}`);
+    } catch {
+      toast.error("Clipboard unavailable");
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!window.confirm(`Delete combo "${combo.display_name}"?`)) return;
+    try {
+      await deleteCombo(combo.combo_id);
+      toast.success("Combo deleted");
+      onDelete();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to delete combo");
+    }
+  };
+
+  return (
+    <div className="group flex items-center gap-4 px-4 py-3 transition-colors duration-200 hover:bg-parchment/60">
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2">
+          <p className="truncate text-[15px] leading-tight font-semibold tracking-[-0.2px] text-ink">
+            {combo.display_name}
+          </p>
+          <Badge variant={combo.enabled ? "success" : "secondary"}>
+            {combo.enabled ? "Enabled" : "Disabled"}
+          </Badge>
+        </div>
+        <p className="truncate text-[12px] leading-snug text-ink-muted-48" title={summary}>
+          {summary}
+        </p>
+      </div>
+
+      <div className="flex shrink-0 items-center gap-1.5">
+        <Button variant="ghost" size="sm" onClick={handleCopy} aria-label="Copy combo token">
+          <Copy className="size-3.5" />
+        </Button>
+        <Button variant="ghost" size="sm" onClick={onEdit} aria-label="Edit combo">
+          <Pencil className="size-3.5" />
+        </Button>
+        <Button variant="ghost" size="sm" onClick={handleDelete} aria-label="Delete combo">
+          <Trash2 className="size-3.5" />
+        </Button>
+      </div>
+    </div>
+  );
+}
 
 export function ProvidersView() {
   const config = useJson<ConfigPayload>("/admin/api/config");
@@ -34,9 +121,9 @@ export function ProvidersView() {
         eyebrow="Connections · Keys · Status"
         status="loading"
         slots={[
-          <div key="grid" className="grid grid-cols-2 gap-4">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <Skeleton key={i} className="h-32 rounded-lg" />
+          <div key="list" className="overflow-hidden rounded-lg border border-hairline">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <Skeleton key={i} className="h-[58px] rounded-none" />
             ))}
           </div>,
         ]}
@@ -77,7 +164,7 @@ export function ProvidersView() {
 
   return (
     <div key={reloadKey} className="min-h-0 flex-1 overflow-y-auto px-6 py-8">
-      <div className="mx-auto max-w-[1080px] space-y-8">
+      <div className="mx-auto max-w-[880px] space-y-10">
         <div className="flex items-end justify-between gap-4">
           <div>
             <p className="font-mono text-[11px] font-bold tracking-[0.08em] text-ink-muted-48 uppercase">
@@ -87,20 +174,18 @@ export function ProvidersView() {
               Providers
             </h1>
           </div>
-          <div className="flex items-center gap-2">
-            <Button variant="secondary" size="sm" onClick={() => setShowCustomDialog(true)}>
-              <Plus className="size-3.5" />
-              Custom Provider
-            </Button>
-          </div>
+          <Button variant="secondary" size="sm" onClick={() => setShowCustomDialog(true)}>
+            <Plus className="size-3.5" />
+            Custom Provider
+          </Button>
         </div>
 
-        {/* Provider grid */}
+        {/* Providers — Apple grouped-list */}
         <section>
-          <h2 className="mb-4 text-[21px] leading-tight font-semibold tracking-[-0.374px] text-ink">
+          <SectionHead>
             {remoteAndLocal.length} provider{remoteAndLocal.length === 1 ? "" : "s"}
-          </h2>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          </SectionHead>
+          <LineGroup>
             {remoteAndLocal.map((provider) => {
               const primaryKey = provider.configuration?.split(" + ")[0]?.trim();
               const primaryField = primaryKey ? fieldByKey(primaryKey) : undefined;
@@ -114,16 +199,13 @@ export function ProvidersView() {
                 />
               );
             })}
-          </div>
+          </LineGroup>
         </section>
 
-        {/* Custom providers */}
         {custom.length > 0 && (
           <section>
-            <h2 className="mb-4 text-[21px] leading-tight font-semibold tracking-[-0.374px] text-ink">
-              Custom Providers
-            </h2>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <SectionHead>Custom Providers</SectionHead>
+            <LineGroup>
               {custom.map((provider) => (
                 <ProviderCard
                   key={provider.provider_id}
@@ -132,16 +214,14 @@ export function ProvidersView() {
                   onChanged={reload}
                 />
               ))}
-            </div>
+            </LineGroup>
           </section>
         )}
 
         {/* Combos */}
         <section>
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-[21px] leading-tight font-semibold tracking-[-0.374px] text-ink">
-              Fallback Combos
-            </h2>
+          <div className="mb-3 flex items-center justify-between">
+            <SectionHead>Fallback Combos</SectionHead>
             <Button
               variant="secondary"
               size="sm"
@@ -156,18 +236,16 @@ export function ProvidersView() {
           </div>
 
           {combos.length === 0 ? (
-            <Card>
-              <CardContent>
-                <p className="text-[14px] text-ink-muted-48">
-                  No fallback combos yet. Add one above, then reference it from the
-                  Fallback tier in Model Config with its @combo:&lt;id&gt; token.
-                </p>
-              </CardContent>
-            </Card>
+            <LineGroup>
+              <p className="px-4 py-4 text-[14px] text-ink-muted-48">
+                No fallback combos yet. Add one above, then reference it from the
+                Fallback tier in Model Config with its @combo:&lt;id&gt; token.
+              </p>
+            </LineGroup>
           ) : (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <LineGroup>
               {combos.map((combo) => (
-                <ComboCard
+                <ComboRow
                   key={combo.combo_id}
                   combo={combo}
                   onEdit={() => {
@@ -177,7 +255,7 @@ export function ProvidersView() {
                   onDelete={reload}
                 />
               ))}
-            </div>
+            </LineGroup>
           )}
         </section>
       </div>
@@ -203,68 +281,5 @@ export function ProvidersView() {
         onSaved={reload}
       />
     </div>
-  );
-}
-
-function ComboCard({
-  combo,
-  onEdit,
-  onDelete,
-}: {
-  combo: Combo;
-  onEdit: () => void;
-  onDelete: () => void;
-}) {
-  const handleCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(`@combo:${combo.combo_id}`);
-      toast.success(`Copied @combo:${combo.combo_id}`);
-    } catch {
-      toast.error(`Copy failed — note @combo:${combo.combo_id}`);
-    }
-  };
-
-  const handleDelete = async () => {
-    if (!window.confirm(`Delete fallback combo "${combo.display_name}"?`)) return;
-    try {
-      await deleteCombo(combo.combo_id);
-      toast.success("Combo deleted");
-      onDelete();
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to delete combo");
-    }
-  };
-
-  return (
-    <Card className="gap-3 p-4">
-      <CardHeader>
-        <CardTitle className="text-[15px]">{combo.display_name}</CardTitle>
-        <CardAction>
-          <Badge variant={combo.enabled ? "success" : "secondary"}>
-            {combo.enabled ? "Enabled" : "Disabled"}
-          </Badge>
-        </CardAction>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        <p className="text-[13px] text-ink-muted-48" title={combo.nodes.map((n) => n.provider_model_ref).join(" → ")}>
-          {combo.nodes.length} node{combo.nodes.length === 1 ? "" : "s"} ·{" "}
-          {combo.nodes.map((n) => n.provider_model_ref).join(" → ")}
-        </p>
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" size="sm" onClick={handleCopy} className="font-mono text-[12px]">
-            <Copy className="size-3" />
-            @combo:{combo.combo_id}
-          </Button>
-          <div className="flex-1" />
-          <Button variant="secondary" size="sm" onClick={onEdit}>
-            <Pencil className="size-3.5" />
-            Edit
-          </Button>
-          <Button variant="ghost" size="sm" onClick={handleDelete} aria-label="Delete combo">
-            <Trash2 className="size-3.5" />
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
   );
 }

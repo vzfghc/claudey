@@ -2,23 +2,32 @@ import { useState } from "react";
 import { Trash2, Zap } from "lucide-react";
 import { toast } from "sonner";
 
-import { Card, CardContent, CardHeader, CardTitle, CardAction } from "@/components/ui/shadcn/card";
 import { Button } from "@/components/ui/shadcn/button";
 import { Badge } from "@/components/ui/shadcn/badge";
 import { testProvider, deleteCustomProvider } from "@/api/client";
 import type { ProviderStatus, ConfigField } from "@/api/types";
 
-interface ProviderCardProps {
+interface ProviderRowProps {
   provider: ProviderStatus;
   primaryField?: ConfigField;
   onConfigure: (fieldKey: string) => void;
   onChanged: () => void;
 }
 
-function statusBadgeVariant(status: string): "success" | "warn" | "danger" | "secondary" {
+type StatusTone = "success" | "warn" | "danger" | "secondary";
+
+function statusDotClass(tone: StatusTone): string {
+  if (tone === "success") return "bg-success";
+  if (tone === "danger") return "bg-danger";
+  if (tone === "warn") return "bg-warn";
+  return "bg-ink-muted-48/40";
+}
+
+function statusTone(status: string): StatusTone {
   if (["configured", "reachable", "connected"].includes(status)) return "success";
   if (["offline", "error"].includes(status)) return "danger";
-  if (["missing_key", "missing_config", "missing_url", "unknown", "connecting"].includes(status)) return "warn";
+  if (["missing_key", "missing_config", "missing_url", "unknown", "connecting"].includes(status))
+    return "warn";
   return "secondary";
 }
 
@@ -39,10 +48,16 @@ function providerLogoSrc(providerId: string): string {
   return `/admin/assets/logos/${providerId}.svg`;
 }
 
-export function ProviderCard({ provider, primaryField, onConfigure, onChanged }: ProviderCardProps) {
+/**
+ * ProviderRow — Apple-style settings line. A hairline-divided row (logo · name ·
+ * secondary meta · status · actions) instead of a boxed card. Rendered inside a
+ * ProviderList that owns the dividers and the single rounded container.
+ */
+export function ProviderCard({ provider, primaryField, onConfigure, onChanged }: ProviderRowProps) {
   const [isTesting, setIsTesting] = useState(false);
   const [testResult, setTestResult] = useState<string | null>(null);
 
+  const tone = statusTone(provider.status);
   const isConfigured = ["configured", "reachable"].includes(provider.status);
   const fieldKey = primaryField?.key ?? provider.configuration?.split(" + ")[0]?.trim();
 
@@ -77,57 +92,66 @@ export function ProviderCard({ provider, primaryField, onConfigure, onChanged }:
     }
   };
 
+  const secondary =
+    provider.kind === "local"
+      ? provider.base_url || "No URL configured"
+      : provider.kind === "custom"
+        ? provider.compatible === "anthropic"
+          ? "Anthropic-compatible"
+          : "OpenAI-compatible"
+        : statusLabel(provider.status, provider.label);
+
   return (
-    <Card className="gap-3 p-4">
-      <CardHeader>
-        <div className="flex items-center gap-3">
-          <img
-            src={providerLogoSrc(provider.provider_id)}
-            alt=""
-            width={32}
-            height={32}
-            loading="lazy"
-            className="size-8 shrink-0 rounded-sm"
-            onError={(e) => {
-              const img = e.currentTarget;
-              img.onerror = null;
-              img.src = FALLBACK_LOGO;
-            }}
-          />
-          <CardTitle className="text-[15px]">{provider.display_name}</CardTitle>
-        </div>
-        <CardAction>
-          <Badge variant={statusBadgeVariant(provider.status)}>
-            {statusLabel(provider.status, provider.label)}
-          </Badge>
-        </CardAction>
-      </CardHeader>
+    <div className="group flex items-center gap-4 px-4 py-3 transition-colors duration-200 hover:bg-parchment/60">
+      <img
+        src={providerLogoSrc(provider.provider_id)}
+        alt=""
+        width={28}
+        height={28}
+        loading="lazy"
+        className="size-7 shrink-0 rounded-md"
+        onError={(e) => {
+          const img = e.currentTarget;
+          img.onerror = null;
+          img.src = FALLBACK_LOGO;
+        }}
+      />
 
-      {provider.kind === "custom" && (
-        <CardContent className="flex items-center justify-between gap-2">
-          <Badge variant="accent">
-            {provider.compatible === "anthropic" ? "Anthropic" : "OpenAI"}
-          </Badge>
-          <Button variant="secondary" size="sm" onClick={handleDelete}>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-[15px] leading-tight font-semibold tracking-[-0.2px] text-ink">
+          {provider.display_name}
+        </p>
+        <p className="truncate text-[12px] leading-snug text-ink-muted-48" title={secondary}>
+          {secondary}
+        </p>
+      </div>
+
+      <span className="hidden shrink-0 items-center gap-1.5 sm:flex">
+        <span className={`size-1.5 rounded-full ${statusDotClass(tone)}`} aria-hidden="true" />
+        <span className="text-[12px] text-ink-muted-48">
+          {statusLabel(provider.status, provider.label)}
+        </span>
+      </span>
+
+      <div className="flex shrink-0 items-center gap-1.5">
+        {provider.kind === "custom" && (
+          <Button variant="ghost" size="sm" onClick={handleDelete} aria-label="Delete provider">
             <Trash2 className="size-3.5" />
-            Delete
           </Button>
-        </CardContent>
-      )}
+        )}
 
-      {provider.kind === "remote" && (
-        <CardContent className="flex items-center justify-end gap-2">
-          {isConfigured ? (
+        {provider.kind === "remote" &&
+          (isConfigured ? (
             <>
               {testResult && (
-                <span className="text-[12px] text-ink-muted-48">{testResult}</span>
+                <span className="hidden text-[12px] text-ink-muted-48 md:inline">{testResult}</span>
               )}
-              <Button variant="secondary" size="sm" onClick={handleTest} disabled={isTesting}>
+              <Button variant="ghost" size="sm" onClick={handleTest} disabled={isTesting}>
                 <Zap className="size-3.5" />
                 {isTesting ? "Testing…" : "Test"}
               </Button>
               <Button
-                variant="ghost"
+                variant="secondary"
                 size="sm"
                 onClick={() => fieldKey && onConfigure(fieldKey)}
               >
@@ -142,17 +166,14 @@ export function ProviderCard({ provider, primaryField, onConfigure, onChanged }:
             >
               Configure
             </Button>
-          )}
-        </CardContent>
-      )}
+          ))}
 
-      {provider.kind === "local" && (
-        <CardContent>
-          <p className="truncate text-[12px] text-ink-muted-48" title={provider.base_url}>
-            {provider.base_url || "No URL configured"}
-          </p>
-        </CardContent>
-      )}
-    </Card>
+        {provider.kind === "custom" && (
+          <Badge variant="accent">
+            {provider.compatible === "anthropic" ? "Anthropic" : "OpenAI"}
+          </Badge>
+        )}
+      </div>
+    </div>
   );
 }
