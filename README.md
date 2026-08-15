@@ -1,11 +1,8 @@
 <div align="center">
 
-<h1>
-  <picture>
-    <source media="(prefers-color-scheme: light)" srcset="assets/claudey-wordmark-light.svg">
-    <img src="assets/claudey-wordmark-dark.svg" alt="Claudey" width="610">
-  </picture>
-</h1>
+<img src="assets/icons/claudey-icon.webp" alt="Claudey" width="120" height="120">
+
+<h1>Claudey</h1>
 
 Use Claude Code, Codex, Pi, or their IDE extensions through your own provider-backed proxy.
 

@@ -11,6 +11,7 @@ import {
 
 import { cn } from "@/lib/utils";
 import { useReducedMotion, useStoredFlag } from "@/hooks/use-reduced-motion";
+import claudeyIcon from "@/assets/claudey-icon.webp";
 
 /* ============================================================================
    PRESERVED CHOREOGRAPHY — do not redesign.
@@ -65,9 +66,6 @@ const DEFAULT_ITEMS: SidebarItem[] = [
   { id: "model_config", label: "Model Config", icon: <SlidersHorizontal size={18} strokeWidth={2} /> },
   { id: "messaging", label: "Messaging", icon: <MessageSquareText size={18} strokeWidth={2} /> },
 ];
-
-const BRAND_MARK_PATH =
-  "M13.827 3.52h3.603L24 20h-3.603l-6.57-16.48zm-7.258 0h3.767L16.906 20h-3.674l-1.343-3.461H5.017l-1.344 3.46H0L6.57 3.522zm4.132 9.959L8.453 7.687 6.205 13.48H10.7z";
 
 interface SidebarProps {
   items?: SidebarItem[];
@@ -372,14 +370,14 @@ export function Sidebar({ items = DEFAULT_ITEMS, activeId, onNavigate, footer }:
     >
       {/* Brand */}
       <div className="flex h-16 shrink-0 items-center gap-3" data-brand>
-        <div
-          className="brand-mark grid size-9 shrink-0 place-items-center rounded-lg bg-heat text-white shadow-card transition-transform duration-500 hover:rotate-[-4deg] hover:scale-105"
+        <img
+          src={claudeyIcon}
+          alt=""
+          width={36}
+          height={36}
           aria-hidden="true"
-        >
-          <svg viewBox="0 0 24 24" fill="currentColor" width="22" height="22">
-            <path d={BRAND_MARK_PATH} />
-          </svg>
-        </div>
+          className="brand-mark size-9 shrink-0 rounded-lg shadow-card transition-transform duration-500 hover:rotate-[-4deg] hover:scale-105"
+        />
         <div className="flex flex-col" data-sidebar-label>
           <h1 className="text-[17px] font-semibold leading-tight tracking-[-0.374px] text-ink">
             Claudey
