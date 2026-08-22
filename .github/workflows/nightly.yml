@@ -51,7 +51,7 @@ jobs:
           uv run mutmut results 2>&1 | tail -3 >> "$GITHUB_STEP_SUMMARY" || true
 
       - name: Upload HTML report
-        uses: actions/upload-artifact@a8a3f3ad30e3422c9c7b888a15615d19a852ae32
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         if: always()
         with:
           name: mutmut-report
@@ -106,7 +106,7 @@ jobs:
           SHELL: /bin/bash
 
       - name: Upload report
-        uses: actions/upload-artifact@a8a3f3ad30e3422c9c7b888a15615d19a852ae32
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         if: always()
         with:
           name: schemathesis-report
