@@ -11,10 +11,11 @@ env:
 
 on:
   push:
-    branches: [main, master]
+    branches: [main, master, "feat/**", "fix/**"]
   pull_request:
     branches: [main, master]
   merge_group:
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}

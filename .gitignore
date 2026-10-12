@@ -34,3 +34,9 @@ src/claudey/api/admin_static/admin-ui/dist/
 
 # macOS
 .DS_Store
+
+# Scratch / video generation directories
+my-video/
+
+# Stray package manager lockfiles (npm and uv are canonical)
+pnpm-lock.yaml
